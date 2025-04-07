@@ -24,11 +24,11 @@ const MODEL_FILES = {
 
 function initAlizarin() {
     const archesClient = new client.ArchesClientLocal({
-        allGraphFile: (() => "prebuild/resource_models/_all.json"),
-        graphIdToGraphFile: ((graphId) => `prebuild/resource_models/${MODEL_FILES[graphId].graph}`),
-        graphIdToResourcesFiles: ((graphId) => MODEL_FILES[graphId].resources.map(resourceFile => `prebuild/business_data/${resourceFile}`)),
+        allGraphFile: (() => "static/resource_models/_all.json"),
+        graphIdToGraphFile: ((graphId) => `static/definitions/resource_models/${MODEL_FILES[graphId].graph}`),
+        graphIdToResourcesFiles: ((graphId) => MODEL_FILES[graphId].resources.map(resourceFile => `static/definitions/business_data/${resourceFile}`)),
         // resourceIdToFile: ((resourceId: string) => `public/resources/${resourceId}.json`),
-        collectionIdToFile: ((collectionId) => `prebuild/collections/${collectionId}.json`)
+        collectionIdToFile: ((collectionId) => `static/definitions/collections/${collectionId}.json`)
     });
     archesClient.fs = fs.promises;
     graphManager.archesClient = archesClient;
@@ -52,7 +52,7 @@ async function buildPagefind(graphManager) {
         "Scheduled Monument": "🪦",
     };
     const counter = {};
-    const md = await fs.promises.readFile(`prebuild/heritage-asset-hb.md`, { encoding: "utf8" });
+    const md = await fs.promises.readFile(`static/heritage-asset-hb.md`, { encoding: "utf8" });
     var template = hb.compile(md);
     let n = 100;
     const batches = assets.length / n;
