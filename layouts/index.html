@@ -1,0 +1,49 @@
+{{ define "main" }}
+{{- $js := resources.Get "map.ts" -}}
+{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction ) }}
+{{ $sourceMap := cond hugo.IsProduction "" "inline" }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" "params" $params }}
+{{ $js = $js | js.Build $opts }}
+{{ if hugo.IsProduction }}
+  {{ $js = $js | fingerprint }}
+{{ end }}
+<script
+  src="{{ $js.RelPermalink }}"
+  {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end }}
+  type="module"></script>
+<link href="/pagefind/pagefind-modular-ui.css" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@drustack/leaflet.resetview/dist/L.Control.ResetView.min.css">
+<link rel="stylesheet" href="/main.css">
+<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" />
+<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+<script src="https://cdn.jsdelivr.net/npm/@drustack/leaflet.resetview/dist/L.Control.ResetView.min.js"></script>
+
+<div class="govuk-body">
+    &nbsp;
+
+    <h1 class="govuk-heading-xl">Heritage Assets</h1>
+
+    <p>Search for heritage assets by typing in the search box below and by using the map.</p>
+
+    <div id="map-row">
+        <div id="search-column">
+            <div id="search"></div>
+            <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView._resetView()">reset</a> view to see all results</div>
+            <div id="result-count" class="result-count"></div>
+            <div id="results"></div>
+        </div>
+        <div id="map-column">
+            <div id="map"></div>
+        </div>
+    </div>
+
+</div>
+
+{{ end }}

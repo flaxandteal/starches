@@ -1,0 +1,20 @@
+baseURL = "/"
+languageCode = "en-gb"
+title = "StArches"
+theme = "govukhugo"
+publishDir = "docs"
+canonifyurls = true
+
+[markup.goldmark.renderer]
+unsafe = true
+
+[params]
+govuk = false
+logotext = "ABC"
+product = "NI HED Public Asset Quickview"
+phase = "alpha"
+feedbackurl = "/feedback/"
+
+[[module.mounts]]
+source = "content"
+target = "content"

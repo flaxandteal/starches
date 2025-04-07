@@ -1,0 +1,49 @@
+{{ define "main" }}
+
+<div class="govuk-body">
+    {{ if isset .Params "custom_title" }}
+    <h1 class="govuk-heading-xl">{{ $.Param "custom_title" }}</h1>
+    {{ else }}
+    <h1 class="govuk-heading-xl">{{ .Title }}</h1>
+    {{ end }}
+
+    {{ .Content }}
+
+
+    {{ if eq .Params.Listpages true }}
+
+    <hr class="govuk-section-break govuk-section-break--l" />
+
+    <h2 class="govuk-caption-xl">Pages</h2>
+    <hr class="govuk-section-break govuk-section-break--m" />
+
+    <dl class="govuk-summary-list">
+
+        {{ range .Pages.GroupBy "Weight" }}
+        {{ range .Pages.ByTitle }}
+        <div class="govuk-summary-list__row">
+            <dt class="govuk-summary-list__key">
+                {{ .Title }}
+            </dt>
+            <dd class="govuk-summary-list__value">
+                {{ .Summary }}
+            </dd>
+            <dd class="govuk-summary-list__actions">
+                <a class="govuk-link" href="{{ .RelPermalink}}">
+                    Read/View</span>
+                </a>
+            </dd>
+
+        </div>
+        {{ end }}
+        {{ end }}
+        
+    </dl>
+
+    {{ end }}
+
+
+</div>
+
+
+{{ end }}

@@ -1,0 +1,32 @@
+@font-face {
+  font-family: "GDS Transport";
+  src: url(../fonts/light-94a07e06a1-v2.woff2);
+}
+
+@font-face {
+  font-family: "GDS Transport";
+  src: url(../fonts/bold-affa96571d-v2.woff);
+  font-weight: bold;
+}
+
+/* Apply GOV.UK fonts */
+figure.govuk_chart svg text {
+  font-family: "GDS Transport" !important;
+}
+
+.leaflet,
+.leaflet .info,
+.leaflet-container {
+  font: unset;
+  font-family: "GDS Transport" !important;
+  font-size: 0.875rem !important;
+  color: var(--govuk-text-colour);
+}
+
+.leaflet strong {
+  font-weight: bold !important;
+}
+
+.dt-button-info {
+  font-family: "GDS Transport" !important;
+}
