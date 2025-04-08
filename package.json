@@ -40,6 +40,8 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "potree-core": "^2.0.10",
+    "three": "^0.175.0",
     "tsc": "^2.0.4",
     "typescript": "^5.8.3",
     "vite": "^6.2.5",
