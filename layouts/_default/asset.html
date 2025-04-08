@@ -1,9 +1,13 @@
 {{ define "main" }}
-  <a href="/">&larr; Back</a>
-  <div id="map" style="height: 150px"></div>
+  <div id="demo-warning">
+    This is a front-end demo with full detail - any public layout will still load sensitive data (<a href="#" id="swap-link"></a>)
+  </div>
+  <div id="map"></div>
+  <h3><a href="/" id="back-link">&larr; Return to Search</a></h3>
   <article id="asset">
   </article>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></link>
+  <link rel="stylesheet" href="/asset.css">
   <script src="/handlebars-async-helpers/public/bundle.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -16,106 +20,16 @@
        background: #ffffff
      }
   </style>
-  <script type="module">
-  import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
-  import dompurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.2.4/+esm';
-  import grayMatter from 'https://cdn.jsdelivr.net/npm/gray-matter@4.0.3/+esm'
-  import toml from 'https://cdn.jsdelivr.net/npm/toml@3.0.0/+esm'
-  import Handlebars from 'https://cdn.jsdelivr.net/npm/handlebars@4.7.6/+esm';
-  import { client, RDM, graphManager, staticStore, staticTypes, utils, viewModels } from '/aormjs/aormjs.js';
-  const MODEL_FILES = {
-      "076f9381-7b00-11e9-8d6b-80000b44d1d9": {
-          graph: "Heritage Asset.json",
-          resources: ["Heritage_Asset.json", "Buildings.json"]
-      }
-  };
-  const archesClient = new client.ArchesClientRemoteStatic('', {
-      allGraphFile: (() => "resource_models/_all.json"),
-      graphIdToGraphFile: ((graphId) => `resource_models/${MODEL_FILES[graphId].graph}`),
-      graphIdToResourcesFiles: ((graphId) => MODEL_FILES[graphId].resources.map(resourceFile => `business_data/${resourceFile}`)),
-      resourceIdToFile: ((resourceId) => `heritageassets/${resourceId}.json`),
-      collectionIdToFile: ((collectionId) => `collections/${collectionId}.json`)
-  });
-  graphManager.archesClient = archesClient;
-  staticStore.archesClient = archesClient;
-  RDM.archesClient = archesClient;
-
-  await graphManager.initialize();
-  const HeritageAsset = graphManager.get("HeritageAsset");
-  const searchParams = new URLSearchParams(window.location.search);
-  if (!searchParams.has("slug") || !searchParams.get("slug").match(/^[a-z0-9_]+$/i)) {
-    alert("Bad slug");
-  }
-  let pub = true;
-  if (searchParams.get("full")) {
-    pub = false;
-  }
-  const slug = searchParams.get("slug");
-  const prefix = pub ? "heritageassets-public" : "heritageassets";
-  const data = await fetch(`/${prefix}/${slug}.md`);
-  const text = await data.text();
-  const content = grayMatter(text, { delims: '+++', language: 'toml', engines: { toml: toml.parse.bind(toml) } });
-  console.log(content);
-  console.log(HeritageAsset);
-  console.log("loading");
-  const asset = (await HeritageAsset.find(slug, false));
-  console.log("loaded");
-  console.log(await asset.monument_names[0].monument_name);
-  const hb = AsyncHandlebars(Handlebars);
-  hb.registerHelper("replace", async (base, fm, to) => (await base).replace(fm, to));
-  hb.registerHelper("await", async (val) => await val);
-  hb.registerHelper("default", function (a, b) {return a === undefined || a === null ? b : a;});
-  const md = await fetch(`/heritage-asset-hb.md`, { encoding: "utf8" });
-  var template = hb.compile(await md.text());
-    const geometry = await (await asset.location_data.geometry.geospatial_coordinates).forJson();
-    let location = geometry;
-    if (location) {
-      const polygon = location["features"][0]["geometry"]["coordinates"];
-      if (Array.isArray(polygon[0])) {
-        const centre = polygon.reduce((c, p) => {
-          c[0] += p[0] / polygon.length;
-          c[1] += p[1] / polygon.length;
-          return c;
-        }, [0, 0]);
-        location = {
-            "features": [{
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": centre
-                }
-            }]
-        }
-      }
-    }
-    if (location) {
-      location = location["features"][0]["geometry"]["coordinates"];
-    } else {
-      location = null;
-    }
-    const meta = {
-      resourceinstanceid: `${await asset.id}`,
-      geometry: JSON.stringify(geometry),
-      location: JSON.stringify(location),
-      title: await (await asset.monument_names[0].monument_name).forJson()
-    };
-    console.log(meta);
-  const markdown = await template({ title: meta.title, ha: asset }, {
-    allowProtoPropertiesByDefault: true,
-    allowProtoMethodsByDefault: true,
-  });
-  console.log(await asset._.resource);
-  document.getElementById('asset').innerHTML = dompurify.sanitize(marked.parse(markdown));
-
-  if (location) {
-    var centre = location;
-    centre = [centre[1], centre[0]];
-    const zoom = 16;
-    var map = L.map('map').setView(centre, zoom);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
-    L.geoJSON(geometry).addTo(map);
-  }
-</script>
+{{- $js := resources.Get "asset.ts" -}}
+{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction ) }}
+{{ $sourceMap := cond hugo.IsProduction "" "inline" }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" "params" $params }}
+{{ $js = $js | js.Build $opts }}
+{{ if hugo.IsProduction }}
+  {{ $js = $js | fingerprint }}
+{{ end }}
+<script
+  src="{{ $js.RelPermalink }}"
+  {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end }}
+  type="module"></script>
 {{ end }}

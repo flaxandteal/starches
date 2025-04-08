@@ -1,0 +1,23 @@
+#map {
+  height: 40vh
+}
+
+#demo-warning {
+  padding: 10px;
+  background: rgba(227, 38, 54, 1);
+  color: white;
+  font-size: 120%;
+  font-weight: bold
+}
+
+#demo-warning a {
+  color: white;
+}
+
+h1, h2 {
+  padding-top: 5vh;
+}
+
+.map-hidden {
+  display: none;
+}

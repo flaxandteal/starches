@@ -2,7 +2,7 @@
     display: none
 }
 #filter-warning {
-    font-size: 80%;
+    font-size: 90%;
     padding: 10px;
     margin: 10px;
     background-color: #eee;
@@ -11,6 +11,7 @@
 }
 #filter-warning a {
     color: #000;
+    font-weight: bold;
 }
 .filter-warning-visible {
     display: block;
@@ -20,7 +21,7 @@
 }
 #map-row {
   display: flex;
-  flex-direction: row;
+  flex-direction: column-reverse;
   flex-wrap: wrap;
   width: 100%;
 }
@@ -47,16 +48,48 @@
     flex-basis: 100%;
 }
 #map {
-    height: 100vh;
+    height: 70vh;
 }
 @media screen and (min-width: 800px) {
+  #map {
+      height: 100vh;
+  }
+
   #search-column {
-    flex: 1
+    flex: 1;
+    max-height: 100vh;
   }
 
   #map-column {
     flex: 3
   }
+
+  #map-row {
+    flex-direction: row;
+  }
+
+  #jump-to-search {
+    display: none;
+  }
 }
 
+#result-count {
+    padding-top: 5px;
+}
 
+.fade {
+    opacity: 1;
+    animation-name: fadeOpacity;
+    animation-iteration-count: 1;
+    animation-timing-function: ease-in;
+    animation-duration: 0.1s;
+}
+
+@keyframes fadeOpacity {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}

@@ -6,7 +6,7 @@ import { default as matter } from "gray-matter";
 import { Marked } from 'marked'
 import markedPlaintify from 'marked-plaintify'
 import Handlebars from 'handlebars'
-import AsyncHandlebars from 'handlebars-async-helpers'
+import AsyncHandlebars from 'handlebars-async-helpers-ts/index.js'
 
 import { client, RDM, graphManager, staticStore, staticTypes, utils, viewModels } from 'alizarin';
 
@@ -15,6 +15,7 @@ hb.registerHelper("replace", async (base, fm, to) => (await base).replace(fm, to
 hb.registerHelper("await", async (val) => await val);
 hb.registerHelper("default", function (a, b) {return a === undefined || a === null ? b : a;});
 
+const PUBLIC_FOLDER = 'docs';
 const MODEL_FILES = {
     "076f9381-7b00-11e9-8d6b-80000b44d1d9": {
         graph: "Heritage Asset.json",
@@ -24,9 +25,9 @@ const MODEL_FILES = {
 
 function initAlizarin() {
     const archesClient = new client.ArchesClientLocal({
-        allGraphFile: (() => "static/resource_models/_all.json"),
+        allGraphFile: (() => "static/definitions/resource_models/_all.json"),
         graphIdToGraphFile: ((graphId) => `static/definitions/resource_models/${MODEL_FILES[graphId].graph}`),
-        graphIdToResourcesFiles: ((graphId) => MODEL_FILES[graphId].resources.map(resourceFile => `static/definitions/business_data/${resourceFile}`)),
+        graphIdToResourcesFiles: ((graphId) => MODEL_FILES[graphId].resources.map(resourceFile => `prebuild/business_data/${resourceFile}`)),
         // resourceIdToFile: ((resourceId: string) => `public/resources/${resourceId}.json`),
         collectionIdToFile: ((collectionId) => `static/definitions/collections/${collectionId}.json`)
     });
@@ -41,7 +42,7 @@ async function buildPagefind(graphManager) {
     await graphManager.initialize();
     const HeritageAsset = graphManager.get("HeritageAsset");
     console.log("loading");
-    const assets = (await HeritageAsset.all({lazy: true})).slice(0, 10000);
+    const assets = await HeritageAsset.all({lazy: true});
     console.log("loaded");
     const { index } = await pagefind.createIndex();
     await index.addDirectory({
@@ -52,7 +53,7 @@ async function buildPagefind(graphManager) {
         "Scheduled Monument": "🪦",
     };
     const counter = {};
-    const md = await fs.promises.readFile(`static/heritage-asset-hb.md`, { encoding: "utf8" });
+    const md = await fs.promises.readFile(`static/templates/heritage-asset-hb.md`, { encoding: "utf8" });
     var template = hb.compile(md);
     let n = 100;
     const batches = assets.length / n;
@@ -65,11 +66,16 @@ async function buildPagefind(graphManager) {
       }
       return value;
     }
+
+    await fs.promises.mkdir(`${PUBLIC_FOLDER}/definitions/business_data`, {recursive: true});
     for (let b = 0 ; b < batches ; b++) {
       if (b % 5 == 0) {
         console.log(b, "%");
       }
       assetBatch = (await Promise.all(assets.slice(b * n, (b + 1) * n).map(async asset => {
+  for (let description of [...await asset.descriptions]) {
+    console.log((await description).__parentPseudo.tile.data);
+  }
         const geometry = await (await asset.location_data.geometry.geospatial_coordinates).forJson();
         let location = geometry;
         if (location) {
@@ -139,7 +145,7 @@ async function buildPagefind(graphManager) {
 
         const serial = JSON.stringify(asset._.resource, replacer)
         await fs.promises.writeFile(
-            `static/heritageassets/${slug}.json`,
+            `${PUBLIC_FOLDER}/definitions/business_data/${slug}.json`,
             serial
         );
 
