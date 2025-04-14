@@ -32,6 +32,8 @@
 
     <p>Search for heritage assets by typing more than 3 characters in the search box below and by using the map. Search will happen automatically, without pressing enter.</p>
 
+    <h3><a href="{{ site.Params.archesurl }}/search" data-arches-root="{{ site.Params.archesurl }}" class="govuk-back-link" id="arches-link">Advanced Search</a></h3>
+
     <p><a href="#search" id="jump-to-search">Jump to search</a></p>
 
     <div id="map-row">
@@ -39,10 +41,12 @@
             <div id="search"></div>
             <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
             <div id="result-count" class="result-count"></div>
-            <div id="results">
+            <div id="instructions">
                 <p>Search above to find assets.</p>
 
                 <p>Each result has a <strong>View</strong> button to open it in this tab, and <strong>Open Tab</strong> to open the result in a new tab.</p>
+            </div>
+            <div id="results">
             </div>
         </div>
         <div id="map-column">

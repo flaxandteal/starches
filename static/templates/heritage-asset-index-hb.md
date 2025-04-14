@@ -1,5 +1,3 @@
-# {{ title }}
-
 {{#if ha.monument_names }}
 {{#each ha.monument_names }}
 - {{ monument_name }}

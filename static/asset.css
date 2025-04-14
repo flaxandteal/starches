@@ -1,3 +1,12 @@
+header.govuk-header {
+    background-color: #2d1537;
+}
+a.govuk-footer__copyright-logo {
+  background-image: none !important;
+}
+div.govuk-header__container {
+    border-bottom: 10px solid #7d55c7;
+}
 #map {
   height: 40vh
 }
@@ -20,4 +29,11 @@ h1, h2 {
 
 .map-hidden {
   display: none;
+}
+
+dialog img {
+  max-height: 70vh;
+  max-width: 70vw;
+  display: block;
+  margin: auto;
 }

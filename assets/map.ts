@@ -5,7 +5,7 @@ import "@drustack/leaflet.resetview";
 import { FlatbushWrapper } from "./fb";
 
 const MAX_MAP_POINTS = 500;
-const MIN_SEARCH_LENGTH = 3;
+const MIN_SEARCH_LENGTH = 4;
 const TIME_TO_SHOW_LOADING_MS = 50;
 let doSearch = (geoOnly: boolean) => (console.error("Not yet loaded", geoOnly));
 
@@ -155,7 +155,11 @@ function handleResults(fg: L.MarkerClusterGroup, results) {
       // fg.clearLayers();
       let resultCount = document.getElementById("result-count");
       if (results.geofilteredResultCount) {
-          resultCount.innerHTML = `Showing <strong>${results.geofilteredResultCount}</strong> / <strong>${results.unfilteredResultCount}</strong> search results`;
+          if (results.geofilteredResultCount == results.unfilteredResultCount) {
+            resultCount.innerHTML = `Showing all <strong>${results.unfilteredResultCount}</strong> search results`;
+          } else {
+            resultCount.innerHTML = `Showing first <strong>${results.geofilteredResultCount}</strong> / <strong>${results.unfilteredResultCount}</strong> search results`;
+          }
       } else {
           resultCount.innerHTML = "";
       }
@@ -229,7 +233,20 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     if (term && /^[_0-9a-z]*$/i.exec(term)) {
         const input = document.getElementById("pfmod-input-0");
         input.value = term;
-        console.log(input.value);
         doSearch(false);
     }
+
+    var target = document.querySelector('div#results')
+    var instructions = document.querySelector('div#instructions')
+    var observer = new MutationObserver(() => {
+        console.log(target.childNodes);
+        if (target.childNodes.length === 0) {
+            instructions.classList = "";
+        } else {
+            instructions.classList = "instructions-hidden";
+        }
+    });
+    var config = { characterData: true, attributes: false, childList: true, subtree: true };
+    observer.observe(target, config);
+    console.log(target);
 });

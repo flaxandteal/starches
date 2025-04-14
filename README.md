@@ -12,6 +12,10 @@ Steps:
 4. Run `npm run reindex`
 5. Run `hugo serve`
 
+### Notes
+
+Any collection or model changes will need copied from prebuild/reference_data and prebuild/resource_models(?) to /static/definitions/collections etc. manually.
+
 ### License
 
 Currently, and you should assume for the foreseeable future,
