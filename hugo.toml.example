@@ -1,0 +1,21 @@
+baseURL = "/"
+languageCode = "en-gb"
+title = "StArches"
+theme = "govukhugo"
+publishDir = "docs"
+canonifyurls = true
+
+[markup.goldmark.renderer]
+unsafe = true
+
+[params]
+govuk = false
+logotext = "ABC"
+product = "[TITLE]"
+phase = "alpha"
+feedbackurl = "/feedback/"
+archesurl = "[ARCHESURL]"
+
+[[module.mounts]]
+source = "content"
+target = "content"

@@ -1,5 +1,3 @@
 .nenv
 node_modules
 docs
-prebuild
-hugo.toml

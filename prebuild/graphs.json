@@ -1,0 +1,8 @@
+{
+    "models": {
+        "076f9381-7b00-11e9-8d6b-80000b44d1d9": {"name": "Heritage Asset"},
+        "b07cfa6f-894d-11ea-82aa-f875a44e0e11": {"name": "Archive Source"},
+        "24d7b54f-5464-11e9-a86b-000d3ab1e588": {"name": "Bibliographic Source"},
+        "22477f01-1a44-11e9-b0a9-000d3ab1e588": {"name": "Person"}
+    }
+}
