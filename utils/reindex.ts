@@ -117,6 +117,48 @@ function buildFlatbush(locations: IndexEntry[]) {
 
 const { index, assetMetadata }: { index: pagefind.PagefindIndex, assetMetadata: Asset[] } = await buildPagefind();
 const locations = await getLocations(index, assetMetadata);
+await fs.promises.rm(`${PUBLIC_FOLDER}/definitions/reference_data`, {recursive: true, force: true});
+fs.cpSync('prebuild/reference_data', `${PUBLIC_FOLDER}/definitions/reference_data`, {recursive: true});
+
+const resource_models = `${PUBLIC_FOLDER}/definitions/resource_models`;
+const all = {"models": {}};
+const dir = (await fs.promises.readdir('prebuild/resource_models'));
+for (const filename of dir) {
+    if (!filename.endsWith('json')) {
+        continue;
+    }
+    const file = await fs.promises.readFile(`prebuild/resource_models/${filename}`);
+    const model = JSON.parse(file.toString())["graph"][0];
+    const meta = {
+        author: model["author"],
+        cards: model["cards"].length,
+        cards_x_nodes_x_widgets: model["cards_x_nodes_x_widgets"].length,
+        color: model["color"],
+        description: model["description"],
+        edges: model["edges"].length,
+        graphid: model["graphid"],
+        iconclass: model["iconclass"],
+        is_editable: model["is_editable"],
+        isresource: model["isresource"],
+        jsonldcontext: model["jsonldcontext"],
+        name: model["name"],
+        nodegroups: model["nodegroups"].length,
+        nodes: model["nodes"].length,
+        ontology_id: model["ontology_id"],
+        publication: model["publication"],
+        relatable_resource_model_ids: model["relatable_resource_model_ids"],
+        resource_2_resource_constraints: model["resource_2_resource_constraints"],
+        root: model["root"],
+        slug: model["slug"],
+        subtitle: model["subtitle"],
+        templateid: model["templateid"],
+        version: model["version"]
+    };
+    all["models"][meta.graphid] = meta;
+}
+await fs.promises.rm(resource_models, {recursive: true, force: true});
+fs.cpSync('prebuild/resource_models', resource_models, {recursive: true});
+fs.promises.writeFile(resource_models + '/_all.json', JSON.stringify(all, null, 2));
 
 const fgbFiles = (await Promise.all(
   (await fs.promises.readdir('docs/fgb').then(
