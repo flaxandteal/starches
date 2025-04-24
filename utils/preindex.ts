@@ -47,6 +47,7 @@ async function processAsset(assetPromise: Promise<viewModels.ResourceInstanceVie
     return value;
   }
 
+  await fs.promises.mkdir(`${PUBLIC_FOLDER}/definitions/business_data`, {"recursive": true});
   const serial = JSON.stringify(asset._.resource, replacer, 2)
   await fs.promises.writeFile(
       `${PUBLIC_FOLDER}/definitions/business_data/${meta.slug}.json`,
@@ -97,6 +98,8 @@ async function buildPreindex(graphManager: any, resourceFile: string | null) {
 
     let preindexFile: string;
     let fgbFile: string;
+    await fs.promises.mkdir(`${PUBLIC_FOLDER}/fgb`, {"recursive": true});
+    await fs.promises.mkdir("prebuild/preindex", {"recursive": true});
     if (resourceFile) {
       preindexFile = `prebuild/preindex/${path.basename(resourceFile)}.pi`;
       fgbFile = `${PUBLIC_FOLDER}/fgb/${path.basename(resourceFile, '.json')}.fgb`;
