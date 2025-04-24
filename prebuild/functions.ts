@@ -26,8 +26,7 @@ class AssetFunctions implements IAssetFunctions {
   }
 
   async getAll(graphManager: GraphManager) {
-    const HeritageAsset = graphManager.get("HeritageAsset");
-    // const MaritimeVessel = graphManager.get("MaritimeVessel");
+    const HeritageAsset = await graphManager.get("HeritageAsset");
     return [
       await HeritageAsset.all({lazy: true}),
       // await MaritimeVessel.all({lazy: true}),

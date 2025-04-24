@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { Feature, FeatureCollection } from 'geojson';
 import { serialize as fgbSerialize } from 'flatgeobuf/lib/mjs/geojson.js';
 
-import { client, RDM, graphManager, staticStore, viewModels } from 'alizarin';
+import { interfaces, client, RDM, graphManager, staticStore, viewModels } from 'alizarin';
 
 import { Asset } from './types.ts';
 import { assetFunctions } from '../prebuild/functions.ts';
@@ -31,6 +31,7 @@ function initAlizarin(resourcesFiles: string[] | null) {
     archesClient.fs = fs.promises;
     graphManager.archesClient = archesClient;
     staticStore.archesClient = archesClient;
+    staticStore.cacheMetadataOnly = false;
     RDM.archesClient = archesClient;
     return graphManager;
 }
@@ -48,7 +49,21 @@ async function processAsset(assetPromise: Promise<viewModels.ResourceInstanceVie
   }
 
   await fs.promises.mkdir(`${PUBLIC_FOLDER}/definitions/business_data`, {"recursive": true});
-  const serial = JSON.stringify(asset._.resource, replacer, 2)
+  const resource = asset._.resource;
+  const cache = await asset._.getValueCache(true, async (value: interfaces.IViewModel) => {
+    if (value instanceof viewModels.ResourceInstanceViewModel) {
+      const meta = await assetFunctions.getMeta(await value);
+      return {
+        title: meta.meta.title,
+        slug: meta.meta.slug,
+        location: meta.meta.location,
+      };
+    }
+  });
+  if (cache && Object.values(cache).length > 0) {
+    resource.__cache = cache;
+  }
+  const serial = JSON.stringify(resource, replacer, 2)
   await fs.promises.writeFile(
       `${PUBLIC_FOLDER}/definitions/business_data/${meta.slug}.json`,
       serial
@@ -75,7 +90,7 @@ function extractFeatures(geoJsonString: string): Feature[] {
 
 async function buildPreindex(graphManager: any, resourceFile: string | null) {
     await graphManager.initialize();
-    const HeritageAsset = graphManager.get("HeritageAsset");
+    const HeritageAsset = await graphManager.get("HeritageAsset");
     console.log("loading for preindex", resourceFile);
     const assets = await assetFunctions.getAll(graphManager);
     console.log("loaded");

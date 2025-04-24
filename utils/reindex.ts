@@ -124,7 +124,7 @@ const resource_models = `${PUBLIC_FOLDER}/definitions/resource_models`;
 const all = {"models": {}};
 const dir = (await fs.promises.readdir('prebuild/resource_models'));
 for (const filename of dir) {
-    if (!filename.endsWith('json')) {
+    if (!filename.endsWith('json') || filename.startsWith('_')) {
         continue;
     }
     const file = await fs.promises.readFile(`prebuild/resource_models/${filename}`);

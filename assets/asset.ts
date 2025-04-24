@@ -56,6 +56,7 @@ class SearchParams {
   }
 };
 
+
 class Asset {
   asset: any
   meta: any
@@ -91,7 +92,7 @@ class Dialog {
 
 async function loadAsset(slug: string, graphManager): Promise<Asset> {
   console.log("Loading Heritage Asset graph");
-  const HeritageAsset = graphManager.get("HeritageAsset");
+  const HeritageAsset = await graphManager.get("HeritageAsset");
   console.log("Loaded", HeritageAsset);
   console.log("Loading alizarin asset");
   const asset = (await HeritageAsset.find(slug, false));
@@ -366,19 +367,26 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     document.getElementById("asset-dialog").showModal();
   };
 
-  const legacyData = await asset.asset._legacy_record;
-  console.log("Legacy data", legacyData);
+  let legacyData = await asset.asset._legacy_record;
   if (legacyData != false) {
-    const legacyRecord = JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(legacyData)).map(([key, block]) => {
-      let text;
-      try {
-        text = JSON.parse(block);
-      } catch {
-        text = block;
-      }
-      return [key, text];
-    })), null, 2); // RMV
-    console.log(legacyRecord);
-    document.getElementById("legacy-record").innerText = legacyRecord;
+    if (!Array.isArray(legacyData) ) {
+      legacyData = [legacyData];
+    }
+    const legacyRecord = [];
+    for (let record of legacyData) {
+      const dataString = await record;
+      legacyRecord.push(
+        Object.fromEntries(Object.entries(JSON.parse(dataString)).map(([key, block]) => {
+          let text;
+          try {
+            text = JSON.parse(block);
+          } catch {
+            text = block;
+          }
+          return [key, text];
+        }))
+      ); // RMV
+    }
+    document.getElementById("legacy-record").innerText = JSON.stringify(legacyRecord, null, 2);
   }
 });

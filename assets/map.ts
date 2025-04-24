@@ -4,6 +4,7 @@ import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, Navigat
 // import * as L from "leaflet";
 import { FlatbushWrapper } from './fb';
 import { addMarkerImage } from './map-tools';
+
 const MAX_MAP_POINTS = 500;
 const MIN_SEARCH_LENGTH = 4;
 const TIME_TO_SHOW_LOADING_MS = 50;
@@ -60,6 +61,8 @@ async function buildMap(fb: FlatbushWrapper, fg: FeatureCollection): Promise<Map
                 'type': 'FeatureCollection',
                 'features': []
             };
+
+            const fsSourceId = 'featureserver-src'
 
             const image = await map.loadImage('https://maplibre.org/maplibre-gl-js/docs/assets/osgeo-logo.png');
             map.addImage('custom-marker', image.data);
@@ -195,6 +198,12 @@ async function buildTextIndex(searchAction: (term: string, settings: object, pag
     const input = new PagefindModularUI.Input({
         containerElement: "#search",
     });
+    const filters = new PagefindModularUI.FilterPills({
+        containerElement: "#filter",
+        filter: "tags",
+        alwaysShow: true
+    });
+    instance.add(filters);
 
     instance.add(input);
     instance.on("loading", () => {
@@ -309,16 +318,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     fb = await buildGeoIndex();
     const fg: FeatureCollection = {
         'type': 'FeatureCollection',
-        'features': [
-            {
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': [-6.4, 54.61]
-                },
-                'properties': {'year': '2004'}
-            }
-        ]
+        'features': []
     };
 
     const map = buildMap(fb, fg);

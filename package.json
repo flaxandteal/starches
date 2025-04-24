@@ -19,6 +19,7 @@
     "handlebars-async-helpers-ts": "^2.0.2",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
+    "mapbox-gl-arcgis-featureserver": "^0.0.8",
     "marked": "^15.0.7",
     "marked-plaintify": "^1.1.1",
     "pagefind": "^1.3.0",
