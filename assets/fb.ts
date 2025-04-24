@@ -33,6 +33,7 @@ class FlatbushWrapper {
         if (!val) {
             this.bounds = null;
         }
+        console.log(val, 'setfiltered');
         let filterWarning = document.getElementById("filter-warning");
         if (val) {
             filterWarning.classList.add("filter-warning-visible");

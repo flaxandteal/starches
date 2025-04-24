@@ -1,8 +1,10 @@
 import { marked } from 'marked';
 import dompurify from 'dompurify';
 import markedPlaintify from 'marked-plaintify'
+import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, NavigationControl } from 'maplibre-gl';
 import * as Handlebars from 'handlebars';
 import { client, RDM, graphManager, staticStore, staticTypes, utils, viewModels, renderers } from 'alizarin';
+import { addMarkerImage } from './map-tools';
 
 Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replaceAll(fm, to) : base);
 Handlebars.registerHelper("plus", (a, b) => a + b);
@@ -88,9 +90,15 @@ class Dialog {
 }
 
 async function loadAsset(slug: string, graphManager): Promise<Asset> {
+  console.log("Loading Heritage Asset graph");
   const HeritageAsset = graphManager.get("HeritageAsset");
+  console.log("Loaded", HeritageAsset);
+  console.log("Loading alizarin asset");
   const asset = (await HeritageAsset.find(slug, false));
+  console.log("Loaded asset", asset);
+  console.log("Loading metadata");
   const meta = await getAssetMetadata(asset);
+  console.log("Loaded metadata", meta);
   return new Asset(asset, meta);
 }
 
@@ -247,14 +255,43 @@ function addAssetToMap(asset: Asset) {
   const location = asset.meta.location;
   if (location) {
     var centre = location;
-    centre = [centre[1], centre[0]];
     const zoom = 16;
-    var map = L.map('map').setView(centre, zoom);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
-    L.geoJSON(asset.meta.geometry).addTo(map);
+    var map = new Map({
+        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+        container: 'map',
+        center: centre,
+        zoom: zoom
+    });
+    window.map = map;
+    map.on('load', async () => {
+      console.log(asset.meta.geometry);
+      await addMarkerImage(map);
+      const source = map.addSource('assets', {
+          type: 'geojson',
+          data: asset.meta.geometry,
+      });
+      map.addLayer({
+          'id': 'asset-boundaries',
+          'type': 'fill',
+          'source': 'assets',
+          'paint': {
+              'fill-color': '#888888',
+              'fill-opacity': 0.4
+          },
+          'filter': ['==', '$type', 'Polygon']
+      });
+      map.addLayer({
+          'id': 'assets',
+          'type': 'symbol',
+          'source': 'assets',
+          'layout': {
+              'icon-image': 'marker',
+              'text-offset': [0, 1.25],
+              'text-anchor': 'top'
+          },
+          'filter': ['==', '$type', 'Point']
+      });
+    });
   } else {
     document.getElementById('map').classList = 'map-hidden';
   }
@@ -268,15 +305,29 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
   console.log("Displaying for public view (NB: full data loaded regardless!):", publicView);
   const asset: Asset = await loadAsset(slug, gm);
-  const template = await fetchTemplate(publicView);
+  console.log("Loaded asset", asset, gm);
+  console.log("Asset being added");
+  window.alizarinAsset = asset;
+  console.log("Asset added to window: window.alizarinAsset", window.alizarinAsset);
 
+  const template = await fetchTemplate(publicView);
+  console.log("Loaded template", template, publicView);
+
+  console.log("Looping through descriptions");
   for (let description of [...await asset.asset.descriptions]) {
+    console.log(description);
     const node = (await description.description_type).__parentPseudo.node;
+    console.log(node);
     const data = (await description.description_type).__parentPseudo.tile.data;
+    console.log(data);
   }
+  console.log("Rendering asset");
+  console.log(asset, template);
   const dialogs: {[key: string]: Dialog} = await renderAsset(asset, template);
+  console.log("Dialogs:", dialogs);
 
   const swapLink: HTMLAnchorElement | null = document.querySelector("a#swap-link");
+  console.log("Swap Link:", swapLink);
   if (swapLink) {
     if (publicView) {
       swapLink.href = `?slug=${slug}&full=true`;
@@ -288,6 +339,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
   }
 
   const urlSearchParams = new URLSearchParams(window.location.search);
+  console.log("URL Search Params", urlSearchParams);
   const geoBounds = urlSearchParams.get("geoBounds");
   const searchTerm = urlSearchParams.get("searchTerm");
   let backUrl = "/?";
@@ -313,9 +365,9 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     document.getElementById("asset-dialog__content").innerHTML = image.body;
     document.getElementById("asset-dialog").showModal();
   };
-  window.alizarinAsset = asset;
 
   const legacyData = await asset.asset._legacy_record;
+  console.log("Legacy data", legacyData);
   if (legacyData != false) {
     const legacyRecord = JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(legacyData)).map(([key, block]) => {
       let text;

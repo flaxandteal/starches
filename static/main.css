@@ -55,9 +55,15 @@ div.govuk-header__container {
     display: flex;
     flex-direction: column;
     flex-basis: 100%;
+    background-color: rgba(240, 240, 240, 1.0);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='rgba(220, 220, 220, 1.0)' viewBox='0 0 16 16'%3E%3Cpath d='M8 13.1l-8-8 2.1-2.2 5.9 5.9 5.9-5.9 2.1 2.2z'/%3E%3C/svg%3E");
+    background-size: 30vw;
+    background-position: 8vw 0;
 }
 #map {
     height: 70vh;
+    max-width: 75vw;
+    border: 10px solid #fff;
 }
 @media screen and (min-width: 800px) {
   #map {
@@ -105,4 +111,8 @@ div.govuk-header__container {
 
 .instructions-hidden {
   display: none;
+}
+
+.maplibregl-popup-content {
+  font-size: 140%;
 }
