@@ -118,7 +118,7 @@ function buildFlatbush(locations: IndexEntry[]) {
 const { index, assetMetadata }: { index: pagefind.PagefindIndex, assetMetadata: Asset[] } = await buildPagefind();
 const locations = await getLocations(index, assetMetadata);
 await fs.promises.rm(`${PUBLIC_FOLDER}/definitions/reference_data`, {recursive: true, force: true});
-fs.cpSync('prebuild/reference_data', `${PUBLIC_FOLDER}/definitions/reference_data`, {recursive: true});
+fs.cpSync('prebuild/reference_data', `${PUBLIC_FOLDER}/definitions/reference_data`, {recursive: true, dereference: true});
 
 const resource_models = `${PUBLIC_FOLDER}/definitions/resource_models`;
 const all = {"models": {}};
@@ -157,7 +157,7 @@ for (const filename of dir) {
     all["models"][meta.graphid] = meta;
 }
 await fs.promises.rm(resource_models, {recursive: true, force: true});
-fs.cpSync('prebuild/resource_models', resource_models, {recursive: true});
+fs.cpSync('prebuild/resource_models', resource_models, {recursive: true, dereference: true});
 fs.promises.writeFile(resource_models + '/_all.json', JSON.stringify(all, null, 2));
 
 const fgbFiles = (await Promise.all(
