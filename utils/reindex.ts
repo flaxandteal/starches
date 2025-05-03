@@ -128,6 +128,7 @@ for (const filename of dir) {
         continue;
     }
     const file = await fs.promises.readFile(`prebuild/resource_models/${filename}`);
+    console.log(filename);
     const model = JSON.parse(file.toString())["graph"][0];
     const meta = {
         author: model["author"],

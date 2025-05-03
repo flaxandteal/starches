@@ -3,7 +3,7 @@ import dompurify from 'dompurify';
 import markedPlaintify from 'marked-plaintify'
 import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, NavigationControl } from 'maplibre-gl';
 import * as Handlebars from 'handlebars';
-import { client, RDM, graphManager, staticStore, staticTypes, utils, viewModels, renderers } from 'alizarin';
+import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, utils, viewModels, renderers } from 'alizarin';
 import { addMarkerImage } from './map-tools';
 
 Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replaceAll(fm, to) : base);
@@ -92,12 +92,14 @@ class Dialog {
   }
 }
 
+class HeritageAsset extends AlizarinModel<HeritageAsset> {};
+
 async function loadAsset(slug: string, graphManager): Promise<Asset> {
   console.log("Loading Heritage Asset graph");
-  const HeritageAsset = await graphManager.get("HeritageAsset");
-  console.log("Loaded", HeritageAsset);
+  const HeritageAssets = await graphManager.get(HeritageAsset);
+  console.log("Loaded", HeritageAssets);
   console.log("Loading alizarin asset");
-  const asset = (await HeritageAsset.find(slug, false));
+  const asset = (await HeritageAssets.find(slug, false));
   console.log("Loaded asset", asset);
   console.log("Loading metadata");
   const meta = await getAssetMetadata(asset);
