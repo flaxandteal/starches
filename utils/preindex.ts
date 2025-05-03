@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from "fs";
-import { Feature, FeatureCollection } from 'geojson';
+import { type Feature, type FeatureCollection } from 'geojson';
 import { serialize as fgbSerialize } from 'flatgeobuf/lib/mjs/geojson.js';
 
 import { interfaces, client, RDM, graphManager, staticStore, viewModels } from 'alizarin';

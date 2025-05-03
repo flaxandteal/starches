@@ -7,12 +7,14 @@ import { client, RDM, graphManager, staticStore, staticTypes, utils, viewModels,
 import { addMarkerImage } from './map-tools';
 
 Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replaceAll(fm, to) : base);
+Handlebars.registerHelper("nl", (base, nl) => base ? base.replaceAll("\n", nl) : base);
 Handlebars.registerHelper("plus", (a, b) => a + b);
 Handlebars.registerHelper("default", function (a, b) {return a === undefined || a === null ? b : a;});
 Handlebars.registerHelper("defaulty", function (a, b) {return a != undefined && a != null && a != false ? a : b;});
 Handlebars.registerHelper("equal", function (a, b) {return a == b;});
 Handlebars.registerHelper("not", function (a, b) { return a != b;});
 Handlebars.registerHelper("nospace", function (a) { return a.replaceAll(" ", "%20")});
+Handlebars.registerHelper("escapeExpression", function (a) { return Handlebars.Utils.escapeExpression(a);});
 Handlebars.registerHelper("clean", function (a) {
   if (a instanceof renderers.Cleanable) {
     return a.__clean;
@@ -235,6 +237,7 @@ async function renderAsset(asset: Asset, template): Promise<{[key: string]: Dial
     }
   };
   marked.use({ renderer });
+  console.log("MD", markdown);
   const parsed = await marked.parse(markdown);
   document.getElementById('asset').innerHTML = dompurify.sanitize(parsed);
   const dialogLinks = document.getElementsByClassName("dialog-link");

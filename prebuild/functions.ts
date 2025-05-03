@@ -2,7 +2,7 @@ import * as fs from "fs";
 import Handlebars from 'handlebars'
 import { Marked } from 'marked'
 import markedPlaintify from 'marked-plaintify'
-import { Asset, ModelEntry, IAssetFunctions } from '../utils/types.ts';
+import { Asset, ModelEntry, type IAssetFunctions } from '../utils/types.ts';
 import { GraphManager } from 'alizarin';
 
 Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replace(fm, to) : "");
