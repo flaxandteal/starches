@@ -75,7 +75,8 @@ async function processAsset(assetPromise: Promise<viewModels.ResourceInstanceVie
 function extractFeatures(geoJsonString: string): Feature[] {
   const geoJson = JSON.parse(geoJsonString);
   if (geoJson["type"] === "FeatureCollection") {
-    return geoJson["features"];
+    const features = geoJson["features"].filter(feat => feat);
+    return features;
   }
   const feature: Feature = {
     type: geoJson["type"],
@@ -107,7 +108,19 @@ async function buildPreindex(graphManager: any, resourceFile: string | null) {
       }
 
       let assetBatch = (await Promise.all(assets.slice(b * n, (b + 1) * n).map(processAsset))).filter(asset => asset);
-      assetBatch.map(asset => asset.meta && asset.meta.geometry ? geoJson.features.push(...extractFeatures(asset.meta.geometry)) : null);
+
+      function addFeatures(asset) {
+         try {
+             const gj = geoJson.features.push(...extractFeatures(asset.meta.geometry));
+             //fgbSerialize(gj);
+             return gj;
+         } catch (e) {
+             console.log(asset.meta.title);
+             console.log(asset.meta);
+             throw e;
+         }
+      }
+      assetBatch.map(asset => asset.meta && asset.meta.geometry ? addFeatures(asset) : null);
       assetMetadata.push(...assetBatch);
     }
 
@@ -127,7 +140,7 @@ async function buildPreindex(graphManager: any, resourceFile: string | null) {
       fs.promises.writeFile(preindexFile, JSON.stringify(assetMetadata, null, 2)),
     ];
     if (geoJson.features.length > 0) {
-      promises.push(fs.promises.writeFile(fgbFile, fgbSerialize(geoJson)));
+      // promises.push(fs.promises.writeFile(fgbFile, fgbSerialize(geoJson)));
     }
     return Promise.all(promises);
 }

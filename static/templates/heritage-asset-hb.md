@@ -12,9 +12,7 @@
 
 {{ ha.category_type }}
 
-{{#each ha.monument_types }}
-- {{ . }}
-{{/each}}
+{{{ ha.monument_type_n1 }}}
 
 {{#each ha.characterization }}
 - {{ . }}
@@ -26,11 +24,16 @@
 
 {{#if (not ha.heritage_asset_references.hb_number "") }}
 **%HB No.**: {{ ha.heritage_asset_references.hb_number }}
+
 {{/if}}
 {{#if (not ha.heritage_asset_references.smr_number "") }}
-**SMR No.**: {{ ha.heritage_asset_references.smr_number }}
-{{/if}}
+**%SMR No.**: {{ ha.heritage_asset_references.smr_number }}
 
+{{/if}}
+{{#if (not ha.heritage_asset_references.ihr_number "") }}
+**%IHR No.**: {{ ha.heritage_asset_references.ihr_number }}
+
+{{/if}}
 ---
 
 ## Summary
@@ -54,10 +57,20 @@
 
 ---
 
-## Use
+## Use Phases
 
 {{#each ha.use_phases }}
 **%Use Phase**: {{ . }}
+{{/each}}
+
+---
+
+## Construction Phases
+
+{{#each ha.construction_phases }}
+**%Asset type**: {{{ phase_classification.monument_type }}}
+
+
 {{/each}}
 
 ---
@@ -72,6 +85,8 @@
 | **%Building Name** | {{ building_name.building_name_value }} |
 | **%Full Address** | {{ replace (replace full_address "_x000D_" "") "\n" "<br/>" }} |
 | **%Town/City** | {{ town_or_city.town_or_city_value }} |
+| **%Townland** | {{{ townlands.townland }}} |
+| **%County** | {{{ county.county_value }}} |
 | **%Ward** | {{ locality.locality_value }} |
 
 {{/each}}
@@ -87,7 +102,25 @@
 
 **%OS Map No.**: {{ defaulty ha.location_data.geometry.current_base_map.current_base_map_names.current_base_map_name "(none)"}}
 
+**%Geometric Properties**: {{ defaulty ha.location_data.geometry.spatial_metadata_descriptions.spatial_metadata_notes "(none)"}}
+
 **%Grid Reference**: {{ defaulty ha.location_data.national_grid_references.irish_grid_reference_tm65_ "(none)"}}
+
+### Area Assignments
+
+{{#each ha.area_assignments.area_assignment }}
+
+{{{ area_reference.area_reference_value }}}
+
+{{/each}}
+
+### Location Descriptions
+
+{{#each ha.location_data.location_descriptions }}
+
+{{{ location_description }}}
+
+{{/each}}
 
 ---
 
@@ -96,6 +129,10 @@
 {{#each ha.construction_phases }}
 **%Date**: {{ construction_phase_timespan.construction_phase_display_date }}
 {{/each}}
+
+{{#if ha.sign_off.input_date.input_date_value }}
+**%Record established**: {{ ha.sign_off.input_date.input_date_value }}
+{{/if}}
 
 
 ---
@@ -165,11 +202,4 @@ TODO
 ---
 
 # Bibliography
-
----
-
-# Legacy Record
-
-
-    {{{ json legacyRecord 2 }}}
 

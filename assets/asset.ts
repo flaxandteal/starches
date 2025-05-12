@@ -106,7 +106,7 @@ class HeritageAsset extends AlizarinModel<HeritageAsset> {};
 
 async function loadAsset(slug: string, graphManager): Promise<Asset> {
   console.log("Loading Heritage Asset graph");
-  const HeritageAssets = await graphManager.get(HeritageAsset);
+  const HeritageAssets = await graphManager.get("HeritageAsset");
   console.log("Loaded", HeritageAssets);
   console.log("Loading alizarin asset");
   const asset = (await HeritageAssets.find(slug, false));

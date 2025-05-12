@@ -1,3 +1,5 @@
 .nenv
+**/.ipynb_checkpoints
 node_modules
 docs
+**/*.swp

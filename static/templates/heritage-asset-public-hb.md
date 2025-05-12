@@ -72,6 +72,8 @@
 | **%Building Name** | {{ building_name.building_name_value }} |
 | **%Full Address** | {{ nl (replace full_address "_x000D_" "") "<br/>" }} |
 | **%Town/City** | {{ town_or_city.town_or_city_value }} |
+| **%Townland** | {{{ townlands.townland }}} |
+| **%County** | {{{ county.county_value }}} |
 | **%Ward** | {{ locality.locality_value }} |
 
 {{/each}}
@@ -86,6 +88,8 @@
 | **%Council** | {{ defaulty ha.location_data.council "(none)" }} |
 
 **%OS Map No.**: {{ defaulty ha.location_data.geometry.current_base_map.current_base_map_names.current_base_map_name "(none)"}}
+
+**%Geometric Properties**: {{ defaulty ha.location_data.geometry.spatial_metadata_descriptions.spatial_metadata_notes "(none)"}}
 
 **%Grid Reference**: {{ defaulty ha.location_data.national_grid_references.irish_grid_reference_tm65_ "(none)"}}
 
