@@ -12,7 +12,16 @@ Handlebars.registerHelper("plus", (a, b) => a + b);
 Handlebars.registerHelper("default", function (a, b) {return a === undefined || a === null ? b : a;});
 Handlebars.registerHelper("defaulty", function (a, b) {return a != undefined && a != null && a != false ? a : b;});
 Handlebars.registerHelper("equal", function (a, b) {return a == b;});
+Handlebars.registerHelper("or", function (a, b) {return a || b;});
+Handlebars.registerHelper("join", function (...args) {
+  if (args.length == 3 && Array.isArray(args[0])) {
+    return args.join(args[1]);
+  }
+  return args.slice(0, args.length - 2).join(args[args.length - 2]);
+});
+Handlebars.registerHelper("and", function (a, b) {return a && b;});
 Handlebars.registerHelper("not", function (a, b) { return a != b;});
+Handlebars.registerHelper("in", function (a, b) { return Array.isArray(b) ? b.includes(a) : (a in b);});
 Handlebars.registerHelper("nospace", function (a) { return a.replaceAll(" ", "%20")});
 Handlebars.registerHelper("escapeExpression", function (a) { return Handlebars.Utils.escapeExpression(a);});
 Handlebars.registerHelper("clean", function (a) {
@@ -23,6 +32,7 @@ Handlebars.registerHelper("clean", function (a) {
   return a;
 });
 Handlebars.registerHelper("concat", function (...args) { return args.slice(0, args.length-1).join(""); });
+Handlebars.registerHelper("array", function (...args) { return args; });
 Handlebars.registerHelper("dialogLink", function (options) { return new Handlebars.SafeString(`<button class="govuk-button dialog-link" data-dialog-id="${options.hash.id}">Show</button>`); });
 
 const archesUrl = window.archesUrl;
@@ -276,14 +286,29 @@ function addAssetToMap(asset: Asset) {
           type: 'geojson',
           data: asset.meta.geometry,
       });
+      let paint: {
+          'fill-color': string,
+          'fill-opacity': number,
+          'fill-outline-color'?: string | null
+      } = {
+          'fill-color': '#aaa',
+          'fill-opacity': 0.8,
+      };
+      if (asset.meta.geometry.type === "FeatureCollection" && asset.meta.geometry.features.length == 1) {
+        const feature = asset.meta.geometry.features[0];
+        if (feature.properties && feature.properties.type === 'Grid Square') {
+            paint = {
+                'fill-color': 'rgba(255, 255, 255, 0.1)',
+                'fill-outline-color': '#aa4444',
+                'fill-opacity': 0.4
+            }
+        }
+      }
       map.addLayer({
           'id': 'asset-boundaries',
           'type': 'fill',
           'source': 'assets',
-          'paint': {
-              'fill-color': '#888888',
-              'fill-opacity': 0.4
-          },
+          'paint': paint,
           'filter': ['==', '$type', 'Polygon']
       });
       map.addLayer({

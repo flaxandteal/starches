@@ -87,6 +87,9 @@ class AssetFunctions implements IAssetFunctions {
     const geometry = staticAsset.root.location_data.geometry.geospatial_coordinates;
     let location = geometry;
     if (location && location["features"]) {
+      if (!location["features"][0]["geometry"]) {
+        console.log(location);
+      }
       const polygon = location["features"][0]["geometry"]["coordinates"];
       if (Array.isArray(polygon[0])) {
         let polygons = polygon[0];

@@ -123,10 +123,13 @@ async function buildPreindex(graphManager: any, resourceFile: string | null) {
       fgbFile = `prebuild/preindex/ix.fgb`;
     }
 
-    return Promise.all([
+    const promises = [
       fs.promises.writeFile(preindexFile, JSON.stringify(assetMetadata, null, 2)),
-      fs.promises.writeFile(fgbFile, fgbSerialize(geoJson)),
-    ]);
+    ];
+    if (geoJson.features.length > 0) {
+      promises.push(fs.promises.writeFile(fgbFile, fgbSerialize(geoJson)));
+    }
+    return Promise.all(promises);
 }
 
 const resourceFile: string | undefined = process.argv[2];
