@@ -39,12 +39,12 @@ function initAlizarin(resourcesFiles: string[] | null) {
 async function processAsset(assetPromise: Promise<viewModels.ResourceInstanceViewModel>): Promise<Asset> {
   const asset = await assetPromise;
   // TODO: there is an issue where if the awaits do not happen in sequence, the same tile will appear multiple times in a pseudo-list
-  const names = [
-    [await asset.monument_names[0].monument_name, (await asset.monument_names[0]).__parentPseudo.tile.sortorder],
-    [await asset.monument_names[1].monument_name, (await asset.monument_names[1]).__parentPseudo.tile.sortorder],
-  ].sort((a, b) => b[1] - a[1]).map(a => a[0]);
+  // const names = [
+  //   [await asset.monument_names[0].monument_name, (await asset.monument_names[0]).__parentPseudo.tile.sortorder],
+  //   [await asset.monument_names[1].monument_name, (await asset.monument_names[1]).__parentPseudo.tile.sortorder],
+  // ].sort((a, b) => b[1] - a[1]).map(a => a[0]);
   const staticAsset = await asset.forJson(true)
-  const meta = await assetFunctions.getMeta(staticAsset, names);
+  const meta = await assetFunctions.getMeta(staticAsset);
   const replacer = function (_: string, value: any) {
     if(value instanceof Map) {
       const result = Object.fromEntries(value);
