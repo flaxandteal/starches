@@ -43,7 +43,6 @@ async function processAsset(assetPromise: Promise<viewModels.ResourceInstanceVie
   //   [await asset.monument_names[0].monument_name, (await asset.monument_names[0]).__parentPseudo.tile.sortorder],
   //   [await asset.monument_names[1].monument_name, (await asset.monument_names[1]).__parentPseudo.tile.sortorder],
   // ].sort((a, b) => b[1] - a[1]).map(a => a[0]);
-  console.log(await asset.monument_names[1].monument_name);
   const staticAsset = await asset.forJson(true);
   const meta = await assetFunctions.getMeta(staticAsset, resourcePrefix);
   const replacer = function (_: string, value: any) {
