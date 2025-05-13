@@ -36,15 +36,16 @@ function initAlizarin(resourcesFiles: string[] | null) {
     return graphManager;
 }
 
-async function processAsset(assetPromise: Promise<viewModels.ResourceInstanceViewModel>): Promise<Asset> {
+async function processAsset(assetPromise: Promise<viewModels.ResourceInstanceViewModel>, resourcePrefix: string | undefined): Promise<Asset> {
   const asset = await assetPromise;
   // TODO: there is an issue where if the awaits do not happen in sequence, the same tile will appear multiple times in a pseudo-list
   // const names = [
   //   [await asset.monument_names[0].monument_name, (await asset.monument_names[0]).__parentPseudo.tile.sortorder],
   //   [await asset.monument_names[1].monument_name, (await asset.monument_names[1]).__parentPseudo.tile.sortorder],
   // ].sort((a, b) => b[1] - a[1]).map(a => a[0]);
-  const staticAsset = await asset.forJson(true)
-  const meta = await assetFunctions.getMeta(staticAsset);
+  console.log(await asset.monument_names[1].monument_name);
+  const staticAsset = await asset.forJson(true);
+  const meta = await assetFunctions.getMeta(staticAsset, resourcePrefix);
   const replacer = function (_: string, value: any) {
     if(value instanceof Map) {
       const result = Object.fromEntries(value);
@@ -94,7 +95,7 @@ function extractFeatures(geoJsonString: string): Feature[] {
   return [feature];
 }
 
-async function buildPreindex(graphManager: any, resourceFile: string | null) {
+async function buildPreindex(graphManager: any, resourceFile: string | null, resourcePrefix: string | undefined) {
     await graphManager.initialize();
     const HeritageAsset = await graphManager.get("HeritageAsset");
     console.log("loading for preindex", resourceFile);
@@ -112,7 +113,7 @@ async function buildPreindex(graphManager: any, resourceFile: string | null) {
         console.log(b, ": completed", b * n, "records,", Math.floor(b * n * 100 / assets.length), "%");
       }
 
-      let assetBatch = (await Promise.all(assets.slice(b * n, (b + 1) * n).map(processAsset))).filter(asset => asset);
+      let assetBatch = (await Promise.all(assets.slice(b * n, (b + 1) * n).map(asset => processAsset(asset, resourcePrefix)))).filter(asset => asset);
 
       function addFeatures(asset) {
          try {
@@ -151,6 +152,7 @@ async function buildPreindex(graphManager: any, resourceFile: string | null) {
 }
 
 const resourceFile: string | undefined = process.argv[2];
+const resourcePrefix: string | undefined = process.argv[3];
 if (resourceFile) {
   if (!resourceFile.endsWith('.json')) {
     console.error(`Tried to run with a non .json file: ${resourceFile}`);
@@ -159,4 +161,4 @@ if (resourceFile) {
   console.log("Pre-indexing", resourceFile);
 }
 const gm = await initAlizarin(resourceFile ? [resourceFile] : null);
-await buildPreindex(gm, resourceFile || null);
+await buildPreindex(gm, resourceFile || null, resourcePrefix);
