@@ -108,7 +108,7 @@
 
 ### Area Assignments
 
-{{#each ha.area_assignments.area_assignment }}
+{{#each ha.location_data.area_assignments.area_assignment }}
 
 {{{ area_reference.area_reference_value }}}
 

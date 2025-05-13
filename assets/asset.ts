@@ -249,7 +249,7 @@ async function renderAsset(asset: Asset, template): Promise<{[key: string]: Dial
     }
   };
   marked.use({ renderer });
-  console.log("MD", markdown);
+  // console.log("MD", markdown);
   const parsed = await marked.parse(markdown);
   document.getElementById('asset').innerHTML = dompurify.sanitize(parsed);
   const dialogLinks = document.getElementsByClassName("dialog-link");

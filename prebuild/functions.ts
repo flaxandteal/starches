@@ -64,8 +64,12 @@ class AssetFunctions implements IAssetFunctions {
     }
   }
 
-  toSlug(staticAsset: any): string {
+  toSlug(staticAsset: any, names: string[]): string {
     let title = staticAsset.root.monument_names[0].monument_name;
+    if (names && names.length) {
+      title = names[0];
+      console.log(title)
+    }
     let slug = title.replaceAll(/[^A-Za-z0-9_]/g, "").slice(0, 20);
     slug = `${slug}_${staticAsset.id.slice(0, 6)}`;
     let slug_n;
@@ -79,7 +83,7 @@ class AssetFunctions implements IAssetFunctions {
     return slug;
   }
 
-  async getMeta(staticAsset: any): Promise<Asset> {
+  async getMeta(staticAsset: any, names: string[]): Promise<Asset> {
     let designations = [];
     let designationsConcept = [];
     let title = staticAsset.root.monument_names[0].monument_name;
@@ -130,7 +134,7 @@ class AssetFunctions implements IAssetFunctions {
     }
     title = `${title} ${designations.join("")}`;
 
-    let slug = this.toSlug(staticAsset);
+    let slug = this.toSlug(staticAsset, names);
     const meta = new Asset(
       staticAsset.id,
       geometry,
