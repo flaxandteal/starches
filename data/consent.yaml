@@ -1,0 +1,17 @@
+items:
+  - title: Consent Settings
+    description: This cookie records your consent settings, so that we do not ask you to recoonfirm on every visit.
+    is_functional: true
+    script_srcs: []
+    cookies:
+    - consent-settings
+  - title: Google Analytics
+    description: This code gives us insight into the number of people that visit our website, where they are from and what they are clicking on.
+    is_functional: false
+    script_srcs:
+    - /js/gtm.js
+    - https://www.googletagmanager.com/gtag/js?id=G-HJZQETB39E
+    - /js/gtag.js
+    cookies:
+    - _ga
+    - _ga_HJZQETB39E

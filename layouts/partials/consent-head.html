@@ -1,0 +1,154 @@
+<script>
+    const scripts = [];
+    const cookies = [];
+    {{ range $index, $item := (where .Site.Data.consent.items "is_functional" false) }}
+    scripts[{{ $index }}] = [];
+    cookies[{{ $index }}] = [];
+    {{ range $srcix, $src := $item.script_srcs }}
+    scripts[{{ $index }}].push("{{ $src }}");
+    {{ end }}
+    {{ range $cookieix, $cookie := $item.cookies }}
+    cookies[{{ $index }}].push("{{ $cookie }}");
+    {{ end }}
+    {{ end }}
+
+    function createCookie(name,value,days) {
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days*24*60*60*1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + value + expires + "; path=/";
+    }
+    function readCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for(var i=0;i < ca.length;i++) {
+            var c = ca[i];
+            while (c.charAt(0)==' ') c = c.substring(1,c.length);
+            if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+        }
+        return null;
+    }
+    function eraseCookie(name) {
+        createCookie(name,"",-1);
+    }
+    function denyAllConsentScripts() {
+        var consentValue = "";
+        scripts.forEach(function(){
+            consentValue = consentValue + "0";
+        });
+        acceptSomeConsentScripts(consentValue);
+    }
+    function acceptAllConsentScripts() {
+        var consentValue = "";
+        scripts.forEach(function(){
+            consentValue = consentValue + "1";
+        });
+        acceptSomeConsentScripts(consentValue);
+    }
+    function acceptSomeConsentScripts(consentValue) {
+        createCookie('consent-settings',consentValue,31);
+        setConsentInputs(consentValue);
+        document.querySelectorAll('.govuk-cookie-banner').forEach(elt => { elt.style.display = 'none'; });
+        document.getElementById('consent-overlay').classList.remove('active');
+        loadConsentScripts(consentValue);
+    }
+    function loadConsentScripts(consentValue) {
+        scripts.forEach(function(value,key){
+            if(consentValue[key]=="1") {
+              for (const src of value) {
+                var s = document.createElement('script');
+                s.type = 'text/javascript';
+                s.async = true;
+                s.src = src;
+                document.body.appendChild(s);
+              }
+            }
+        });
+        cookies.forEach(function(value,key){
+            if(consentValue[key]=="0") {
+              for (const cookie of value) {
+                eraseCookie(cookie);
+              }
+            }
+        });
+    }
+    function setConsentInputs(consentValue) {
+        var elements = document.querySelectorAll('.consent-list input:not([disabled])');
+        elements.forEach(function(el,index) {
+            if(consentValue[index]=="1") el.checked = true;
+            else el.checked = false;
+        });
+    }
+    function setConsentValue() {
+        var elements = document.querySelectorAll('.consent-list input:not([disabled])');
+        var consentValue = "";
+        elements.forEach(function(el) {
+            if(el.checked) consentValue = consentValue + "1";
+            else consentValue = consentValue + "0";
+        });
+        document.querySelectorAll(".save-consent").forEach(elt => { elt.dataset.consentvalue = consentValue; });
+    }
+
+    window.addEventListener('DOMContentLoaded', async (event) => {
+        var elements = document.querySelectorAll('.consent-list input:not([disabled])');
+        elements.forEach(function(el) {
+            el.checked = false;
+        });
+
+        if(readCookie('consent-settings')) {
+            var consentValue = readCookie('consent-settings').toString();
+            //console.log(consentValue);
+            setConsentInputs(consentValue);
+            loadConsentScripts(consentValue);
+        } else {
+            document.querySelectorAll('.govuk-cookie-banner').forEach(elt => { elt.style.display = 'block'; });
+        }
+        var elements = document.querySelectorAll('.manage-consent');
+        elements.forEach(function(el) {
+            el.addEventListener("click",function() {
+                document.getElementById('consent-overlay').classList.toggle('active');
+            });
+        });
+        var elements = document.querySelectorAll('.deny-consent');
+        elements.forEach(function(el) {
+            el.addEventListener("click",function() {
+                denyAllConsentScripts();
+            });
+        });
+        var elements = document.querySelectorAll('.clear-consent');
+        elements.forEach(function(el) {
+            el.addEventListener("click",function() {
+                eraseCookie('consent-settings');
+            });
+        });
+        var elements = document.querySelectorAll('.approve-consent');
+        elements.forEach(function(el) {
+            el.addEventListener("click",function() {
+                acceptAllConsentScripts();
+            });
+        });
+        document.getElementById(".save-consent")
+        document.querySelectorAll(".save-consent").forEach(elt => {
+            elt.addEventListener("click",function() {
+                setConsentValue();
+                acceptSomeConsentScripts(this.dataset.consentvalue);
+            });
+        });
+        document.getElementById("consent-overlay").addEventListener("click",function(e) {
+            if (!document.querySelector("#consent-overlay > div").contains(e.target)){
+                this.classList.toggle('active');
+            }
+        });
+    });
+</script>
+
+{{ range $index, $item := .Site.Data.consent.items }}
+    {{ if $item.is_functional }}
+      {{ range $src := $item.script_srcs }}
+        <script type="text/javascript" src="/js/{{ $src }}"></script>
+      {{ end }}
+    {{ end }}
+{{ end }}

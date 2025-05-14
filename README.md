@@ -14,7 +14,7 @@ Steps:
 
 ### Notes
 
-Any collection or model changes will need copied from prebuild/reference_data and prebuild/resource_models(?) to /static/definitions/collections etc. manually.
+Any collection or model changes will need copied from prebuild/reference_data and prebuild/graphs to /static/definitions/collections etc. manually.
 
 ### License
 

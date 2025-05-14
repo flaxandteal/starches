@@ -1,6 +1,6 @@
 baseURL = "/"
 languageCode = "en-gb"
-title = "StArches"
+title = "Historic Environment Quicksearch"
 theme = "govukhugo"
 publishDir = "docs"
 canonifyurls = true
@@ -15,6 +15,9 @@ product = "NI HED Public Asset Quickview"
 phase = "alpha"
 feedbackurl = "/feedback/"
 archesurl = "http://localhost:8000/"
+ga4token = "GTM-K3B6FBDS"
+ga4gtag = "G-HJZQETB39E"
+cookies = "/cookies/"
 
 [[module.mounts]]
 source = "content"

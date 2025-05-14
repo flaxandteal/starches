@@ -1,5 +1,10 @@
 .nenv
+hugo
+export/
 **/.ipynb_checkpoints
 node_modules
 docs
 **/*.swp
+build*.tgz
+starches-latest.tgz
+pagefind-bin

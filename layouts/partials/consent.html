@@ -1,0 +1,53 @@
+<!-- https://hugocodex.org/add-ons/cookie-consent/ -->
+<style>
+  .govuk-cookie-banner {display: none; position: fixed; bottom: 0; background: #041e34; max-height: calc(100vh - 5rem); width: 100% }
+  .govuk-cookie-banner__heading { color: white; }
+  .govuk-cookie-banner .govuk-link { color: white; }
+  .govuk-cookie-banner .govuk-body { color: white; font-size: 120%; }
+
+  #consent-overlay {position: fixed; left: 0; top: 0; width: 100%; height: 100vh; display: none; background: rgba(0,0,0,0.75); z-index: 999999; overflow: auto; cursor: pointer;}
+  #consent-overlay.active {display: flex;}
+  #consent-overlay > div {background: white; width: 100%; max-width: 30rem; padding: 1.75rem; margin: auto; cursor: initial;}
+  #consent-overlay > div > div {display: flex; align-items: flex-start; margin-bottom: 1rem;}
+  #consent-overlay > div > div:last-child {margin: 0;}
+  #consent-overlay h3 {padding-top: 0;}
+  #consent-overlay input {margin-top: 0.3rem;}
+  #consent-overlay label {display: block;}
+  #consent-overlay .btn {margin-right: 0.5rem;}
+  #consent-overlay button.btn.save-consent {background: rgba(0,0,0,0.6); font-weight: normal;}
+
+  @media (max-width: 767px) {
+      #consent-overlay > div {padding: 1.75rem 1rem;}
+      .govuk-cookie-banner span {display: block; padding-top: 3px; margin-bottom: 1.5rem;}
+      .govuk-cookie-banner button.btn {position: relative; bottom: 4px;}
+  }
+</style>
+<div class="govuk-cookie-banner" data-nosnippet role="region" aria-label="Cookies on NIHED Public Asset Viewer">
+  <div class="govuk-cookie-banner__message govuk-width-container">
+    <div class="govuk-grid-row">
+      <div class="govuk-grid-column-two-thirds">
+        <h2 class="govuk-cookie-banner__heading govuk-heading-m">
+          Cookies on NIHED Public Asset Viewer
+        </h2>
+        <div class="govuk-cookie-banner__content">
+          <p class="govuk-body">We use some essential cookies to make this service work.</p>
+          <p class="govuk-body">We’d like to set additional cookies so we can remember your settings, understand how people use the service and make improvements.</p>
+        </div>
+      </div>
+    </div>
+    <div class="govuk-button-group">
+      <button value="yes" class="govuk-button approve-consent" name="cookies[additional]" data-module="govuk-button">
+        Allow additional cookies
+      </button>
+      <button value="no" class="govuk-button deny-consent" name="cookies[additional]" data-module="govuk-button">
+        Reject additional cookies
+      </button>
+      <a class="govuk-link" href="#">View cookies</a>
+    </div>
+  </div>
+</div>
+
+  <div id="consent-overlay">
+  {{ partial "consent-list" . }}
+  </div>
+</div>

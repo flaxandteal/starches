@@ -1,0 +1,56 @@
+name: Release update to UAT
+run-name: Release update to UAT
+on:
+  workflow_dispatch: {}
+env:
+  REGION: europe-west2
+  GAR_LOCATION: europe-west2-docker.pkg.dev/${{ secrets.GCLOUD_PROJECT_ID }}/coral-starches
+jobs:
+  Build-Arches:
+    runs-on: [self-hosted]
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: 'true'
+      - name: Set up Docker Context for Buildx
+        id: buildx-context
+        run: |
+          docker context create builders
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: latest
+          endpoint: builders
+      - name: Get latest coral-starches
+        uses: flaxandteal/fork-action-mc@master
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          MC_URL: "http://srv-minio.srv-minio.svc.cluster.local:9000"
+          MC_ALIAS: thebfc
+        with:
+          args: get thebfc/fat-crl-pub-qv/starches-latest.tgz starches-latest.tgz
+      - name: Untar build
+        run: |
+          mkdir -p docs
+          cd docs
+          tar -xzf ../starches-latest.tgz
+          cd ..
+      - id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+      - name: Use gcloud CLI
+        run: gcloud info
+      - name: Docker auth
+        run: |-
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Build image
+        run: docker build . --file ./Dockerfile.basic --tag ${{ env.GAR_LOCATION }}/coral-starches-public:latest-${{ github.run_id }}
+        working-directory: .
+      - name: Push image
+        run: docker push ${{ env.GAR_LOCATION }}/coral-starches-public:latest-${{ github.run_id }}

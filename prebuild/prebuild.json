@@ -1,0 +1,163 @@
+[
+    {
+        "resources": "prebuild/business_data/registries.json",
+        "public": true,
+        "slugPrefix": "REG_"
+    },
+    {
+        "resources": "prebuild/business_data/bibliography_merged.json",
+        "public": true,
+        "slugPrefix": "BIB_"
+    },
+    {
+        "resources": "prebuild/business_data/gardens_merged.json",
+        "public": true,
+        "slugPrefix": "GDN_"
+    },
+    {
+        "resources": "prebuild/business_data/ihr_merged_mp.json",
+        "public": true,
+        "slugPrefix": "IHR_"
+    },
+    {
+        "resources": "prebuild/business_data/aai_merged.json",
+        "public": true,
+        "slugPrefix": "AAI_"
+    },
+    {
+        "resources": "prebuild/business_data/aap_merged.json",
+        "public": true,
+        "slugPrefix": "AAP_"
+    },
+    {
+        "resources": "prebuild/business_data/ghnus_merged.json",
+        "public": true,
+        "slugPrefix": "GHN_"
+    },
+    {
+        "resources": "prebuild/business_data/marine_merged.json",
+        "public": true,
+        "slugPrefix": "MAR_"
+    },
+    {
+        "resources": "prebuild/business_data/marine_merged_loss.json",
+        "public": true,
+        "slugPrefix": "MAL_"
+    },
+    {
+        "resources": "prebuild/business_data/dhr_merged.json",
+        "public": true,
+        "slugPrefix": "DHR_",
+        "supplementary": [
+            "prebuild/business_data/creators.json",
+            "prebuild/business_data/creators_organization.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/har_merged.json",
+        "public": true,
+        "slugPrefix": "HAR_"
+    },
+    {
+        "resources": "prebuild/business_data/excavations_merged_licence.json",
+        "slugPrefix": "ELC_",
+        "supplementary": [
+            "prebuild/business_data/licencees.json",
+            "prebuild/business_data/company_organization.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/excavations_merged.json EXC_",
+        "supplementary": [
+            "prebuild/business_data/excavations_merged_licence.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/archive_merged_new.json",
+        "slugPrefix": "ARC_"
+    },
+    {
+        "resources": "prebuild/business_data/ss_action_merged.json",
+        "slugPrefix": "SSA_"
+    },
+    {
+        "resources": "prebuild/business_data/ss_har_merged_0.json SSH_ HeritageAssetRevision",
+        "supplementary": [
+            "prebuild/business_data/surveyors.json",
+            "prebuild/business_data/ss_action_merged.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/ss_har_merged_1.json SSH_ HeritageAssetRevision",
+        "supplementary": [
+            "prebuild/business_data/surveyors.json",
+            "prebuild/business_data/ss_action_merged.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/ss_har_merged_2.json SSH_ HeritageAssetRevision",
+        "supplementary": [
+
+            "prebuild/business_data/surveyors.json",
+            "prebuild/business_data/ss_action_merged.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/ss_har_merged_3.json SSH_ HeritageAssetRevision",
+        "supplementary": [
+            "prebuild/business_data/surveyors.json",
+            "prebuild/business_data/ss_action_merged.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/ss_har_merged_4.json SSH_ HeritageAssetRevision",
+        "supplementary": [
+            "prebuild/business_data/surveyors.json",
+            "prebuild/business_data/ss_action_merged.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/ss_har_merged_5.json SSH_ HeritageAssetRevision",
+        "supplementary": [
+            "prebuild/business_data/surveyors.json",
+            "prebuild/business_data/ss_action_merged.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/buildings_merged_mp_0.json",
+        "public": true,
+        "slugPrefix": "BDG_",
+        "supplementary": [
+            "prebuild/business_data/architects.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/buildings_merged_mp_1.json",
+        "public": true,
+        "slugPrefix": "BDG_",
+        "supplementary": [
+            "prebuild/business_data/architects.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/buildings_merged_mp_2.json",
+        "public": true,
+        "slugPrefix": "BDG_",
+        "supplementary": [
+            "prebuild/business_data/architects.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/buildings_merged_mp_3.json",
+        "public": true,
+        "slugPrefix": "BDG_",
+        "supplementary": [
+            "prebuild/business_data/architects.json"
+        ]
+    },
+    {
+        "resources": "prebuild/business_data/monuments_merged_mp.json",
+        "public": true,
+        "slugPrefix": "MNT_"
+    }
+]

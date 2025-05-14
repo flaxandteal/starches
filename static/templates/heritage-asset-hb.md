@@ -1,5 +1,3 @@
-# {{ title }}
-
 ## Names
 
 {{#each ha.monument_names }}
@@ -10,27 +8,27 @@
 
 ## Classification
 
-{{ ha.category_type }}
+{{{ ha.category_type }}}
 
 {{{ ha.monument_type_n1 }}}
 
 {{#each ha.characterization }}
-- {{ . }}
+- {{{ . }}}
 {{/each}}
 
 ---
 
 ## Reference Numbers
 
-{{#if (not ha.heritage_asset_references.hb_number "") }}
+{{#if ha.heritage_asset_references.hb_number }}
 **%HB No.**: {{ ha.heritage_asset_references.hb_number }}
 
 {{/if}}
-{{#if (not ha.heritage_asset_references.smr_number "") }}
+{{#if ha.heritage_asset_references.smr_number }}
 **%SMR No.**: {{ ha.heritage_asset_references.smr_number }}
 
 {{/if}}
-{{#if (not ha.heritage_asset_references.ihr_number "") }}
+{{#if ha.heritage_asset_references.ihr_number }}
 **%IHR No.**: {{ ha.heritage_asset_references.ihr_number }}
 
 {{/if}}
@@ -47,12 +45,10 @@
 #### This needs fixed to add permission filtering
 
 {{#each ha.descriptions }}
-{{#if (in (clean description_type) (array "Summary" "Exterior" "History"))}}
 #### {{{ clean description_type }}}
 
 {{ replace (replace description "_x000D_" "") "\n" "<br/>" }}
 
-{{/if}}
 {{/each}}
 
 ---
@@ -83,7 +79,7 @@
 | %Address |       |
 | --- | ----- |
 | **%Building Name** | {{ building_name.building_name_value }} |
-| **%Full Address** | {{ replace (replace full_address "_x000D_" "") "\n" "<br/>" }} |
+| **%Full Address** | {{{ nl (replace full_address "_x000D_" "") "<br/>" }}} |
 | **%Town/City** | {{ town_or_city.town_or_city_value }} |
 | **%Townland** | {{{ townlands.townland }}} |
 | **%County** | {{{ county.county_value }}} |
@@ -98,7 +94,7 @@
 {{#each ha.location_data.localities_administrative_areas }}
 | {{{ clean area_type }}} | {{{ area_names.area_name }}} |
 {{/each}}
-| **%Council** | {{ defaulty ha.location_data.council "(none)" }} |
+| **%Council** | {{{ defaulty ha.location_data.council "(none)" }}} |
 
 **%OS Map No.**: {{ defaulty ha.location_data.geometry.current_base_map.current_base_map_names.current_base_map_name "(none)"}}
 
@@ -131,7 +127,7 @@
 {{/each}}
 
 {{#if ha.sign_off.input_date.input_date_value }}
-**%Record established**: {{ ha.sign_off.input_date.input_date_value }}
+**%Record established**: {{{ ha.sign_off.input_date.input_date_value }}}
 {{/if}}
 
 
@@ -146,18 +142,20 @@
 | %Grade | {{{ default grade "N/A" }}} |
 | %Type | {{{ default designation_or_protection_type "N/A" }}} |
 | %Criteria for Listing | {{{ join scheduling_criteria ", " }}} |
-| %Start Date | {{ designation_and_protection_timespan.designation_start_date }} |
-| %Amendment Date | {{ designation_and_protection_timespan.designation_amendment_date }} |
-| %End Date | {{ designation_and_protection_timespan.designation_end_date }} |
+| %Start Date | {{{ designation_and_protection_timespan.designation_start_date }}} |
+| %Amendment Date | {{{ designation_and_protection_timespan.designation_amendment_date }}} |
+| %End Date | {{{ designation_and_protection_timespan.designation_end_date }}} |
 | %Extent | {{ extent_of_designation_or_protection.description_of_extent }} |
 | (TBC) | {{ designation_and_protection_timespan.display_date }} |
 
 ---
 {{/each}}
 
-## %Architects
+## %Actor
 
-TODO
+{{#each ha.associated_actors }}
+{{{ associated_actor.actor }}}
+{{/each}}
 
 {{#if ecrs}}
 ---
