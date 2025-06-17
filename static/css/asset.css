@@ -5,12 +5,37 @@
   display: none;
 }
 
-.asset-navigation {
+/* Modern Navigation */
+.modern-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin: 20px 0;
+  padding: 10px 0;
+  border-bottom: 1px solid #ccc;
 }
 
-#prev-asset, #next-asset {
-  min-width: 120px;
+.nav-back {
+  flex: 1;
+}
+
+.nav-position {
+  flex: 2;
+  text-align: center;
+  font-size: 16px;
+  color: #505a5f;
+  font-weight: normal;
+}
+
+.nav-buttons {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+#prev-asset-top, #next-asset-top, #prev-asset-bottom, #next-asset-bottom {
+  min-width: 100px;
   text-align: center;
 }
 

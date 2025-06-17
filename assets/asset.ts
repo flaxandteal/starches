@@ -5,7 +5,8 @@ import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, Navigat
 import * as Handlebars from 'handlebars';
 import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, utils, viewModels, renderers } from 'alizarin';
 import { addMarkerImage } from './map-tools';
-import { getNavigation, hasSearchContext, getAssetUrlWithContext } from './searchContext';
+import { getNavigation, hasSearchContext, getAssetUrlWithContext, getSearchBreadcrumbs } from './searchContext';
+import { updateBreadcrumbs } from './searchBreadcrumbs';
 import { debug, debugError } from './debug';
 
 viewModels.CUSTOM_DATATYPES.set("tm65centrepoint", "non-localized-string");
@@ -615,32 +616,46 @@ window.addEventListener('DOMContentLoaded', async (event) => {
   document.getElementById("asset-title").innerText = `${asset.meta.title}`;
 
   /**
-   * Setup prev/next navigation buttons based on search context
+   * Setup navigation elements based on search context
    */
   function setupAssetNavigation(currentId: string): void {
     debug("Setting up asset navigation for:", currentId);
+    
+    // Setup breadcrumbs
+    setupBreadcrumbs();
+    
     if (hasSearchContext()) {
       debug("Search context found");
-      const { prev, next } = getNavigation(currentId);
-      debug("Navigation:", { prev, next });
+      const { prev, next, position, total } = getNavigation(currentId);
+      debug("Navigation:", { prev, next, position, total });
 
       // Set up both top and bottom navigation sections
       const navigationSections = [
         {
           prev: document.getElementById('prev-asset-top') as HTMLAnchorElement,
           next: document.getElementById('next-asset-top') as HTMLAnchorElement,
+          counter: document.getElementById('position-counter-top'),
           location: 'top'
         },
         {
           prev: document.getElementById('prev-asset-bottom') as HTMLAnchorElement,
           next: document.getElementById('next-asset-bottom') as HTMLAnchorElement,
+          counter: document.getElementById('position-counter-bottom'),
           location: 'bottom'
         }
       ];
 
       // Configure each navigation section
       navigationSections.forEach(section => {
-        const { prev: prevButton, next: nextButton, location } = section;
+        const { prev: prevButton, next: nextButton, counter, location } = section;
+        
+        // Set position counter if available
+        if (counter && position && total) {
+          counter.innerHTML = `Result ${position} of ${total}`;
+          counter.style.display = 'block';
+        } else if (counter) {
+          counter.style.display = 'none';
+        }
         
         if (prevButton && nextButton) {
           debug(`Setting up ${location} navigation buttons`);
@@ -668,7 +683,22 @@ window.addEventListener('DOMContentLoaded', async (event) => {
       });
     } else {
       debug("No search context available");
+      // Hide counters if no context
+      document.getElementById('position-counter-top').style.display = 'none';
+      document.getElementById('position-counter-bottom').style.display = 'none';
     }
+  };
+  
+  /**
+   * Setup breadcrumb information from search context
+   */
+  function setupBreadcrumbs(): void {
+    const breadcrumbs = getSearchBreadcrumbs();
+    updateBreadcrumbs(
+      breadcrumbs.searchTerm,
+      breadcrumbs.filters,
+      breadcrumbs.geoBounds
+    );
   };
 
   window.showDialog = (dialogId) => {

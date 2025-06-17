@@ -7,6 +7,7 @@ import { FlatbushWrapper } from './fb';
 import { addMarkerImage } from './map-tools';
 import { nearestPoint } from "@turf/nearest-point";
 import { saveSearchResults, SearchParams } from './searchContext';
+import { updateBreadcrumbs } from './searchBreadcrumbs';
 import { debug, debugWarn, debugError } from './debug';
 
 function slugify(name: string) {
@@ -751,6 +752,17 @@ window.addEventListener('DOMContentLoaded', async (event) => {
           
           saveSearchResults(slugs, searchContextParams);
           debug("Saved search context with " + slugs.length + " slugs", slugs);
+          
+          // Update breadcrumbs
+          let filterTags = [];
+          if (lastFilters && lastFilters.tags) {
+            filterTags = lastFilters.tags;
+          }
+          updateBreadcrumbs(
+            lastTerm, 
+            filterTags,
+            fb.bounds ? JSON.stringify(fb.bounds) : undefined
+          );
         });
         
         history.pushState({searchTerm: lastTerm, searchFilters: lastFilters, geoBounds: fb.bounds}, "", makeSearchQuery("/?"));
@@ -761,6 +773,17 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         input.value = term;
         instance.searchTerm = term;
     }
+
+    // Initial breadcrumbs setup
+    let initialFilterTags = [];
+    if (searchFilters && searchFilters.tags) {
+        initialFilterTags = searchFilters.tags;
+    }
+    updateBreadcrumbs(
+        term, 
+        initialFilterTags,
+        geoBounds
+    );
 
     if (term || searchFilters) {
         doSearch(false);

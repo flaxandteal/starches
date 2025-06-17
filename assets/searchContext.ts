@@ -98,9 +98,14 @@ export function saveSearchResults(ids: string[], params: SearchParams): void {
 /**
  * Get the previous and next IDs for an asset in the search results
  * @param currentId Current asset ID
- * @returns Object containing previous and next IDs, or null if not available
+ * @returns Object containing previous and next IDs, position info, or null if not available
  */
-export function getNavigation(currentId: string): { prev: string | null; next: string | null } {
+export function getNavigation(currentId: string): { 
+  prev: string | null; 
+  next: string | null;
+  position?: number;
+  total?: number;
+} {
   const context = loadContextFromStorage();
   const { resultIds } = context;
   
@@ -142,8 +147,12 @@ export function getNavigation(currentId: string): { prev: string | null; next: s
   const prev = currentIndex > 0 ? resultIds[currentIndex - 1] : null;
   const next = currentIndex < resultIds.length - 1 ? resultIds[currentIndex + 1] : null;
   
-  debug('Navigation results:', { prev, next });
-  return { prev, next };
+  // Calculate position (1-based) and total for display
+  const position = currentIndex + 1;
+  const total = resultIds.length;
+  
+  debug('Navigation results:', { prev, next, position, total });
+  return { prev, next, position, total };
 }
 
 /**
@@ -190,4 +199,38 @@ export function getAssetUrlWithContext(assetId: string): string {
   }
   
   return `/asset?${params.toString()}`;
+}
+
+/**
+ * Get breadcrumb information from search context
+ * @returns Object containing search term, filters and geographical bounds
+ */
+export function getSearchBreadcrumbs(): { 
+  searchTerm?: string,
+  filters?: string[], 
+  geoBounds?: string
+} {
+  const { searchParams } = loadContextFromStorage();
+  const result: { searchTerm?: string, filters?: string[], geoBounds?: string } = {};
+  
+  if (searchParams.searchTerm) {
+    result.searchTerm = searchParams.searchTerm;
+  }
+  
+  if (searchParams.searchFilters && searchParams.searchFilters !== '{}') {
+    try {
+      const parsedFilters = JSON.parse(searchParams.searchFilters);
+      if (parsedFilters.tags && Array.isArray(parsedFilters.tags)) {
+        result.filters = parsedFilters.tags;
+      }
+    } catch (e) {
+      debugError('Error parsing search filters for breadcrumbs:', e);
+    }
+  }
+  
+  if (searchParams.geoBounds) {
+    result.geoBounds = searchParams.geoBounds;
+  }
+  
+  return result;
 }
