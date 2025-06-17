@@ -5,6 +5,15 @@
   display: none;
 }
 
+.asset-navigation {
+  margin: 20px 0;
+}
+
+#prev-asset, #next-asset {
+  min-width: 120px;
+  text-align: center;
+}
+
 #asset-title {
   background-color: rgba(0, 32, 92, 1.0) !important;
   padding-left: 0.4rem;
