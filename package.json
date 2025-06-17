@@ -53,7 +53,7 @@
     "ts-node": "^10.9.2",
     "tsc": "^2.0.4",
     "typescript": "^5.8.3",
-    "vite": "^6.2.5",
+    "vite": "^6.3.5",
     "vite-hugo-plugin": "^5.1.0"
   }
 }
