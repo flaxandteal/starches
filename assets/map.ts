@@ -40,7 +40,7 @@ function resultFunction(e) {
     const touch = isTouch();
 
     if (touch) {
-        document.getElementById("map-dialog__heading").innerHTML = e.features[0].properties.title;
+        document.getElementById("map-dialog__heading").innerHTML = `<h3>${e.features[0].properties.title}</h3>`;
         document.getElementById("map-dialog__content").innerHTML = e.features[0].properties.description;
 
         const modalElt = document.getElementById("map-dialog");

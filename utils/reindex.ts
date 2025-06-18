@@ -169,7 +169,6 @@ async function getLocations(index: pagefind.PagefindIndex, assetMetadata: Asset[
 function buildFlatbush(locpairs: [IndexEntry, Feature][]) {
     const locations = locpairs.map((locpair: [IndexEntry, Feature]) => locpair[0]);
     const features = locpairs.map((locpair: [IndexEntry, Feature]) => locpair[1]);
-    console.log(features);
     const geoJsonAll: FeatureCollection = {
       "type": "FeatureCollection",
       "features": features
