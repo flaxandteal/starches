@@ -92,7 +92,7 @@
 {{#if building_name.building_name_value }}
 | [Building Name](@building_name) | {{ building_name.building_name_value }} |
 {{/if}}
-{{#if building_name.building_name_value }}
+{{#if full_address }}
 | [Full Address](@full_address) | {{{ nl (replace full_address "_x000D_" "") "<br/>" }}} |
 {{/if}}
 {{#if town_or_city.town_or_city_value }}

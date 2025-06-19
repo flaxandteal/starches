@@ -3,6 +3,7 @@ import path from 'path';
 import * as pagefind from "pagefind";
 import Flatbush from "flatbush";
 import Handlebars from 'handlebars'
+import { spawn } from 'node:child_process';
 import { WKRM, ResourceModelWrapper } from 'alizarin';
 
 import { Asset } from './types.ts';
@@ -177,6 +178,20 @@ function buildFlatbush(locpairs: [IndexEntry, Feature][]) {
         `${PUBLIC_FOLDER}/fgb/nihed-assets-wo-index.fgb`,
         fgbSerialize(geoJsonAll)
     );
+    const starches_utils = spawn('../../starches-utils', [], {
+        cwd: 'docs/fgb'
+    });
+    starches_utils.stdout.on('data', (data) => {
+          console.log(`stdout: ${data}`);
+    });
+
+    starches_utils.stderr.on('data', (data) => {
+          console.error(`stderr: ${data}`);
+    });
+
+    starches_utils.on('close', (code) => {
+          console.log(`child process exited with code ${code}`);
+    });
 
     const flatbushIndex = new Flatbush(locations.length);
     locations.forEach((loc: IndexEntry) => {

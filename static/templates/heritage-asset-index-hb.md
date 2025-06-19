@@ -20,3 +20,9 @@ $$$
 {{#each ha.location_data.addresses }}
 {{{ replace full_address "_x000D_" "" }}}
 {{/each}}
+
+{{#each ha.descriptions }}
+{{#if (in (toString description_type) (array "Notes" "Summary")) }}
+{{{ replace description "_x000D_" "" }}}
+{{/if}}
+{{/each}}

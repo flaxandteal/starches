@@ -4,11 +4,22 @@ import { Marked } from 'marked'
 import markedPlaintify from 'marked-plaintify'
 import { Asset, ModelEntry, type IAssetFunctions } from '../utils/types.ts';
 import { slugify } from '../utils/utils.ts';
-import { RDM, GraphManager, staticTypes, interfaces, nodeConfig, staticStore } from 'alizarin';
+import { RDM, GraphManager, staticTypes, interfaces, nodeConfig, staticStore, renderers } from 'alizarin';
 
 Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replace(fm, to) : "");
 Handlebars.registerHelper("await", (val) => val);
 Handlebars.registerHelper("default", function (a, b) {return a === undefined || a === null ? b : a;});
+Handlebars.registerHelper("in", function (a, b) { return Array.isArray(b) ? b.includes(a) : (a in b);});
+Handlebars.registerHelper("toString", function (a) { return a.toString();});
+Handlebars.registerHelper("array", function (...args) { return args;});
+Handlebars.registerHelper("clean", function (a) {
+  console.log(a, a instanceof renderers.Cleanable)
+  if (a instanceof renderers.Cleanable) {
+    return a.__clean;
+  }
+
+  return a;
+});
 
 const registrySymbols: {[key: string]: string} = {
     "Industrial Heritage Record": "⚙️",
@@ -17,7 +28,7 @@ const registrySymbols: {[key: string]: string} = {
     "Defence Heritage Record": "🛡️",
     "Historic Parks, Gardens and  Demesnes": "🌳",
     "Areas of Archaeological Potential": "🔎",
-    "Areas of Significant Archaeological Importance": "⛏️",
+    "Areas of Significant Archaeological Interest": "⛏️",
     "Gazetteer of Historic Nucleated Urban Settlements": "🏘️",
     "Heritage at Risk": "⚠️ ",
     "Historic Wrecks": "🚢",
