@@ -1,6 +1,7 @@
+// Starting from git ac5f70e30aa280df6355f55afecaa0bef9fdf8ae of coral-arches
 import * as fs from "fs";
 
-import { staticTypes, client, RDM, graphManager, staticStore, viewModels, GraphMutator } from 'alizarin';
+import { staticTypes, client, RDM, graphManager, staticStore, viewModels, GraphMutator, setCurrentLanguage } from 'alizarin';
 
 import { assetFunctions } from '../prebuild/functions.ts';
 
@@ -25,51 +26,58 @@ function initAlizarin() {
 
 const gm = await initAlizarin();
 await gm.initialize();
-const HeritageAsset = await gm.get('HeritageAsset');
-const mut = new GraphMutator(HeritageAsset.graph);
+for (const haType of ['HeritageAsset', 'HeritageAssetRevision']) {
+    const HeritageAsset = await gm.get(haType);
+    const rarTypes = await RDM.retrieveCollection('d32d4e92-1d96-fa4a-b14f-594438e7ae30');
+    setCurrentLanguage('en');
+    const mut = new GraphMutator(HeritageAsset.graph);
 
-const newGraph = mut
-    .addStringNode(
-        'component',
-        'component_description',
-        'Component Description',
-        '1',
-        'http://www.w3.org/2000/01/rdf-schema#Literal',
-        'http://www.cidoc-crm.org/cidoc-crm/P3_has_note'
-    )
-    .addSemanticNode(
-        'record_and_registry_membership',
-        'rar_descriptions',
-        'Record or Register Descriptions',
-        'n',
-        'http://www.cidoc-crm.org/cidoc-crm/E33_Linguistic_Object',
-        'http://www.cidoc-crm.org/cidoc-crm/P67i_is_referred_to_by',
-        "Descriptions specific to this record or registry",
-        {
-            is_collector: true,
-        }
-    )
-    .addStringNode(
-        'register_re',
-        'rar_description',
-        'Record or Register Description',
-        '1',
-        'http://www.w3.org/2000/01/rdf-schema#Literal',
-        'http://www.cidoc-crm.org/cidoc-crm/P3_has_note'
-    )
-    .addConceptNode(
-        'register_re',
-        'rar_description_type',
-        'Record or Register Description Type',
-        '1',
-        'http://www.cidoc-crm.org/cidoc-crm/E55_Type',
-        'http://www.cidoc-crm.org/cidoc-crm/P2_has_type',
-        "Type of description specific to this record or register"
-    )
-    .apply();
+    const newGraph = mut
+        .addStringNode(
+            'component',
+            'component_description',
+            'Component Description',
+            '1',
+            'http://www.w3.org/2000/01/rdf-schema#Literal',
+            'http://www.cidoc-crm.org/cidoc-crm/P3_has_note'
+        )
+        .addSemanticNode(
+            'record_and_registry_membership',
+            'rar_descriptions',
+            'Record or Register Descriptions',
+            'n',
+            'http://www.cidoc-crm.org/cidoc-crm/E33_Linguistic_Object',
+            'http://www.cidoc-crm.org/cidoc-crm/P67i_is_referred_to_by',
+            "Descriptions specific to this record or registry",
+            {
+                is_collector: true,
+            }
+        )
+        .addStringNode(
+            'rar_descriptions',
+            'rar_description',
+            'Record or Register Description',
+            '1',
+            'http://www.w3.org/2000/01/rdf-schema#Literal',
+            'http://www.cidoc-crm.org/cidoc-crm/P3_has_note'
+        )
+        .addConceptNode(
+            'rar_descriptions',
+            'rar_description_type',
+            'Record or Register Description Type',
+            '1',
+            rarTypes,
+            'http://www.cidoc-crm.org/cidoc-crm/E55_Type',
+            'http://www.cidoc-crm.org/cidoc-crm/P2_has_type',
+            "Type of description specific to this record or register"
+        )
+        .apply();
 
-const graphFile = 'Heritage Asset.mutated.json';
-await fs.writeFileSync(
-    graphFile,
-    JSON.stringify(newGraph, undefined, 2)
-);
+    const graphFile = `${haType}.mutated.json`;
+    await fs.writeFileSync(
+        graphFile,
+        JSON.stringify({
+            graph: [newGraph]
+        }, undefined, 4)
+    );
+}
