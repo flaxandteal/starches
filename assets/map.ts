@@ -217,22 +217,13 @@ class LayerManager {
                 } else if (map.getZoom() < MIN_SEARCH_ZOOM + 1) {
                     console.warn("Searching");
                     map.targeting = true;
-                    // const coordinates = e.features[0].geometry.coordinates.slice();
-                    // console.log(this.fb, e.lngLat.toArray(), e.features[0].properties.regcode);
                     const nearest = await this.fb.nearest(e.lngLat.toArray(), e.features[0].properties.regcode);
-                    // if (nearest) {
-                    //     const chunk = this.hashToDoc(nearest);
-                    //     console.log(chunk);
-                    //     await map.flyTo({center: chunk.meta.location, zoom: MIN_SEARCH_ZOOM + 1});
-                    // }
                     // It is possible that, for example, a result function was hit before nearest was found.
                     if (map.targeting === true) {
                         let targeting;
                         if (nearest) {
-                            console.log("Search got nearest", nearest.geometry.coordinates);
                             targeting = nearest.geometry.coordinates;
                         } else {
-                            console.log("Search did not get nearest", e.lngLat);
                             targeting = e.lngLat;
                         }
                         map.targeting = targeting;
@@ -466,7 +457,6 @@ async function buildTextIndex(searchAction: (term: string, settings: object, pag
             button.innerHTML = this.pillInner(val, count);
             button.classList.add("govuk-radios__item");
             button.addEventListener("click", () => {
-                console.log(this.selected, val);
                 if (val === "All") {
                     this.selected = ["All"];
                 } else if (this.selected.includes(val)) {
@@ -519,7 +509,6 @@ async function buildTextIndex(searchAction: (term: string, settings: object, pag
         }
 
         const results = await this.__pagefind__.search(term, { filters });
-        console.log(filters, results, 'withFilters');
         if (results && this.__searchID__ === thisSearch) {
           if (results.filters && Object.keys(results.filters)?.length) {
             this.availableFilters = results.filters;
@@ -702,7 +691,7 @@ async function searchAction(term: string, settings: SearchFilters, pagefind) {
         }
     }
   } else {
-    filtersChanged = hasFilters === hadFilters;
+    filtersChanged = hasFilters !== hadFilters;
   }
 
   if (!term) {
