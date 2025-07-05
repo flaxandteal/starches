@@ -6,6 +6,9 @@ import { Popup, Source, Marker, Map as MLMap, IControl, NavigationControlOptions
 import { FlatbushWrapper } from './fb';
 import { addMarkerImage } from './map-tools';
 import { nearestPoint } from "@turf/nearest-point";
+import { saveSearchResults, SearchParams } from './searchContext';
+import { updateBreadcrumbs } from './searchBreadcrumbs';
+import { debug, debugWarn, debugError } from './debug';
 
 function slugify(name: string) {
     return `${name}`.replaceAll(/[^A-Za-z0-9_]/g, "").slice(0, 20);
@@ -16,7 +19,7 @@ const MAX_MAP_POINTS = 300;
 const MIN_SEARCH_LENGTH = 4;
 const MIN_SEARCH_ZOOM = 13;
 const TIME_TO_SHOW_LOADING_MS = 50;
-let doSearch = (geoOnly?: boolean, withFilters?: [{[key: string]: string}][]) => (console.error("Not yet loaded", geoOnly));
+let doSearch = (geoOnly?: boolean, withFilters?: [{[key: string]: string}][]) => (debugError("Not yet loaded", geoOnly));
 
 // @ts-expect-error No resetView on window
 window.resetView = () => {};
@@ -164,7 +167,7 @@ class LayerManager {
         }
         let layerName = registers.get(register);
         if (layerName === undefined) {
-            console.warn("Layer missing from fgb", layerName, registers);
+            debugWarn("Layer missing from fgb", layerName, registers);
             return false;
         }
         const map = await this.map;
@@ -173,12 +176,12 @@ class LayerManager {
             try {
                 response = await fetch(`/fgb/${register}.fgb`);
             } catch (e) {
-                console.warn(`Register ${register} fgb missing`, e);
+                debugWarn(`Register ${register} fgb missing`, e);
                 return false;
             }
 
             if (!response) {
-                console.warn(`Register ${register} fgb empty response`);
+                debugWarn(`Register ${register} fgb empty response`);
                 return false;
             }
             const fc: FeatureCollection = {
@@ -537,8 +540,9 @@ async function buildTextIndex(searchAction: (term: string, settings: object, pag
         let pInner = "<div class='govuk-button-group'>";
 
         const url = makeSearchQuery(result.url);
-        pInner += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`
-        pInner += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" target='_blank'>Open tab</a></li>`;
+        pInner += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`;
+        // Use window.open with a JavaScript event instead of target='_blank' to ensure localStorage is properly shared
+        pInner += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="window.open('${url}', '_blank'); return false;">Open tab</a></li>`;
         if (location) {
             location = JSON.parse(location);
             if (location) {
@@ -613,7 +617,7 @@ function handleResults(fg: FeatureCollection, results): Promise<FeatureCollectio
                     }
                     text += `<p class='description'>${description}</p>`;
                     text += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`
-                    text += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" target='_blank'>Open tab</a></li>`;
+                    text += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="window.open('${url}', '_blank'); return false;">Open tab</a></li>`;
                     const call = `map.flyTo({center: [${loc[0]}, ${loc[1]}], zoom: ${MIN_SEARCH_ZOOM + 1}})`;
                     text += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
                     let marker = {
@@ -643,7 +647,7 @@ function handleResults(fg: FeatureCollection, results): Promise<FeatureCollectio
       })).then((promises) => {;
         const emptyPromises = promises.filter(p => p === null);
         if (emptyPromises.length > 0) {
-            console.error("Some results could not be retrieved:", emptyPromises.length);
+            debugError("Some results could not be retrieved:", emptyPromises.length);
         }
         fg.features = fg.features.filter(marker => {
           if (marker.properties.slug && visibleIds.has(marker.properties.slug)) {
@@ -780,6 +784,51 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     instance.on("results", results => handleResults(fg, results).then(async (fg) => {
         const m = await map;
         m.getSource('assets').setData(fg);
+        
+        // Save search results to context for prev/next navigation
+        debug("Raw search results:", results.results);
+        
+        // Extract slugs from results - we need to collect these before saving to context
+        const collectSlugs = async () => {
+          const slugs = [];
+          for (const result of results.results) {
+            try {
+              const data = await result.data();
+              debug("Result data for ID", result.id, "has slug:", data.meta.slug);
+              if (data.meta.slug) {
+                slugs.push(data.meta.slug);
+              }
+            } catch (e) {
+              debugError("Error getting result data:", e);
+            }
+          }
+          return slugs;
+        };
+        
+        collectSlugs().then(slugs => {
+          debug("Extracted slugs for navigation:", slugs);
+          
+          const searchContextParams: SearchParams = {
+            searchTerm: lastTerm,
+            geoBounds: fb.bounds ? JSON.stringify(fb.bounds) : undefined,
+            searchFilters: lastFilters ? JSON.stringify(lastFilters) : undefined
+          };
+          
+          saveSearchResults(slugs, searchContextParams);
+          debug("Saved search context with " + slugs.length + " slugs", slugs);
+          
+          // Update breadcrumbs
+          let filterTags = [];
+          if (lastFilters && lastFilters.tags) {
+            filterTags = lastFilters.tags;
+          }
+          updateBreadcrumbs(
+            lastTerm, 
+            filterTags,
+            fb.bounds ? JSON.stringify(fb.bounds) : undefined
+          );
+        });
+        
         history.pushState({searchTerm: lastTerm, searchFilters: lastFilters, geoBounds: fb.bounds}, "", makeSearchQuery("/?"));
     }));
 
@@ -788,6 +837,17 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         input.value = term;
         instance.searchTerm = term;
     }
+
+    // Initial breadcrumbs setup
+    let initialFilterTags = [];
+    if (searchFilters && searchFilters.tags) {
+        initialFilterTags = searchFilters.tags;
+    }
+    updateBreadcrumbs(
+        term, 
+        initialFilterTags,
+        geoBounds
+    );
 
     if (term || searchFilters) {
         doSearch(false);

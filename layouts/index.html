@@ -13,6 +13,7 @@
   type="module"></script>
 <link href="/pagefind/pagefind-modular-ui.css" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@^5.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+<link href="{{ "css/breadcrumbs.css" | absURL }}" rel="stylesheet" />
 
 <div class="govuk-body">
     <h1 class="govuk-heading-xl">Historic environment</h1>
@@ -23,6 +24,13 @@
     </div>
 
     <!-- <h3><a href="{{ site.Params.archesurl }}/search" data-arches-root="{{ site.Params.archesurl }}" class="govuk-back-link" id="arches-link">Advanced Search</a></h3> -->
+
+    <!-- Breadcrumbs -->
+    <div class="asset-breadcrumbs" id="search-breadcrumbs">
+        <span id="breadcrumb-search-term"></span>
+        <span id="breadcrumb-filters"></span>
+        <span id="breadcrumb-geo"></span>
+    </div>
 
     <p><a href="#search" id="jump-to-search">Jump to search</a></p>
 
