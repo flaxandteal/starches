@@ -2,10 +2,16 @@
   <div id="demo-warning">
     This is a front-end demo with full datasets - if you see this banner, potentially-sensitive data will be loaded, even it is not displayed (<a href="#" id="swap-link"></a>)
   </div>
-  <h3><a href="/" class="govuk-back-link" id="back-link">Return to Search</a></h3>
+  <a href="/" class="govuk-button govuk-button--secondary back-link">Return to Search</a>
+  <button class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="navigator.clipboard.writeText(document.location.href)">
+  Copy link
+  </button>
+
   <div id="map"></div>
   <h1 id="asset-title"></h1>
-  <h3><a href="/" class="govuk-back-link" id="back-link">Return to Search</a></h3>
+  <h3>
+    <a href="/" class="govuk-back-link back-link">Return to Search</a>
+  </h3>
   <!-- <h3><a href="{{ site.Params.archesurl }}" data-arches-root="{{ site.Params.archesurl }}" class="govuk-back-link" id="arches-link">View Reference Record</a></h3> -->
   <article id="asset">
   </article>

@@ -178,7 +178,10 @@ function buildFlatbush(locpairs: [IndexEntry, Feature][]) {
         `${PUBLIC_FOLDER}/fgb/nihed-assets-wo-index.fgb`,
         fgbSerialize(geoJsonAll)
     );
-    const starches_utils = spawn('../../starches-utils', [], {
+    const starches_utils = spawn('../../starches-rs', [
+        './nihed-assets-wo-index.fgb',
+        './nihed-assets.fgb'
+    ], {
         cwd: 'docs/fgb'
     });
     starches_utils.stdout.on('data', (data) => {

@@ -21,6 +21,10 @@ let doSearch = (geoOnly?: boolean, withFilters?: [{[key: string]: string}][]) =>
 // @ts-expect-error No resetView on window
 window.resetView = () => {};
 
+function setMapCover(status: boolean) {
+    document.getElementById("map-cover").style.display = status ? "block" : "none";
+}
+
 function isTouch() {
     return (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
 }
@@ -36,7 +40,9 @@ function mapDialogClicked(event) {
     event.stopPropagation()
 }
 function resultFunction(e) {
+    map.stop();
     const coordinates = e.features[0].geometry.coordinates.slice();
+    map.targeting = coordinates;
     const touch = isTouch();
 
     if (touch) {
@@ -197,7 +203,7 @@ class LayerManager {
                 'source': layerName,
                 'paint': {
                     'circle-color': '#888888',
-                    'circle-radius': 5,
+                    'circle-radius': 6,
                     "circle-stroke-width": 10,
                     "circle-stroke-color": 'rgba(0, 0, 0, 0)'
                 },
@@ -206,7 +212,11 @@ class LayerManager {
                 }
             }, 'assets-flat');
             map.on('click', layerName, async (e) => {
-                if (map.getZoom() < MIN_SEARCH_ZOOM + 1) {
+                if (map.targeting) {
+                    console.warn("Refusing to search again while still moving to previous tapped location");
+                } else if (map.getZoom() < MIN_SEARCH_ZOOM + 1) {
+                    console.warn("Searching");
+                    map.targeting = true;
                     // const coordinates = e.features[0].geometry.coordinates.slice();
                     // console.log(this.fb, e.lngLat.toArray(), e.features[0].properties.regcode);
                     const nearest = await this.fb.nearest(e.lngLat.toArray(), e.features[0].properties.regcode);
@@ -215,12 +225,23 @@ class LayerManager {
                     //     console.log(chunk);
                     //     await map.flyTo({center: chunk.meta.location, zoom: MIN_SEARCH_ZOOM + 1});
                     // }
-                    if (nearest) {
-                        await map.flyTo({center: nearest.geometry.coordinates, zoom: MIN_SEARCH_ZOOM + 1});
-                    } else {
-                        await map.flyTo({center: e.lngLat, zoom: MIN_SEARCH_ZOOM + 1});
+                    // It is possible that, for example, a result function was hit before nearest was found.
+                    if (map.targeting === true) {
+                        let targeting;
+                        if (nearest) {
+                            console.log("Search got nearest", nearest.geometry.coordinates);
+                            targeting = nearest.geometry.coordinates;
+                        } else {
+                            console.log("Search did not get nearest", e.lngLat);
+                            targeting = e.lngLat;
+                        }
+                        map.targeting = targeting;
                     }
                     // TODO: bubble up nearest to be selected
+                }
+                if (Array.isArray(map.targeting)) {
+                    await map.flyTo({center: map.targeting, zoom: MIN_SEARCH_ZOOM + 1});
+                    map.targeting = false;
                 }
             });
             registers.set(register, layerName);
@@ -253,6 +274,7 @@ async function buildMap(fb: FlatbushWrapper, fg: FeatureCollection, hashToDoc: F
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
     window.map = map;
+    map.targeting = false;
 
     return new Promise((resolve) => {
         map.on('load', async () => {
@@ -278,6 +300,9 @@ async function buildMap(fb: FlatbushWrapper, fg: FeatureCollection, hashToDoc: F
             map.addControl(resetViewControl);
             map.addControl(
                 new GeolocateControl({
+                    fitBoundsOptions: {
+                        maxZoom: MIN_SEARCH_ZOOM + 1
+                    },
                     positionOptions: {
                         enableHighAccuracy: true
                     },
@@ -373,6 +398,7 @@ async function buildMap(fb: FlatbushWrapper, fg: FeatureCollection, hashToDoc: F
                 fb.filter([sw.lng, sw.lat, ne.lng, ne.lat]);
             }
             doSearch(true);
+            map.targeting = false;
         };
         map.on('dragend', moveEnd);
         map.on('zoomend', moveEnd);
@@ -417,6 +443,50 @@ async function buildTextIndex(searchAction: (term: string, settings: object, pag
         filter: "tags",
         alwaysShow: true
     });
+    const pillInner = filters.pillInner.bind(filters);
+    const pillContainer = document.createElement("div");
+    pillContainer.classList.add("govuk-radios");
+    pillContainer.classList.add("govuk-radios--inline");
+    pillContainer.setAttribute("data-module", "govuk-radios");
+    filters.wrapper = document.getElementById("filter");
+    filters.pillContainer = pillContainer;
+    filters.wrapper.appendChild(pillContainer);
+    filters.pillInner = (function(val, count) {
+        const ariaChecked = this.selected.includes(val);
+        return `
+            <input class="govuk-radios__input" ${ariaChecked ? 'checked' : ''} aria-checked="${ariaChecked}" id="chosenRecord" name="chosenRecord" type="radio" value="${val}">
+            <label class="govuk-label govuk-radios__label" for="chosenRecord">
+                ${pillInner(val, count)}
+            </label>
+        `;
+    }).bind(filters);
+    filters.renderNew = (function() {
+        this.available.forEach(([val, count]) => {
+            const button = document.createElement("div");
+            button.innerHTML = this.pillInner(val, count);
+            button.classList.add("govuk-radios__item");
+            button.addEventListener("click", () => {
+                console.log(this.selected, val);
+                if (val === "All") {
+                    this.selected = ["All"];
+                } else if (this.selected.includes(val)) {
+                    this.selected = this.selected.filter(v => v !== val);
+                } else if (this.selectMultiple) {
+                    this.selected.push(val);
+                } else {
+                    this.selected = [val];
+                }
+                if (!this.selected?.length) {
+                    this.selected = ["All"];
+                } else if (this.selected?.length > 1) {
+                    this.selected = this.selected.filter(v => v !== "All");
+                }
+                this.update();
+                this.pushFilters();
+            });
+            this.pillContainer.appendChild(button);
+        });
+    }).bind(filters);
     // instance.add(designationFilters);
     instance.add(filters);
 
@@ -449,6 +519,7 @@ async function buildTextIndex(searchAction: (term: string, settings: object, pag
         }
 
         const results = await this.__pagefind__.search(term, { filters });
+        console.log(filters, results, 'withFilters');
         if (results && this.__searchID__ === thisSearch) {
           if (results.filters && Object.keys(results.filters)?.length) {
             this.availableFilters = results.filters;
@@ -551,9 +622,11 @@ function handleResults(fg: FeatureCollection, results): Promise<FeatureCollectio
                         const registries = JSON.parse(re.meta.registries);
                         text += `<p class='registry'>${registries.join(', ')}</p>`;
                     }
-                    text += `<p>${description}</p>`;
+                    text += `<p class='description'>${description}</p>`;
                     text += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`
                     text += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" target='_blank'>Open tab</a></li>`;
+                    const call = `map.flyTo({center: [${loc[0]}, ${loc[1]}], zoom: ${MIN_SEARCH_ZOOM + 1}})`;
+                    text += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
                     let marker = {
                         'type': 'Feature',
                         'geometry': {
@@ -606,10 +679,12 @@ async function searchAction(term: string, settings: SearchFilters, pagefind) {
   // if (!(settings && settings.filters && Object.keys(settings.filters).length) && term && term.length < MIN_SEARCH_LENGTH) {
   if (
       (!zoom || zoom < MIN_SEARCH_ZOOM) &&
-      (!term || term.length < MIN_SEARCH_LENGTH)
+      (!term || term.trim().length < MIN_SEARCH_LENGTH)
   ) {
+      setMapCover(true);
       return {results: []};
   }
+  setMapCover(false);
   if (!term) {
       term = null;
   }
@@ -690,7 +765,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         'features': []
     };
 
-    if (term && /^[_0-9a-z]*$/i.exec(term)) {
+    if (term && /^[_0-9a-z ."'-:]*$/i.exec(term)) {
         lastTerm = term;
     } else {
         term = null;
@@ -743,6 +818,4 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
     const modalElt = document.getElementById("map-dialog");
     modalElt.addEventListener("click", () => modalElt.close());
-    const modalInnerElt = document.getElementById("map-dialog__inner");
-    modalInnerElt.addEventListener("click", mapDialogClicked);
 });

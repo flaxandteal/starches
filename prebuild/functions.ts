@@ -22,16 +22,16 @@ Handlebars.registerHelper("clean", function (a) {
 });
 
 const registrySymbols: {[key: string]: string} = {
-    "Industrial Heritage Record": "⚙️",
-    "Sites and Monuments Record": "🪦",
-    "Historic Buildings Record": "🏠",
-    "Defence Heritage Record": "🛡️",
-    "Historic Parks, Gardens and  Demesnes": "🌳",
-    "Areas of Archaeological Potential": "🔎",
-    "Areas of Significant Archaeological Interest": "⛏️",
-    "Gazetteer of Historic Nucleated Urban Settlements": "🏘️",
-    "Heritage at Risk": "⚠️ ",
-    "Historic Wrecks": "🚢",
+    "Industrial Heritage Record": "(Industrial)",
+    "Sites and Monuments Record": "(Monument)",
+    "Historic Buildings Record": "(Building)",
+    "Defence Heritage Record": "(Defence)",
+    "Historic Parks, Gardens and  Demesnes": "(Garden)",
+    "Areas of Archaeological Potential": "(AAP)",
+    "Areas of Significant Archaeological Interest": "(ASAI)",
+    "Gazetteer of Historic Nucleated Urban Settlements": "(GHNUS)",
+    "Heritage at Risk": "(HAR) ",
+    "Historic Wrecks": "(Wreck)",
 };
 
 class AssetFunctions implements IAssetFunctions {
@@ -384,6 +384,36 @@ class AssetFunctions implements IAssetFunctions {
       } else {
         geometry = await staticAsset.location_data.geometry.geospatial_coordinates;
         location = geometry;
+        console.log(await staticAsset.designation_and_protection_assignment);
+        const assignments = await staticAsset.designation_and_protection_assignment;
+
+        if (assignments) {
+          for (const assignment of assignments) {
+            const extents = (
+              assignment &&
+              await assignment.extent_of_designation_or_protection
+            ) || [];
+            for (const extent of extents) {
+              const geospatial_extent = extent && await extent.geospatial_extent;
+              if (geospatial_extent) {
+                if (!geometry || !geometry["features"]) {
+                  geometry = {
+                    "features": []
+                  }
+                }
+                for (const feature of geospatial_extent['features']) {
+                  feature.properties = {};
+                  feature.properties['starches_type'] = 'extent_of_designation_or_protection';
+                  feature.properties['starches_description_of_extent'] = await extent.description_of_extent;
+                  feature.properties['starches_designation_type'] = (await assignment.designation_or_protection_type || '').toString();
+                  geometry["features"].push(feature);
+                  console.log(feature);
+                }
+              }
+            }
+          }
+        }
+
         if (location && location["features"]) {
           const polygon = location["features"][0]["geometry"]["coordinates"];
           if (Array.isArray(polygon[0])) {

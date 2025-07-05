@@ -599,15 +599,18 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     backUrl += `&geoBounds=${geoBounds}`;
   }
 
-  if (searchTerm && searchTerm != 'null' && /^[_0-9a-z ."'-]*$/i.exec(searchTerm)) {
+  if (searchTerm && searchTerm != 'null' && /^[_0-9a-z ."'-:]*$/i.exec(searchTerm)) {
     backUrl += `&searchTerm=${searchTerm}`;
   }
 
-  if (searchFilters && searchFilters != '{}' && /^[_0-9a-z ."'-]*$/i.exec(searchTerm)) {
+  if (searchFilters && searchFilters != '{}' && /^[_0-9a-z ."'-:]*$/i.exec(searchTerm)) {
     backUrl += `&searchFilters=${searchFilters}`;
   }
 
-  document.getElementById("back-link").href = backUrl;
+  document.querySelectorAll('a.back-link').forEach(elt => {
+    console.log("BACK LINK", backUrl);
+    elt.href = backUrl;
+  });
   // const archesRoot = document.getElementById("arches-link").getAttribute("data-arches-root");
   // document.getElementById("arches-link").href = `${archesRoot}report/${asset.meta.resourceinstanceid}`;
   document.getElementById("asset-title").innerText = `${asset.meta.title}`;

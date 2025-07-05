@@ -20,6 +20,13 @@ h1, h1.govuk-heading-xl {
     margin: 3rem 0 1.5rem;
     color: #19315a;
 }
+h3, h3.govuk-heading-l {
+    font-weight: normal;
+    font-size: 1.6rem;
+    line-height: 2.5rem;
+    margin: 2rem 0 1.2rem;
+    color: #19315a;
+}
 h2.govuk-heading-l {
     font-weight: normal;
     font-size: 1.7rem;
@@ -32,7 +39,11 @@ h3.govuk-heading-m {
     line-height: 1.5rem;
     margin: 1.5rem 0 0.8rem;
 }
-.page-summary p.govuk-body {
+.govuk-hint p.govuk-body {
+    font-size: 1.2rem;
+    color: #444;
+}
+p.govuk-body {
     font-size: 1.4rem;
     line-height: 2.2rem;
     margin: 0 0 2rem;
@@ -64,9 +75,6 @@ body {
     max-height: 86px;
 }
 @media screen and (max-width: 1024px) {
-    html {
-        font-size: 70%;
-    }
     #mobile-nav-control.govuk-button {
         display: none !important; /* TODO: once there are entries, reopen this */
     }
@@ -125,12 +133,37 @@ div.govuk-header__container {
     display: none
 }
 #filter-warning {
-    font-size: 90%;
+    font-size: 120%;
     padding: 10px;
     margin: 10px;
     background-color: #fee;
     color: #444;
     border-radius: 8px;
+}
+#map-instructions {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translateY(-40%);
+    transform: translateX(-50%);
+    display: block;
+    text-align: center;
+    margin: 0 0 0 0;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    max-width: 50%;
+    color: white;
+    font-size: 2rem;
+}
+#map-cover {
+    height: 100%;
+    width: 100%;
+    background-color: rgba(0.3, 0.3, 0.3, 0.3);
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+    left: 0;
+    top: 0;
 }
 #filter-warning a {
     color: #000;
@@ -165,14 +198,17 @@ div.govuk-header__container {
     width: 100%;
     text-align: left;
 }
-#map-column {
-    display: flex;
-    flex-direction: column;
-    flex-basis: 100%;
+#map-container {
+    position: relative;
     background-color: rgba(240, 240, 240, 1.0);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='rgba(220, 220, 220, 1.0)' viewBox='0 0 16 16'%3E%3Cpath d='M8 13.1l-8-8 2.1-2.2 5.9 5.9 5.9-5.9 2.1 2.2z'/%3E%3C/svg%3E");
     background-size: 30vw;
     background-position: 8vw 0;
+}
+#map-column {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
 }
 #map {
     height: 70vh;
@@ -273,6 +309,7 @@ p.acknowledgement {
 }
 dialog#map-dialog {
   width: 100vw;
+  height: 100vh;
   border: 0.3rem solid rgba(255, 255, 255, 1);
   border-top: 0.3rem solid rgba(0, 32, 92, 1.0);
   position: fixed;
@@ -282,8 +319,11 @@ dialog#map-dialog {
   right: 0;
 }
 dialog#map-dialog.peeking {
-  top: calc(100vh - 10rem);
+  top: calc(100vh - 30rem);
   bottom: auto;
+}
+dialog#map-dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.8);
 }
 #map-dialog__inner {
   padding: 0;

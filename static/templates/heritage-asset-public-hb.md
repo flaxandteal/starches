@@ -26,6 +26,12 @@
 {{/each}}
 {{/if}}
 
+{{#if ha.historical_period_type }}
+{{#each ha.historical_period_type }}
+[Period](@historical_period_type): {{{ . }}}
+{{/each}}
+{{/if}}
+
 ## Reference Numbers
 
 {{#if ha.heritage_asset_references.hb_number }}
@@ -127,12 +133,6 @@
 
 ## Dates
 
-{{#if ha.historical_period_type }}
-{{#each ha.historical_period_type }}
-[Period](@historical_period_type): {{{ . }}}
-{{/each}}
-{{/if}}
-
 {{#each ha.construction_phases }}
 {{#if construction_phase_timespan.construction_phase_display_date }}
 [Construction](@construction_phase_display_date): {{ construction_phase_timespan.construction_phase_display_date }}
@@ -183,8 +183,15 @@
 {{#if designation_and_protection_timespan.designation_end_date }}
 | [End Date](@designation_end_date) | {{{ designation_and_protection_timespan.designation_end_date }}} |
 {{/if}}
-{{#if extent_of_designation_or_protection.description_of_extent }}
-| [Extent](@description_of_extent) | {{ extent_of_designation_or_protection.description_of_extent }} |
+{{#if extent_of_designation_or_protection }}
+{{#each extent_of_designation_or_protection }}
+{{#if description_of_extent }}
+| [Description of Extent](@description_of_extent) | {{{ nl description_of_extent "<br/>" }}} |
+{{/if}}
+{{#if geospatial_extent }}
+| [Geospatial Extent](@geospatial_extent) | (see map) |
+{{/if}}
+{{/each}}
 {{/if}}
 
 {{/each}}

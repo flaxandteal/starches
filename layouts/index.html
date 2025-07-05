@@ -18,17 +18,27 @@
     <h1 class="govuk-heading-xl">Historic environment</h1>
 
     <div class="page-summary" role="presentation">
-        <p>Search for heritage assets by typing more than 3 characters in the search box below and by using the map. Search will happen automatically, without pressing enter.</p>
+        <p>Search for heritage assets by typing 4 or more characters in the search box below and by using the map. Search will happen automatically, without pressing enter.</p>
+        <p>If you have GPS, you can use the &target; button on the map to show nearby assets. <a href="./faq">More information</a> is available.</p>
     </div>
 
     <!-- <h3><a href="{{ site.Params.archesurl }}/search" data-arches-root="{{ site.Params.archesurl }}" class="govuk-back-link" id="arches-link">Advanced Search</a></h3> -->
 
     <p><a href="#search" id="jump-to-search">Jump to search</a></p>
 
-    <div>Records:
-        <div id="filter">
-            Filter
+    <div class="govuk-form-group">
+      <fieldset class="govuk-fieldset" aria-describedby="chosenRecord-hint">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+          <h3 class="govuk-fieldset__heading govuk-heading-l">
+            Which collection of records would you like to search?
+          </h3>
+        </legend>
+        <div class="govuk-hint">
+            <p>These are types of records that the department holds.</p>
         </div>
+        <div id="filter"></div>
+      </fieldset>
+    </div>
     </div>
 
     <!-- div>Designations:
@@ -40,8 +50,8 @@
     <div id="map-row">
         <div id="search-column">
             <div id="search"></div>
-            <div id="result-count" class="result-count"></div>
             <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
+            <div id="result-count" class="result-count"></div>
             <div id="instructions">
                 <p>Search above to find assets.</p>
 
@@ -52,7 +62,16 @@
         </div>
 
         <div id="map-column">
-            <div id="map"></div>
+            <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
+            <div id="map-container">
+                <div id="map-cover">
+                    <div id="map-instructions">
+                        Search by typing 4+ characters into the <strong>searchbox</strong> or
+                        <strong>zooming</strong> in to a small area - pinch the map or tap a grey dot to zoom.
+                    </div>
+                </div>
+                <div id="map"></div>
+            </div>
         </div>
     </div>
 
