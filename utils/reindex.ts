@@ -12,15 +12,20 @@ import { assetFunctions } from '../prebuild/functions.ts';
 import { type FeatureCollection, type Feature } from 'geojson';
 import { serialize as fgbSerialize } from 'flatgeobuf/lib/mjs/geojson.js';
 import { groupByCounty } from './counties.ts';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replace(fm, to) : "");
 Handlebars.registerHelper("await", (val) => val);
 Handlebars.registerHelper("default", function (a, b) {return a === undefined || a === null ? b : a;});
 
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const FOR_ARCHES = process.argv.includes('--for-arches');
 const PUBLIC_FOLDER = FOR_ARCHES ? 'export' : 'docs';
 const DEFAULT_LANGUAGE = 'en';
 const CHUNK_SIZE_CHARS = 10000000;
+const STARCHES_UTILS_BIN = `${SCRIPT_DIR}/../starches-rs`;
+console.log(STARCHES_UTILS_BIN );
 
 const REGISTRIES: string[] = [];
 
@@ -178,7 +183,7 @@ function buildFlatbush(locpairs: [IndexEntry, Feature][]) {
         `${PUBLIC_FOLDER}/fgb/nihed-assets-wo-index.fgb`,
         fgbSerialize(geoJsonAll)
     );
-    const starches_utils = spawn('../../starches-rs', [
+    const starches_utils = spawn(STARCHES_UTILS_BIN, [
         './nihed-assets-wo-index.fgb',
         './nihed-assets.fgb'
     ], {
