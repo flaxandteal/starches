@@ -3,6 +3,11 @@
         font-size: 70%;
     }
 }
+
+.asset-breadcrumbs {
+  float: right;
+}
+
 #map {
   height: 40vh
 }

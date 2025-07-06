@@ -5,7 +5,7 @@ import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, Navigat
 import * as Handlebars from 'handlebars';
 import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, utils, viewModels, renderers } from 'alizarin';
 import { addMarkerImage } from './map-tools';
-import { getNavigation, hasSearchContext, getAssetUrlWithContext, getSearchBreadcrumbs } from './searchContext';
+import { getSearchUrlWithContext, getNavigation, hasSearchContext, getAssetUrlWithContext, getSearchBreadcrumbs } from './searchContext';
 import { updateBreadcrumbs } from './searchBreadcrumbs';
 import { debug, debugError } from './debug';
 
@@ -589,25 +589,11 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     }
   }
 
-  const urlSearchParams = new URLSearchParams(window.location.search);
-  debug("URL Search Params", urlSearchParams);
-  const geoBounds = urlSearchParams.get("geoBounds");
-  const searchTerm = urlSearchParams.get("searchTerm");
-  const searchFilters = urlSearchParams.get("searchFilters");
-  let backUrl = "/?";
+  const backUrl = getSearchUrlWithContext();
 
-  if (geoBounds && /^[-,\[\]_0-9a-f.]*$/i.exec(geoBounds)) {
-    backUrl += `&geoBounds=${geoBounds}`;
-  }
-
-  if (searchTerm && searchTerm != 'null' && /^[_0-9a-z ."'-:]*$/i.exec(searchTerm)) {
-    backUrl += `&searchTerm=${searchTerm}`;
-  }
-
-  if (searchFilters && searchFilters != '{}' && /^[_0-9a-z ."'-:]*$/i.exec(searchTerm)) {
-    backUrl += `&searchFilters=${searchFilters}`;
-  }
-
+  document.querySelectorAll('a.back-link').forEach(elt => {
+    elt.href = backUrl;
+  });
   // const archesRoot = document.getElementById("arches-link").getAttribute("data-arches-root");
   // document.getElementById("arches-link").href = `${archesRoot}report/${asset.meta.resourceinstanceid}`;
   document.getElementById("asset-title").innerText = `${asset.meta.title}`;

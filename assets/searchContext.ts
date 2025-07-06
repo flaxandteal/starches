@@ -14,6 +14,8 @@ export interface SearchParams {
   searchFilters?: string;
 }
 
+let urlSearchParams: SearchParams | undefined;
+
 export interface SearchContext {
   /** Array of asset IDs from search results */
   resultIds: string[];
@@ -34,30 +36,83 @@ const emptyContext: SearchContext = {
  * Load search context from localStorage
  */
 function loadContextFromStorage(): SearchContext {
+  let context;
   try {
     const storedContext = localStorage.getItem(STORAGE_KEY);
     if (storedContext) {
-      const parsed = JSON.parse(storedContext);
-      debug('Loaded search context from storage:', parsed);
-      return parsed;
+      context = JSON.parse(storedContext);
+      debug('Loaded search context from storage:', context);
+    } else {
+      debug('No search context found in storage, using empty context');
     }
   } catch (error) {
-    debugError('Error loading search context from localStorage:', error);
+    debug('Error loading search context from localStorage:', error);
   }
   
-  debug('No search context found in storage, using empty context');
-  return { ...emptyContext };
+  let [searchParams, changed] = updateParamsFromURL(context && context.searchParams);
+  if (changed || !context) {
+    context = { ...emptyContext };
+    context.searchParams = searchParams;
+  }
+  return context || { ...emptyContext };
+}
+
+/**
+ * Update search context from URL parameters
+ */
+function updateParamsFromURL(searchParams?: SearchParams): [SearchParams, boolean] {
+  let changed = false;
+
+  // This prevents later URL updates overwriting the original search params
+  urlSearchParams = urlSearchParams || new URLSearchParams(window.location.search);
+  const urlFilters = urlSearchParams.get('searchFilters');
+  const urlBounds = urlSearchParams.get('geoBounds');
+  const urlTerm = urlSearchParams.get('searchTerm');
+
+  // If there are no URL parameters set, then there is no comparison needed.
+  if (!(urlFilters || urlTerm || urlBounds)) {
+    return [searchParams || {}, false];
+  }
+
+  searchParams = searchParams || {};
+
+  if (urlTerm && urlTerm != 'null' && /^[_0-9a-z ."'-:{}@]*$/i.exec(urlTerm)) {
+    changed ||= (searchParams.searchTerm !== urlTerm);
+    searchParams.searchTerm = urlTerm;
+  } else {
+    searchParams.searchTerm = undefined;
+  }
+  
+  if (urlFilters && urlFilters !== '{}' && /^[_0-9a-z ."'-:{}@]*$/i.exec(urlFilters)) {
+    changed ||= (searchParams.searchFilters !== urlFilters);
+    searchParams.searchFilters = urlFilters;
+  } else {
+    searchParams.searchFilters = undefined;
+  }
+  
+  if (urlBounds && /^[-,\[\]_0-9a-f.{}@]*$/i.exec(urlBounds)) {
+    changed ||= (searchParams.geoBounds !== urlBounds);
+    searchParams.geoBounds = urlBounds;
+  } else {
+    searchParams.geoBounds = undefined;
+  }
+  console.log('sp', searchParams, changed);
+
+  return [searchParams, changed];
 }
 
 /**
  * Save context to localStorage
  */
 function saveContextToStorage(context: SearchContext): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(context));
-  } catch (error) {
-    debugError('Error saving search context to localStorage:', error);
-  }
+  /* TODO: for now, disable this as we need to make it opt-in */
+  return;
+
+  // try {
+  //   localStorage.setItem(STORAGE_KEY, JSON.stringify(context));
+  // } catch (error) {
+  //   debugError('Error saving search context to localStorage:', error);
+  // }
 }
 
 /**
@@ -66,33 +121,36 @@ function saveContextToStorage(context: SearchContext): void {
  * @param params Search parameters used to obtain results
  */
 export function saveSearchResults(ids: string[], params: SearchParams): void {
-  debug('Saving search results to context:', { 
-    count: ids.length, 
-    ids, 
-    params 
-  });
-  
-  const context: SearchContext = {
-    resultIds: ids,
-    searchParams: { ...params },
-    timestamp: Date.now()
-  };
-  
-  saveContextToStorage(context);
-  
-  // Verify storage immediately
-  try {
-    const storedContext = localStorage.getItem(STORAGE_KEY);
-    if (storedContext) {
-      const parsed = JSON.parse(storedContext);
-      debug('Verified stored context:', { 
-        count: parsed.resultIds.length,
-        storedTimestamp: parsed.timestamp
-      });
-    }
-  } catch (error) {
-    debugError('Error verifying stored context:', error);
-  }
+  /* TODO: for now, disable this as we need to make it opt-in */
+  return;
+
+  // debug('Saving search results to context:', { 
+  //   count: ids.length, 
+  //   ids, 
+  //   params 
+  // });
+  // 
+  // const context: SearchContext = {
+  //   resultIds: ids,
+  //   searchParams: { ...params },
+  //   timestamp: Date.now()
+  // };
+  // 
+  // saveContextToStorage(context);
+  // 
+  // // Verify storage immediately
+  // try {
+  //   const storedContext = localStorage.getItem(STORAGE_KEY);
+  //   if (storedContext) {
+  //     const parsed = JSON.parse(storedContext);
+  //     debug('Verified stored context:', { 
+  //       count: parsed.resultIds.length,
+  //       storedTimestamp: parsed.timestamp
+  //     });
+  //   }
+  // } catch (error) {
+  //   debugError('Error verifying stored context:', error);
+  // }
 }
 
 /**
@@ -178,6 +236,28 @@ export function clearSearchContext(): void {
 }
 
 /**
+ * Get URL for repeating a search with preserved search context
+ */
+export function getSearchUrlWithContext(assetId: string): string {
+  const { searchParams } = loadContextFromStorage();
+  const params = new URLSearchParams();
+  
+  if (searchParams.searchTerm) {
+    params.set('searchTerm', searchParams.searchTerm);
+  }
+  
+  if (searchParams.geoBounds) {
+    params.set('geoBounds', searchParams.geoBounds);
+  }
+  
+  if (searchParams.searchFilters) {
+    params.set('searchFilters', searchParams.searchFilters);
+  }
+  
+  return `/?${params.toString()}`;
+}
+
+/**
  * Get URL for navigating to asset with preserved search context
  */
 export function getAssetUrlWithContext(assetId: string): string {
@@ -187,15 +267,15 @@ export function getAssetUrlWithContext(assetId: string): string {
   params.set('slug', assetId);
   
   if (searchParams.searchTerm) {
-    params.set('q', searchParams.searchTerm);
+    params.set('searchTerm', searchParams.searchTerm);
   }
   
   if (searchParams.geoBounds) {
-    params.set('bounds', searchParams.geoBounds);
+    params.set('geoBounds', searchParams.geoBounds);
   }
   
   if (searchParams.searchFilters) {
-    params.set('filters', searchParams.searchFilters);
+    params.set('searchFilters', searchParams.searchFilters);
   }
   
   return `/asset?${params.toString()}`;
@@ -217,7 +297,7 @@ export function getSearchBreadcrumbs(): {
     result.searchTerm = searchParams.searchTerm;
   }
   
-  if (searchParams.searchFilters && searchParams.searchFilters !== '{}') {
+  if (searchParams.searchFilters) {
     try {
       const parsedFilters = JSON.parse(searchParams.searchFilters);
       if (parsedFilters.tags && Array.isArray(parsedFilters.tags)) {
