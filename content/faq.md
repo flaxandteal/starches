@@ -16,6 +16,24 @@ To make public historic environment information quick and easy to
 access on a range of devices for a range of stakeholders, as a gateway
 to more powerful research tools.
 
+## What are the different dots on the map?
+
+When zoomed close in, blue map markers point to any search results.
+
+When zoomed out, large, red circles indicate search matches instead. When you have
+a selected record type (e.g. Historic Buildings), the small, grey circles represent the
+entries that do not match your search, to help contextualize.
+
+While the blue markers are preferred by most casual map users and clearly indicate a
+precise location, they are confusing and slow to load when large numbers of them appear at once.
+When zoomed out, the map may show hundreds of visible search matches, so the red dots are required for performance and
+clarity, even though they are too large to show an exact location. Clicking a red or grey dot will
+cause the map to zoom close in to that location, and blue markers will replace the red dots (if there are matches near the click).
+The meaning of markers and red dots is the same: there is a match at that location.
+
+For ease of understanding, this tool does not show different types of markers for different
+types of assets or entries.
+
 ## What data does this contain?
 
 This viewer contains a slice of [HERoNI](https://www.communities-ni.gov.uk/topics/historic-environment-record-northern-ireland-heroni) data. Much more is available to discover. For a more powerful GIS-driven exploration tool, try the [Historic Environment Map Viewer](https://www.communities-ni.gov.uk/services/historic-environment-map-viewer).

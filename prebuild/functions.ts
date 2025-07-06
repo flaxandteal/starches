@@ -13,7 +13,6 @@ Handlebars.registerHelper("in", function (a, b) { return Array.isArray(b) ? b.in
 Handlebars.registerHelper("toString", function (a) { return a.toString();});
 Handlebars.registerHelper("array", function (...args) { return args;});
 Handlebars.registerHelper("clean", function (a) {
-  console.log(a, a instanceof renderers.Cleanable)
   if (a instanceof renderers.Cleanable) {
     return a.__clean;
   }
@@ -124,7 +123,6 @@ class AssetFunctions implements IAssetFunctions {
     const resourceFile = JSON.parse((await fs.promises.readFile(filename, { encoding: "utf8" })).toString())
     const resourceList: staticTypes.StaticResource[] = resourceFile.business_data.resources;
     const graphs = resourceList.reduce((set: Set<string>, resource: staticTypes.StaticResource) => { set.add(resource.resourceinstance.graph_id); return set; }, new Set());
-    console.log(graphs);
     const resources = [];
     const models: {[graphId: string]: any} = {};
     for (const modelToLoad of graphs) {
@@ -147,7 +145,6 @@ class AssetFunctions implements IAssetFunctions {
       if (includePrivate) {
         console.warn("Still publishing ALL nodegroups for", modelToLoad);
       } else {
-        console.log(modelToLoad);
         if (modelClassName in permissions && permissions[modelClassName] !== false) {
           if (permissions[modelClassName] !== true) {
             if (modelClassName in this.permissionCollectionNodes) {
@@ -384,7 +381,6 @@ class AssetFunctions implements IAssetFunctions {
       } else {
         geometry = await staticAsset.location_data.geometry.geospatial_coordinates;
         location = geometry;
-        console.log(await staticAsset.designation_and_protection_assignment);
         const assignments = await staticAsset.designation_and_protection_assignment;
 
         if (assignments) {
@@ -407,7 +403,6 @@ class AssetFunctions implements IAssetFunctions {
                   feature.properties['starches_description_of_extent'] = await extent.description_of_extent;
                   feature.properties['starches_designation_type'] = (await assignment.designation_or_protection_type || '').toString();
                   geometry["features"].push(feature);
-                  console.log(feature);
                 }
               }
             }
