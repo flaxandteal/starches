@@ -781,6 +781,8 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         });
     }
 
+    const geoBounds = fb.bounds ? JSON.stringify(fb.bounds) : undefined;
+
     instance.on("results", results => handleResults(fg, results).then(async (fg) => {
         const m = await map;
         m.getSource('assets').setData(fg);
@@ -810,7 +812,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
           
           const searchContextParams: SearchParams = {
             searchTerm: lastTerm,
-            geoBounds: fb.bounds ? JSON.stringify(fb.bounds) : undefined,
+            geoBounds: geoBounds,
             searchFilters: lastFilters ? JSON.stringify(lastFilters) : undefined
           };
           
@@ -825,7 +827,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
           updateBreadcrumbs(
             lastTerm, 
             filterTags,
-            fb.bounds ? JSON.stringify(fb.bounds) : undefined
+            geoBounds
           );
         });
         
