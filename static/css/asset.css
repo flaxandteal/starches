@@ -4,8 +4,13 @@
     }
 }
 
+.navigation-container {
+  display: flex;
+  column-gap: 5rem;
+}
+
 .asset-breadcrumbs {
-  float: right;
+  text-align: right;
 }
 
 #map {
@@ -26,7 +31,6 @@
 }
 
 .nav-back {
-  flex: 1;
 }
 
 .nav-position {

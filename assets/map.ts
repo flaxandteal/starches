@@ -869,4 +869,6 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
     const modalElt = document.getElementById("map-dialog");
     modalElt.addEventListener("click", () => modalElt.close());
+    const modalInnerElt = document.getElementById("map-dialog__inner");
+    modalInnerElt.addEventListener("click", mapDialogClicked);
 });

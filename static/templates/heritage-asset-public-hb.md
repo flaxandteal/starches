@@ -88,11 +88,25 @@
 
 {{/if}}
 
+{{#with ha.location_data }}
+
 ## Location
+
+{{#if (and location_descriptions location_descriptions.length) }}
+
+### [Location Descriptions](@location_descriptions)
+
+{{#each location_descriptions}}
+#### {{{ defaulty location_description_type "**Location Description**" }}}
+
+> {{{ nl location_description "<br/>" }}}
+
+{{/each}}
+{{/if}}
 
 ### Addresses
 
-{{#each ha.location_data.addresses }}
+{{#each addresses }}
 | Address |       |
 | --- | ----- |
 {{#if building_name.building_name_value }}
@@ -120,16 +134,18 @@
 
 | Area | Name |
 | ---- | ---- |
-{{#each ha.location_data.localities_administrative_areas }}
+{{#each localities_administrative_areas }}
 | [{{{ clean area_type }}}](@localities_administrative_areas) | {{{ area_names.area_name }}} |
 {{/each}}
-| [Council](@council) | {{{ defaulty ha.location_data.council "(none)" }}} |
+| [Council](@council) | {{{ defaulty council "(none)" }}} |
 
-[OS Map No.](@current_base_map_name): {{ defaulty ha.location_data.geometry.current_base_map.current_base_map_names.current_base_map_name "(none)"}}
+[OS Map No.](@current_base_map_name): {{ defaulty geometry.current_base_map.current_base_map_names.current_base_map_name "(none)"}}
 
-[Geometric Properties](@spatial_metadata_notes): {{ defaulty ha.location_data.geometry.spatial_metadata_descriptions.spatial_metadata_notes "(none)"}}
+[Geometric Properties](@spatial_metadata_notes): {{ defaulty geometry.spatial_metadata_descriptions.spatial_metadata_notes "(none)"}}
 
-[Grid Reference](@irish_grid_reference_tm65_): {{ defaulty ha.location_data.national_grid_references.irish_grid_reference_tm65_ "(none)"}}
+[Grid Reference](@irish_grid_reference_tm65_): {{ defaulty national_grid_references.irish_grid_reference_tm65_ "(none)"}}
+
+{{/with}}
 
 ## Dates
 

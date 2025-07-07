@@ -57,3 +57,5 @@ A number of tools from the [Arches Project](https://www.archesproject.org/) ecos
 If you are interested in contributing as a volunteer to the underlying data and work of the Historic Environment Division, you can find more information on the [HERoNI](https://www.communities-ni.gov.uk/topics/historic-environment-record-northern-ireland-heroni) site.
 
 If you are a technologist who is interested in collaborating or contributing to the underlying code, please take a look at the projects listed above. We are fortunate to have already had public contributions and are excited to build links with others interested in cultural heritage web services! As with all open source contribution, to ensure your work is ultimately mergeable, please do take note of license requirements in advance and reach out before spending significant time on pull requests to ensure they are aligned with the style, standards and direction of the project.
+
+To start with, opening an asset's detail page and running `(await window.alizarinAsset.asset.forJson(true)).root` in your Dev Tools console might give some ideas!

@@ -83,7 +83,7 @@ function updateParamsFromURL(searchParams?: SearchParams): [SearchParams, boolea
     searchParams.searchTerm = undefined;
   }
   
-  if (urlFilters && urlFilters !== '{}' && /^[_0-9a-z ."'-:{}@]*$/i.exec(urlFilters)) {
+  if (urlFilters && urlFilters !== '{}' && /^[_0-9a-z ."'-:{}@\[\]]*$/i.exec(urlFilters)) {
     changed ||= (searchParams.searchFilters !== urlFilters);
     searchParams.searchFilters = urlFilters;
   } else {
@@ -96,7 +96,7 @@ function updateParamsFromURL(searchParams?: SearchParams): [SearchParams, boolea
   } else {
     searchParams.geoBounds = undefined;
   }
-  console.log('sp', searchParams, changed);
+  console.log('sp', searchParams, urlSearchParams, changed, urlTerm, urlFilters, urlBounds);
 
   return [searchParams, changed];
 }

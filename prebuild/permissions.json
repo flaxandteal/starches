@@ -24,6 +24,7 @@
         "images": true,
         "localities_administrative_areas": true,
         "location_data": true,
+        "location_descriptions": true,
         "monument_names": true,
         "monument_type_n1": true,
         "national_grid_references": true,
@@ -55,6 +56,7 @@
         "images": true,
         "localities_administrative_areas": true,
         "location_data": true,
+        "location_descriptions": true,
         "monument_names": true,
         "monument_type_n1": true,
         "national_grid_references": true,
@@ -75,6 +77,7 @@
         "current_base_map": true,
         "record_and_registry_membership": true,
         "location_data": true,
+        "location_descriptions": true,
         "spatial_metadata_descriptions": true,
         "geometry": true
     },
