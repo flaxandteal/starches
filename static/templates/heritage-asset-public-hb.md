@@ -221,6 +221,8 @@ _NB: some physical assets have overlapping entries across multiple records, whic
 
 ## Images
 
+**The Crown Copyright images below are not necessarily covered by the Open Government Licence, and individual confirmation must be sought before reuse, unless stated otherwise within the file.**
+
 | &nbsp; | Image | &nbsp; |
 | - | ----- | - |
 {{#each images }}
@@ -232,6 +234,8 @@ _NB: some physical assets have overlapping entries across multiple records, whic
 {{#if files }}
 
 ## Files
+
+**The Crown Copyright files below are not necessarily covered by the Open Government Licence, and individual confirmation must be sought before reuse, unless stated otherwise within the file.**
 
 | &nbsp; | Name | File
 | ----- | - | - |
