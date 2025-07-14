@@ -19,7 +19,7 @@ const MAX_MAP_POINTS = 300;
 const MIN_SEARCH_LENGTH = 4;
 const MIN_SEARCH_ZOOM = 13;
 const TIME_TO_SHOW_LOADING_MS = 50;
-let doSearch = (geoOnly?: boolean, withFilters?: [{[key: string]: string}][]) => (debugError("Not yet loaded", geoOnly));
+let doSearch = (withFilters?: [{[key: string]: string}][]) => (debugError("Not yet loaded"));
 
 // @ts-expect-error No resetView on window
 window.resetView = () => {};
@@ -391,7 +391,7 @@ async function buildMap(fb: FlatbushWrapper, fg: FeatureCollection, hashToDoc: F
                 const ne = bounds.getNorthEast();
                 fb.filter([sw.lng, sw.lat, ne.lng, ne.lat]);
             }
-            doSearch(true);
+            doSearch();
             map.targeting = false;
         };
         map.on('dragend', moveEnd);
@@ -555,7 +555,7 @@ async function buildTextIndex(searchAction: (term: string, settings: object, pag
         return el;
     };
     instance.add(resultList);
-    doSearch = function (geoOnly: boolean=true, withFilters?: [{[key: string]: string}][], term?: string) {
+    doSearch = function (withFilters?: [{[key: string]: string}][], term?: string) {
         if (withFilters) {
             instance.searchFilters = withFilters;
         }
@@ -783,56 +783,60 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
     const geoBounds = fb.bounds ? JSON.stringify(fb.bounds) : undefined;
 
-    instance.on("results", results => handleResults(fg, results).then(async (fg) => {
-        const m = await map;
-        m.getSource('assets').setData(fg);
-        
-        // Save search results to context for prev/next navigation
-        debug("Raw search results:", results.results);
-        
-        // Extract slugs from results - we need to collect these before saving to context
-        const collectSlugs = async () => {
-          const slugs = [];
-          for (const result of results.results) {
-            try {
-              const data = await result.data();
-              debug("Result data for ID", result.id, "has slug:", data.meta.slug);
-              if (data.meta.slug) {
-                slugs.push(data.meta.slug);
+    instance.on("results", async (results) => {
+        await map;
+        console.log("Results and map ready");
+        return handleResults(fg, results).then(async (fg) => {
+            const m = await map;
+            m.getSource('assets').setData(fg);
+            
+            // Save search results to context for prev/next navigation
+            debug("Raw search results:", results.results);
+            
+            // Extract slugs from results - we need to collect these before saving to context
+            const collectSlugs = async () => {
+              const slugs = [];
+              for (const result of results.results) {
+                try {
+                  const data = await result.data();
+                  debug("Result data for ID", result.id, "has slug:", data.meta.slug);
+                  if (data.meta.slug) {
+                    slugs.push(data.meta.slug);
+                  }
+                } catch (e) {
+                  debugError("Error getting result data:", e);
+                }
               }
-            } catch (e) {
-              debugError("Error getting result data:", e);
-            }
-          }
-          return slugs;
-        };
-        
-        collectSlugs().then(slugs => {
-          debug("Extracted slugs for navigation:", slugs);
-          
-          const searchContextParams: SearchParams = {
-            searchTerm: lastTerm,
-            geoBounds: geoBounds,
-            searchFilters: lastFilters ? JSON.stringify(lastFilters) : undefined
-          };
-          
-          saveSearchResults(slugs, searchContextParams);
-          debug("Saved search context with " + slugs.length + " slugs", slugs);
-          
-          // Update breadcrumbs
-          let filterTags = [];
-          if (lastFilters && lastFilters.tags) {
-            filterTags = lastFilters.tags;
-          }
-          updateBreadcrumbs(
-            lastTerm, 
-            filterTags,
-            geoBounds
-          );
-        });
-        
-        history.pushState({searchTerm: lastTerm, searchFilters: lastFilters, geoBounds: fb.bounds}, "", makeSearchQuery("/?"));
-    }));
+              return slugs;
+            };
+            
+            collectSlugs().then(slugs => {
+              debug("Extracted slugs for navigation:", slugs);
+              
+              const searchContextParams: SearchParams = {
+                searchTerm: lastTerm,
+                geoBounds: geoBounds,
+                searchFilters: lastFilters ? JSON.stringify(lastFilters) : undefined
+              };
+              
+              saveSearchResults(slugs, searchContextParams);
+              debug("Saved search context with " + slugs.length + " slugs", slugs);
+              
+              // Update breadcrumbs
+              let filterTags = [];
+              if (lastFilters && lastFilters.tags) {
+                filterTags = lastFilters.tags;
+              }
+              updateBreadcrumbs(
+                lastTerm, 
+                filterTags,
+                geoBounds
+              );
+            });
+            
+            history.pushState({searchTerm: lastTerm, searchFilters: lastFilters, geoBounds: fb.bounds}, "", makeSearchQuery("/?"));
+        })
+    });
 
     if (term) {
         const input = document.getElementById("pfmod-input-0");
@@ -852,7 +856,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
     );
 
     if (term || searchFilters) {
-        doSearch(false);
+        doSearch();
     }
 
     var target = document.querySelector('div#results')
