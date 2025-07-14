@@ -1,10 +1,15 @@
 import * as fs from "fs";
+import { JSDOM } from 'jsdom';
+import DOMPurify from 'dompurify';
 import Handlebars from 'handlebars'
 import { Marked } from 'marked'
 import markedPlaintify from 'marked-plaintify'
 import { Asset, ModelEntry, type IAssetFunctions } from '../utils/types.ts';
 import { slugify } from '../utils/utils.ts';
 import { RDM, GraphManager, staticTypes, interfaces, nodeConfig, staticStore, renderers } from 'alizarin';
+
+const window = new JSDOM('').window;
+const purify = DOMPurify(window);
 
 Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replace(fm, to) : "");
 Handlebars.registerHelper("await", (val) => val);
@@ -487,7 +492,7 @@ class AssetFunctions implements IAssetFunctions {
     });
     const plaintext = await new Marked({ gfm: true })
       .use(markedPlaintify())
-      .parse(md);
+      .parse(purify.sanitize(md, { USE_PROFILES: {html: false} }));
     const [indexOnly, description] = plaintext.split('$$$');
     if (description) {
       meta.content = indexOnly.substring(0, 300) + ' $$$ ' + description.substring(0, 300);
