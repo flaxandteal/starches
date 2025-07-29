@@ -89,7 +89,7 @@ class AssetFunctions implements IAssetFunctions {
       if (allowedRoles.filter(role => !role).length > 0) {
         throw Error(`Could not load roles for public check on Heritage Asset actors.`);
       }
-      if (allowedRoles.filter(role => (tile.data.get(node.nodeid) || []).includes(role.conceptid))) {
+      if (allowedRoles.filter(role => (tile.data.get(node.nodeid) || []).includes(role.conceptid)).length) {
         return true;
       }
       return false;
