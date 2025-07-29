@@ -507,10 +507,6 @@ async function buildTextIndex(searchAction: (term: string, settings: object, pag
         await this.__load__();
         const thisSearch = ++this.__searchID__;
 
-        if ((!filters || !Object.keys(filters).length) && (!term || !term.length)) {
-          return this.__clear__();
-        }
-
         const results = await this.__pagefind__.search(term, { filters });
         if (results && this.__searchID__ === thisSearch) {
           if (results.filters && Object.keys(results.filters)?.length) {
