@@ -28,7 +28,7 @@ Based on feedback from users of existing public cultural heritage tools managed 
 
 ### Feedback
 
-For the purposes of providing feedback to the Department of Communities and to the external development team, [Flax &amp; Teal Limited](flaxandteal.co.uk), the
+For the purposes of providing feedback to the Department of Communities and to the external development team, [Flax &amp; Teal Limited](https://flaxandteal.co.uk/), the
 below form uses Google Forms. **Please note that this a third-party forms service and sets [third-party cookies](/cookies/) to allow
 submission and storage of feedback.**
 
