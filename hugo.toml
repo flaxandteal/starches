@@ -1,6 +1,6 @@
 baseURL = "/"
 languageCode = "en-gb"
-title = "StArches"
+title = "Starches"
 theme = "govukhugo"
 publishDir = "docs"
 canonifyurls = true
