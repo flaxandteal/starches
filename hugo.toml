@@ -11,7 +11,7 @@ unsafe = true
 [params]
 govuk = false
 logotext = "ABC"
-product = "NI HED Public Asset Quickview"
+product = "Starches Quickview"
 phase = "alpha"
 feedbackurl = "/feedback/"
 archesurl = "http://localhost:8000/"
