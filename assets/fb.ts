@@ -12,18 +12,26 @@ class FlatbushWrapper {
     bounds: null | [number, number, number, number] = null;
     totalFeatures?: number;
 
-    async initialize(arrayBufferLocation: string, bounds: null | [number, number, number, number] = null) {
-        const flatbushBin = await fetch(arrayBufferLocation)
-        const arrayBuffer = await flatbushBin.arrayBuffer()
-        this.index = Flatbush.from(arrayBuffer);
+    async initialize(arrayBufferLocation: string, bounds: null | [number, number, number, number] = null): Promise<boolean> {
+        let flatbushJson;
+        try {
+            const flatbushBin = await fetch(arrayBufferLocation)
+            const arrayBuffer = await flatbushBin.arrayBuffer()
+            this.index = Flatbush.from(arrayBuffer);
 
-        const flatbushJson = await fetch('/flatbush.json');
+            flatbushJson = await fetch('/flatbush.json');
+        } catch (e) {
+            console.warn(`Could not load Flatbush: ${e}`);
+            return false;
+        }
         this.locs = await flatbushJson.json();
         if (bounds) {
             this.filter(bounds);
         } else {
             this.setFiltered(null);
         }
+
+        return true;
     }
 
     handleHeader(headerMeta) {

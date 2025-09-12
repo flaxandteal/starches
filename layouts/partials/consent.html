@@ -22,12 +22,12 @@
       .govuk-cookie-banner button.btn {position: relative; bottom: 4px;}
   }
 </style>
-<div class="govuk-cookie-banner" data-nosnippet role="region" aria-label="Cookies on NIHED Public Asset Viewer">
+<div class="govuk-cookie-banner" data-nosnippet role="region" aria-label="Cookies on {{ $.Site.Params.Product }}">
   <div class="govuk-cookie-banner__message govuk-width-container">
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-two-thirds">
         <h2 class="govuk-cookie-banner__heading govuk-heading-m">
-          Cookies on NIHED Public Asset Viewer
+          Cookies on {{ $.Site.Params.Product }}
         </h2>
         <div class="govuk-cookie-banner__content">
           <p class="govuk-body">We use some essential cookies to make this service work.</p>

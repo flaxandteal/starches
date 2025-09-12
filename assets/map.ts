@@ -101,7 +101,7 @@ class ResetViewControl extends NavigationControl {
     }
 
     resetView() {
-        this.fb.setFiltered(false);
+        this.fb && this.fb.setFiltered(false);
         this._map.setCenter(this.defaultLatLng);
         this._map.setZoom(this.defaultZoom);
     };
@@ -217,7 +217,7 @@ class LayerManager {
             map.on('click', layerName, async (e) => {
                 if (map.targeting) {
                     console.warn("Refusing to search again while still moving to previous tapped location");
-                } else if (map.getZoom() < MIN_SEARCH_ZOOM + 1) {
+                } else if (map.getZoom() < MIN_SEARCH_ZOOM + 1 && this.fb) {
                     console.warn("Searching");
                     map.targeting = true;
                     const nearest = await this.fb.nearest(e.lngLat.toArray(), e.features[0].properties.regcode);
@@ -384,12 +384,12 @@ async function buildMap(fb: FlatbushWrapper, fg: FeatureCollection, hashToDoc: F
 
         const moveEnd = async function(e) {
            var bounds = map.getBounds();
-            if ((await fb.getFiltered()) === false) {
+            if (fb && (await fb.getFiltered()) === false) {
                 fb.setFiltered(null);
             } else {
                 const sw = bounds.getSouthWest();
                 const ne = bounds.getNorthEast();
-                fb.filter([sw.lng, sw.lat, ne.lng, ne.lat]);
+                fb && fb.filter([sw.lng, sw.lat, ne.lng, ne.lat]);
             }
             doSearch();
             map.targeting = false;
@@ -401,12 +401,15 @@ async function buildMap(fb: FlatbushWrapper, fg: FeatureCollection, hashToDoc: F
 
 async function buildGeoIndex() {
     const fb = new FlatbushWrapper();
-    await fb.initialize('/flatbush.bin');
-    return fb;
+    if (await fb.initialize('/flatbush.bin')) {
+        return fb;
+    } else {
+        return null;
+    }
 }
 
 function makeSearchQuery(url: string) {
-    return `${url}&searchTerm=${lastTerm ?? ''}&geoBounds=${fb.bounds ? JSON.stringify(fb.bounds) : ''}&searchFilters=${lastFilters ? JSON.stringify(lastFilters) : ''}`;
+    return `${url}&searchTerm=${lastTerm ?? ''}&geoBounds=${fb && fb.bounds ? JSON.stringify(fb.bounds) : ''}&searchFilters=${lastFilters ? JSON.stringify(lastFilters) : ''}`;
 }
 
 class GeoSearchFilter {
@@ -657,7 +660,7 @@ function handleResults(fg: FeatureCollection, results): Promise<FeatureCollectio
 
 async function searchAction(term: string, settings: SearchFilters, pagefind) {
   if (settings && settings.filters && 'tags' in settings.filters) {
-      history.pushState({searchTerm: term, searchFilters: settings.filters, geoBounds: fb.bounds}, "", makeSearchQuery("/?"));
+      history.pushState({searchTerm: term, searchFilters: settings.filters, geoBounds: fb && fb.bounds}, "", makeSearchQuery("/?"));
       const registers = settings.filters.tags.map(t => slugify(t));
       await LAYER_MANAGER.blankExcept(registers);
       registers.map(t => LAYER_MANAGER.ensureRegister(t));
@@ -698,8 +701,8 @@ async function searchAction(term: string, settings: SearchFilters, pagefind) {
     // We have no filtering critera, except bounding box (if that was not present,
     // we would have exited already.
     results = {
-        results: await fb.getFiltered(true),
-        unfilteredResultCount: fb.totalFeatures
+        results: fb && await fb.getFiltered(true),
+        unfilteredResultCount: fb && fb.totalFeatures
     };
     if (hasFilters) {
         results.results = results.results?.filter(result => Object.entries(settings.filters).reduce((match, [flt, vals]) => {
@@ -719,7 +722,7 @@ async function searchAction(term: string, settings: SearchFilters, pagefind) {
       results = cachedResults;
       results.results = results.unfilteredResults;
     }
-    const filtered = await fb.getFiltered();
+    const filtered = fb && await fb.getFiltered();
     if (filtered) {
         results.results = results.results.filter(r => filtered.has(r.id));
     }
@@ -760,7 +763,13 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         term = null;
     }
 
-    const instance = await buildTextIndex(searchAction, term);
+    let instance;
+    try {
+        instance = await buildTextIndex(searchAction, term);
+    } catch (e) {
+        console.error(`Could not load pagefind: ${e}`);
+        instance = null;
+    }
 
     const map = buildMap(fb, fg, (hsh: string) => instance.__pagefind__.loadChunk(hsh));
 
@@ -777,67 +786,71 @@ window.addEventListener('DOMContentLoaded', async (event) => {
         });
     }
 
-    const geoBounds = fb.bounds ? JSON.stringify(fb.bounds) : undefined;
+    const geoBounds = fb && fb.bounds ? JSON.stringify(fb.bounds) : undefined;
 
-    instance.on("results", async (results) => {
-        await map;
-        console.log("Results and map ready");
-        return handleResults(fg, results).then(async (fg) => {
-            const m = await map;
-            m.getSource('assets').setData(fg);
-            
-            // Save search results to context for prev/next navigation
-            debug("Raw search results:", results.results);
-            
-            // Extract slugs from results - we need to collect these before saving to context
-            const collectSlugs = async () => {
-              const slugs = [];
-              for (const result of results.results) {
-                try {
-                  const data = await result.data();
-                  debug("Result data for ID", result.id, "has slug:", data.meta.slug);
-                  if (data.meta.slug) {
-                    slugs.push(data.meta.slug);
+    if (instance) {
+        instance.on("results", async (results) => {
+            await map;
+            console.log("Results and map ready");
+            return handleResults(fg, results).then(async (fg) => {
+                const m = await map;
+                m.getSource('assets').setData(fg);
+                
+                // Save search results to context for prev/next navigation
+                debug("Raw search results:", results.results);
+                
+                // Extract slugs from results - we need to collect these before saving to context
+                const collectSlugs = async () => {
+                  const slugs = [];
+                  for (const result of results.results) {
+                    try {
+                      const data = await result.data();
+                      debug("Result data for ID", result.id, "has slug:", data.meta.slug);
+                      if (data.meta.slug) {
+                        slugs.push(data.meta.slug);
+                      }
+                    } catch (e) {
+                      debugError("Error getting result data:", e);
+                    }
                   }
-                } catch (e) {
-                  debugError("Error getting result data:", e);
-                }
-              }
-              return slugs;
-            };
-            
-            collectSlugs().then(slugs => {
-              debug("Extracted slugs for navigation:", slugs);
-              
-              const searchContextParams: SearchParams = {
-                searchTerm: lastTerm,
-                geoBounds: geoBounds,
-                searchFilters: lastFilters ? JSON.stringify(lastFilters) : undefined
-              };
-              
-              saveSearchResults(slugs, searchContextParams);
-              debug("Saved search context with " + slugs.length + " slugs", slugs);
-              
-              // Update breadcrumbs
-              let filterTags = [];
-              if (lastFilters && lastFilters.tags) {
-                filterTags = lastFilters.tags;
-              }
-              updateBreadcrumbs(
-                lastTerm, 
-                filterTags,
-                geoBounds
-              );
-            });
-            
-            history.pushState({searchTerm: lastTerm, searchFilters: lastFilters, geoBounds: fb.bounds}, "", makeSearchQuery("/?"));
-        })
-    });
+                  return slugs;
+                };
+                
+                collectSlugs().then(slugs => {
+                  debug("Extracted slugs for navigation:", slugs);
+                  
+                  const searchContextParams: SearchParams = {
+                    searchTerm: lastTerm,
+                    geoBounds: geoBounds,
+                    searchFilters: lastFilters ? JSON.stringify(lastFilters) : undefined
+                  };
+                  
+                  saveSearchResults(slugs, searchContextParams);
+                  debug("Saved search context with " + slugs.length + " slugs", slugs);
+                  
+                  // Update breadcrumbs
+                  let filterTags = [];
+                  if (lastFilters && lastFilters.tags) {
+                    filterTags = lastFilters.tags;
+                  }
+                  updateBreadcrumbs(
+                    lastTerm, 
+                    filterTags,
+                    geoBounds
+                  );
+                });
+                
+                history.pushState({searchTerm: lastTerm, searchFilters: lastFilters, geoBounds: fb && fb.bounds}, "", makeSearchQuery("/?"));
+            })
+        });
+    }
 
     if (term) {
         const input = document.getElementById("pfmod-input-0");
         input.value = term;
-        instance.searchTerm = term;
+        if (instance) {
+            instance.searchTerm = term;
+        }
     }
 
     // Initial breadcrumbs setup

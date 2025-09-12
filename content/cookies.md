@@ -63,13 +63,11 @@ This site sets strictly necessary cookies to remember if you have received the c
 
 ## Cookies set by other services
 
-Related services, including those provided by the Department of Communities, are hosted and maintained separately from this site. These services may set more cookies and, if so, may have their own cookie policy.
-
 In particular, the [Feedback page](/feedback/) uses Google Forms, which sets additional cookies to function.
 
 | Name of cookie | Purpose | Expires |
 |----------------|---------|---------|
-| `SIDCC`, `__Secure-1PSIDCC`, `__Secure-3PSIDCC` | Used by Google Forms to protects the user data from unauthorised access, and to store user preferences. | 1 year |
+| `SIDCC`, `__Secure-xxxxx`, `__Secure-xxxxx` | Used by Google Forms to protects the user data from unauthorised access, and to store user preferences. | 1 year |
 | `NID` | This cookie is used by Google Forms to remember your preferences and other information, such as your preferred language. | 6 months |
 | `COMPASS`, `S` | Cookies used by Google Forms, Sheets and Docs to manage Forms behaviour. | 11 minutes |
 
