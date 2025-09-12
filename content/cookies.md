@@ -36,8 +36,6 @@ Be aware that restricting cookies using browser settings can prevent websites wo
 
 ## Current Settings
 
-{{< consent-list >}}
-
 ## Measuring website performance and usage
 
 We use Google Analytics to collect anonymous information about how people use the site and how well it is performing. We do this to make sure it’s meeting people's needs and to understand how we could meet those needs better.
