@@ -19,3 +19,7 @@ cookies = "/cookies/"
 [[module.mounts]]
 source = "content"
 target = "content"
+
+[module]
+  [[module.imports]]
+    path = 'github.com/flaxandteal/hugo-cookies'
