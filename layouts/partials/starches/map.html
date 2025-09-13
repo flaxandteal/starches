@@ -1,4 +1,3 @@
-{{ define "main" }}
 {{- if not (.Page.Store.Get "notice-style-loaded-flag") -}}
 <link rel="stylesheet" href="{{ "css/map.css" | absURL }}">
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
@@ -52,4 +51,3 @@
         </div>
     </div>
 </div>
-{{ end }}

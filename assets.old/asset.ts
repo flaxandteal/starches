@@ -5,7 +5,8 @@ import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, Navigat
 import * as Handlebars from 'handlebars';
 import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, utils, viewModels, renderers } from 'alizarin';
 import { addMarkerImage } from './map-tools';
-import { getSearchUrlWithContext, getNavigation, hasSearchContext, getAssetUrlWithContext, getSearchBreadcrumbs, updateBreadcrumbs } from './searchContext';
+import { getSearchUrlWithContext, getNavigation, hasSearchContext, getAssetUrlWithContext, getSearchBreadcrumbs } from './searchContext';
+import { updateBreadcrumbs } from './searchBreadcrumbs';
 import { debug, debugError } from './debug';
 
 viewModels.CUSTOM_DATATYPES.set("tm65centrepoint", "non-localized-string");
@@ -553,7 +554,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
   // Set up navigation buttons if we have search context
   // Add a slight delay to ensure localStorage is fully available
   setTimeout(() => {
-    debug('Setting up navigation with delay');
+    console.log('Setting up navigation with delay');
     setupAssetNavigation(slug);
   }, 500);
 

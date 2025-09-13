@@ -3,18 +3,27 @@
  * Provides persistent storage for search parameters and results IDs to enable
  * previous/next navigation on detail pages.
  */
+import { getConfig } from './config';
 import { debug, debugError } from './debug';
 
 // LocalStorage key for search context
 const STORAGE_KEY = 'starches_search_context';
 
-export interface SearchParams {
+export interface SearchParamsKV {
   searchTerm?: string;
   geoBounds?: string;
   searchFilters?: string;
 }
 
+export interface SearchParams {
+  searchTerm?: string;
+  geoBounds?: [number, number, number, number];
+  searchFilters?: {[k: string]: string[]};
+}
+
 let urlSearchParams: SearchParams | undefined;
+let resolveSearchContextManager;
+let contextManager: Promise<ISearchContextManager> = new Promise((resolve) => { resolveSearchContextManager = resolve; });
 
 export interface SearchContext {
   /** Array of asset IDs from search results */
@@ -32,35 +41,11 @@ const emptyContext: SearchContext = {
   timestamp: 0
 };
 
-/**
- * Load search context from localStorage
- */
-function loadContextFromStorage(): SearchContext {
-  let context;
-  try {
-    const storedContext = localStorage.getItem(STORAGE_KEY);
-    if (storedContext) {
-      context = JSON.parse(storedContext);
-      debug('Loaded search context from storage:', context);
-    } else {
-      debug('No search context found in storage, using empty context');
-    }
-  } catch (error) {
-    debug('Error loading search context from localStorage:', error);
-  }
-  
-  let [searchParams, changed] = updateParamsFromURL(context && context.searchParams);
-  if (changed || !context) {
-    context = { ...emptyContext };
-    context.searchParams = searchParams;
-  }
-  return context || { ...emptyContext };
-}
+interface ISearchContextManager {
+  async loadContext(): Promise<SearchContext>;
+};
 
-/**
- * Update search context from URL parameters
- */
-function updateParamsFromURL(searchParams?: SearchParams): [SearchParams, boolean] {
+function updateParamsFromURL(searchParams?: SearchParams, compareEmpty: bool=false): [SearchParams, boolean] {
   let changed = false;
 
   // This prevents later URL updates overwriting the original search params
@@ -70,7 +55,7 @@ function updateParamsFromURL(searchParams?: SearchParams): [SearchParams, boolea
   const urlTerm = urlSearchParams.get('searchTerm');
 
   // If there are no URL parameters set, then there is no comparison needed.
-  if (!(urlFilters || urlTerm || urlBounds)) {
+  if (!(urlFilters || urlTerm || urlBounds) && !compareEmpty) {
     return [searchParams || {}, false];
   }
 
@@ -80,39 +65,122 @@ function updateParamsFromURL(searchParams?: SearchParams): [SearchParams, boolea
     changed ||= (searchParams.searchTerm !== urlTerm);
     searchParams.searchTerm = urlTerm;
   } else {
+    changed ||= !!searchParams.searchTerm;
     searchParams.searchTerm = undefined;
   }
   
   if (urlFilters && urlFilters !== '{}' && /^[_0-9a-z ."'-:{}@\[\]]*$/i.exec(urlFilters)) {
-    changed ||= (searchParams.searchFilters !== urlFilters);
-    searchParams.searchFilters = urlFilters;
+    const parsedUrlFilters = JSON.parse(urlFilters);
+    changed ||= (searchParams.searchFilters !== parsedUrlFilters);
+    searchParams.searchFilters = parsedUrlFilters;
   } else {
+    changed ||= !!searchParams.searchFilters;
     searchParams.searchFilters = undefined;
   }
   
   if (urlBounds && /^[-,\[\]_0-9a-f.{}@]*$/i.exec(urlBounds)) {
-    changed ||= (searchParams.geoBounds !== urlBounds);
-    searchParams.geoBounds = urlBounds;
+    const parsedGeoBounds = JSON.parse(urlBounds);
+    changed ||= (searchParams.geoBounds !== parsedGeoBounds);
+    searchParams.geoBounds = parsedGeoBounds;
   } else {
+    changed ||= !!searchParams.geoBounds;
     searchParams.geoBounds = undefined;
   }
-  console.log('sp', searchParams, urlSearchParams, changed, urlTerm, urlFilters, urlBounds);
 
   return [searchParams, changed];
 }
 
-/**
- * Save context to localStorage
- */
-function saveContextToStorage(context: SearchContext): void {
-  /* TODO: for now, disable this as we need to make it opt-in */
-  return;
+class UrlOnlySearchContextManager implements SearchContextManager {
+  /**
+   * Update search context from URL parameters
+   */
+  async loadContext(): SearchContext {
+    let [searchParams, changed] = updateParamsFromURL({});
+    const context = { ...emptyContext };
+    context.searchParams = searchParams;
+    return context;
+  }
 
-  // try {
-  //   localStorage.setItem(STORAGE_KEY, JSON.stringify(context));
-  // } catch (error) {
-  //   debugError('Error saving search context to localStorage:', error);
-  // }
+  saveContext(context: SearchContext): void {
+    // Nothing to do, as we do not keep context
+  }
+
+  saveSearchResults(ids: string[], params: SearchParams): void {
+    // Nothing to do, as we do not keep context
+  }
+}
+class LocalStorageSearchContextManager implements SearchContextManager {
+  /**
+   * Load search context from localStorage
+   */
+  async loadContext(): SearchContext {
+    let context;
+    try {
+      const storedContext = localStorage.getItem(STORAGE_KEY);
+      if (storedContext) {
+        context = JSON.parse(storedContext);
+        debug('Loaded search context from storage:', context);
+      } else {
+        debug('No search context found in storage, using empty context');
+      }
+    } catch (error) {
+      debug('Error loading search context from localStorage:', error);
+    }
+    
+    let [searchParams, changed] = updateParamsFromURL(context && context.searchParams);
+    if (changed || !context) {
+      context = { ...emptyContext };
+      context.searchParams = searchParams;
+    }
+    return context || { ...emptyContext };
+  }
+
+  /**
+   * Save context to localStorage
+   */
+  saveContext(context: SearchContext): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(context));
+    } catch (error) {
+      debugError('Error saving search context to localStorage:', error);
+    }
+  }
+
+  /**
+   * Save search results to context
+   * @param ids Array of asset IDs from search results
+   * @param params Search parameters used to obtain results
+   */
+  saveSearchResults(ids: string[], params: SearchParams): void {
+    debug('Saving search results to context:', { 
+      count: ids.length, 
+      ids, 
+      params 
+    });
+
+    const context: SearchContext = {
+      resultIds: ids,
+      searchParams: { ...params },
+      timestamp: Date.now()
+    };
+
+    this.saveContext(context);
+
+    // Verify storage immediately
+    try {
+      const storedContext = localStorage.getItem(STORAGE_KEY);
+      if (storedContext) {
+        const parsed = JSON.parse(storedContext);
+        debug('Verified stored context:', { 
+          count: parsed.resultIds.length,
+          storedTimestamp: parsed.timestamp
+        });
+      }
+    } catch (error) {
+      debugError('Error verifying stored context:', error);
+    }
+  }
+
 }
 
 /**
@@ -120,37 +188,28 @@ function saveContextToStorage(context: SearchContext): void {
  * @param ids Array of asset IDs from search results
  * @param params Search parameters used to obtain results
  */
-export function saveSearchResults(ids: string[], params: SearchParams): void {
-  /* TODO: for now, disable this as we need to make it opt-in */
-  return;
+export async function updateSearchParams(searchParams: SearchParams): Promise<void> {
+  let [mergedSearchParams, changed] = updateParamsFromURL(Object.assign({}, searchParams), true);
 
-  // debug('Saving search results to context:', { 
-  //   count: ids.length, 
-  //   ids, 
-  //   params 
-  // });
-  // 
-  // const context: SearchContext = {
-  //   resultIds: ids,
-  //   searchParams: { ...params },
-  //   timestamp: Date.now()
-  // };
-  // 
-  // saveContextToStorage(context);
-  // 
-  // // Verify storage immediately
-  // try {
-  //   const storedContext = localStorage.getItem(STORAGE_KEY);
-  //   if (storedContext) {
-  //     const parsed = JSON.parse(storedContext);
-  //     debug('Verified stored context:', { 
-  //       count: parsed.resultIds.length,
-  //       storedTimestamp: parsed.timestamp
-  //     });
-  //   }
-  // } catch (error) {
-  //   debugError('Error verifying stored context:', error);
-  // }
+  if (changed) {
+    const flattenedSearchParams: SearchParamsKV = {
+      searchTerm: searchParams.searchTerm,
+      searchFilters: searchParams.searchFilters ? JSON.stringify(searchParams.searchFilters) : undefined,
+      geoBounds: searchParams.geoBounds ? JSON.stringify(searchParams.geoBounds) : undefined,
+    };
+    const url = await makeSearchQuery("?", searchParams);
+    history.pushState(flattenedSearchParams, "", url);
+    updateBreadcrumbs(flattenedSearchParams);
+  }
+}
+
+/**
+ * Save search results to context
+ * @param ids Array of asset IDs from search results
+ * @param params Search parameters used to obtain results
+ */
+export async function saveSearchResults(ids: string[], params: SearchParams): void {
+  (await contextManager).saveSearchResults(ids, params);
 }
 
 /**
@@ -158,13 +217,13 @@ export function saveSearchResults(ids: string[], params: SearchParams): void {
  * @param currentId Current asset ID
  * @returns Object containing previous and next IDs, position info, or null if not available
  */
-export function getNavigation(currentId: string): { 
+export async function getNavigation(currentId: string): { 
   prev: string | null; 
   next: string | null;
   position?: number;
   total?: number;
 } {
-  const context = loadContextFromStorage();
+  const context = await (await contextManager).loadContext();
   const { resultIds } = context;
   
   debug('Getting navigation for ID:', currentId);
@@ -216,101 +275,150 @@ export function getNavigation(currentId: string): {
 /**
  * Check if search context is available
  */
-export function hasSearchContext(): boolean {
-  const context = loadContextFromStorage();
+export async function hasSearchContext(): boolean {
+  const context = await (await contextManager).loadContext();
   return context.resultIds.length > 0;
-}
-
-/**
- * Get current search context
- */
-export function getSearchContext(): SearchContext {
-  return loadContextFromStorage();
 }
 
 /**
  * Clear the current search context
  */
-export function clearSearchContext(): void {
-  saveContextToStorage(emptyContext);
+export async function clearSearchContext(): void {
+  (await contextManager).saveContext(emptyContext);
 }
 
 /**
  * Get URL for repeating a search with preserved search context
  */
 export function getSearchUrlWithContext(assetId: string): string {
-  const { searchParams } = loadContextFromStorage();
-  const params = new URLSearchParams();
-  
-  if (searchParams.searchTerm) {
-    params.set('searchTerm', searchParams.searchTerm);
-  }
-  
-  if (searchParams.geoBounds) {
-    params.set('geoBounds', searchParams.geoBounds);
-  }
-  
-  if (searchParams.searchFilters) {
-    params.set('searchFilters', searchParams.searchFilters);
-  }
-  
-  return `/?${params.toString()}`;
+  return makeSearchUrl("?");
 }
 
 /**
  * Get URL for navigating to asset with preserved search context
  */
-export function getAssetUrlWithContext(assetId: string): string {
-  const { searchParams } = loadContextFromStorage();
-  const params = new URLSearchParams();
+export async function getAssetUrlWithContext(assetId: string): string {
+  return makeSearchUrl("asset?");
+}
+
+/**
+ * Update breadcrumb display in the DOM based on provided search parameters
+ * 
+ * @param searchTerm Optional search term
+ * @param filters Optional array of filter tags
+ * @param geoBounds Optional geographical bounds
+ */
+export function updateBreadcrumbs(searchParams: SearchParams): void {
+  const searchTermEl = document.getElementById('breadcrumb-search-term');
+  const filtersEl = document.getElementById('breadcrumb-filters');
+  const geoEl = document.getElementById('breadcrumb-geo');
   
-  params.set('slug', assetId);
+  // Clear existing breadcrumbs
+  if (searchTermEl) searchTermEl.innerHTML = '';
+  if (filtersEl) filtersEl.innerHTML = '';
+  if (geoEl) geoEl.innerHTML = '';
   
-  if (searchParams.searchTerm) {
-    params.set('searchTerm', searchParams.searchTerm);
+  // Set search term if available
+  if (searchParams.searchTerm && searchTermEl) {
+    searchTermEl.innerHTML = `
+      <span class="breadcrumb-item">
+        <span class="breadcrumb-label">Search:</span>
+        ${searchParams.searchTerm}
+      </span>
+    `;
   }
   
-  if (searchParams.geoBounds) {
-    params.set('geoBounds', searchParams.geoBounds);
+  // Set filters if available
+  if (searchParams.searchFilters && Object.keys(searchParams.searchFilters).length > 0 && filtersEl) {
+    let html = `
+      <span class="breadcrumb-item">
+    `;
+    for (const [filter, values] of Object.entries(searchParams.searchFilters)) {
+      html += `
+          <span class="breadcrumb-label">${filter.charAt(0).toUpperCase() + filter.substr(1)}:</span>
+          ${values.join(', ')}
+        </span>
+      `;
+    }
+    filtersEl.innerHTML = html;
   }
   
-  if (searchParams.searchFilters) {
-    params.set('searchFilters', searchParams.searchFilters);
+  // Set geo bounds if available (simplified display)
+  if (searchParams.geoBounds && geoEl) {
+    geoEl.innerHTML = `
+      <span class="breadcrumb-item">
+        <span class="breadcrumb-label">Area:</span>
+        Map selection applied
+      </span>
+    `;
   }
-  
-  return `/asset?${params.toString()}`;
 }
 
 /**
  * Get breadcrumb information from search context
  * @returns Object containing search term, filters and geographical bounds
  */
-export function getSearchBreadcrumbs(): { 
-  searchTerm?: string,
-  filters?: string[], 
-  geoBounds?: string
-} {
-  const { searchParams } = loadContextFromStorage();
-  const result: { searchTerm?: string, filters?: string[], geoBounds?: string } = {};
-  
-  if (searchParams.searchTerm) {
-    result.searchTerm = searchParams.searchTerm;
+export async function getSearchParams(): SearchParams {
+  // TODO: stop reloading so much
+  const { searchParams } = await (await contextManager).loadContext();
+  return searchParams;
+}
+
+export async function getGeoBounds(): [number, number, number, number] | undefined {
+  const { geoBounds } = await getSearchParams();
+  return geoBounds;
+}
+
+export async function getFilters(): string[] | undefined {
+  const { searchFilters } = await getSearchParams();
+  return searchFilters;
+}
+
+export async function getTerm(): string | undefined {
+  const { searchTerm } = await getSearchParams();
+  return searchTerm;
+}
+
+export async function makeSearchQuery(url: string, searchParams?: SearchParams) {
+  let term;
+  let geoBounds;
+  let filters;
+  if (!searchParams) {
+    searchParams = await getSearchParams();
   }
-  
-  if (searchParams.searchFilters) {
-    try {
-      const parsedFilters = JSON.parse(searchParams.searchFilters);
-      if (parsedFilters.tags && Array.isArray(parsedFilters.tags)) {
-        result.filters = parsedFilters.tags;
-      }
-    } catch (e) {
-      debugError('Error parsing search filters for breadcrumbs:', e);
-    }
+
+  let fullUrl = url;
+  if (url.includes("?")) {
+    fullUrl += "&";
+  } else {
+    fullUrl += "?";
+  }
+
+  const params = new URLSearchParams();
+
+  if (searchParams.searchTerm) {
+    params.set('searchTerm', searchParams.searchTerm);
   }
   
   if (searchParams.geoBounds) {
-    result.geoBounds = searchParams.geoBounds;
+    params.set('geoBounds', JSON.stringify(searchParams.geoBounds));
   }
   
-  return result;
+  if (searchParams.searchFilters) {
+    params.set('searchFilters', JSON.stringify(searchParams.searchFilters));
+  }
+
+  return `${fullUrl}${params.toString()}`;
 }
+
+window.addEventListener('DOMContentLoaded', async (event) => {
+  const config = await getConfig();
+
+  let contextManager;
+  if (config.allowSearchContext) {
+    contextManager = new LocalStorageSearchContextManager();
+  } else {
+    contextManager = new UrlOnlySearchContextManager();
+  }
+  resolveSearchContextManager(contextManager);
+});
