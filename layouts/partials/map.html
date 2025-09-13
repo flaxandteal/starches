@@ -1,3 +1,4 @@
+{{ define "main" }}
 {{- if not (.Page.Store.Get "notice-style-loaded-flag") -}}
 <link rel="stylesheet" href="{{ "css/map.css" | absURL }}">
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
@@ -19,7 +20,7 @@
 {{- .Page.Store.Set "notice-style-loaded-flag" true -}}
 {{- end -}}
 <div id="map-row">
-{{ if .Get 0 }}
+{{ if .includeSearch }}
     <script>window.STARCHES_HAS_SEARCH = true;</script>
     <div id="search-column">
         <div id="search"></div>
@@ -38,7 +39,7 @@
     <div id="map-column">
         <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
         <div id="map-container">
-{{ if .Get 0 }}
+{{ if .includeSearch }}
             <div id="map-cover">
                 <div id="map-instructions">
                     Search by typing 4+ characters into the <strong>searchbox</strong>, or
@@ -47,7 +48,8 @@
                 </div>
             </div>
 {{ end }}
-            <div class="map" data-center="{{ .Get 1 }}" data-zoom="{{ .Get 2 }}" {{ if .Get 3 }}data-zoom-mobile="{{ .Get 3 }}"{{ end }}></div>
+            <div class="map" data-center="{{ .center }}" data-zoom="{{ .zoom }}" {{ if .mobileZoom }}data-zoom-mobile="{{ .mobileZoom }}"{{ end }}></div>
         </div>
     </div>
 </div>
+{{ end }}
