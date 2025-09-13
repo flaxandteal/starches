@@ -1,2 +1,4 @@
+github.com/flaxandteal/govukhugo v0.0.0-20250913133815-13c0691a1ac9 h1:7RhBaGT9pUeDIpYLPjUlK7Dbzc3QNznTItcvK7Utcmg=
+github.com/flaxandteal/govukhugo v0.0.0-20250913133815-13c0691a1ac9/go.mod h1:bFk/uvSh+oWzrQeoniHec8xDJymnWZqtgqgteKLi8yE=
 github.com/flaxandteal/hugo-cookies v0.0.0-20250912234728-faf4561ea831 h1:EU1BqocmsCi2SMfcVHrkE+XBjM6NG5kzkhIKhRkFLNA=
 github.com/flaxandteal/hugo-cookies v0.0.0-20250912234728-faf4561ea831/go.mod h1:yXeybjve5gdOaLp2i1NKmDVGiFTgJXL6WLjyJMISLvU=
