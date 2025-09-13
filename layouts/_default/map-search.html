@@ -1,0 +1,14 @@
+{{ define "main" }}
+
+<div class="govuk-body">
+    {{ partial "map-filters" }}
+    {{ partial "map"
+    (dict
+        "includeSearch" true
+        "center" "[13, -8]"
+        "zoom" 6
+        "mobileZoom" 10
+    )}}
+</div>
+
+{{ end }}
