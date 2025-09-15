@@ -1,15 +1,10 @@
 import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, NavigationControl, GeolocateControl } from 'maplibre-gl';
 import { getGeoBounds } from './searchContext';
 import { isTouch } from './utils';
-import { getSearchManager } from './search';
 import { getFlatbushWrapper, FlatbushWrapper } from './fbwrapper';
 import { getConfig } from './config';
 import { addMarkerImage } from './map-tools';
-
-let resolvePrimaryMap: Function;
-let primaryMap: Promise<Map> = new Promise((resolve) => { resolvePrimaryMap = resolve; });
-let resolveMapManager;
-const mapManager: Promise<MapManager> = new Promise((resolve) => { resolveMapManager = resolve });
+import { getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager } from './managers';
 
 function resultFunction(map, e) {
     map.stop();
@@ -218,7 +213,7 @@ class LayerManager {
     }
 }
 
-class MapManager {
+class MapManager implements IMapManager {
   fb: Promise<FlatbushWrapper | undefined>;
   lm: Promise<LayerManager | undefined>;
 
@@ -243,7 +238,7 @@ class MapManager {
 
   async addMap(container: HTMLElement, center: [number, number], zoom: number, geoBounds?: [number, number, number, number], touch: boolean) {
     var map = new Map({
-      style: '../malazan_seven_cities.json',
+      style: 'https://tiles.openfreemap.org/styles/bright',
       pitch: 0,
       bearing: 0,
       container: container,
@@ -413,9 +408,9 @@ class MapManager {
       }
     }
     if (foundPrimaryMap) {
-      foundPrimaryMap.then(map => resolvePrimaryMap(map));
+      foundPrimaryMap.then(map => resolvePrimaryMapWith(map));
     } else {
-      resolvePrimaryMap(); // TODO: handle map load failure
+      resolvePrimaryMapWith(undefined); // TODO: handle map load failure
     }
   }
 
@@ -424,9 +419,7 @@ class MapManager {
   }
 }
 
-export async function getMap() {
-  return primaryMap;
-}
+// Map getter is now in managers.ts
 
 function mapDialogClickedOutside() {
     const modalElt = document.getElementById("map-dialog");
@@ -439,17 +432,15 @@ function mapDialogClicked(event) {
     event.stopPropagation()
 }
 
-export async function getMapManager(): SearchManager | undefined {
-  return mapManager;
-};
+// MapManager getter is now in managers.ts
 
-window.addEventListener('DOMContentLoaded', async (event) => {
-  const mapManager = new MapManager();
-  await mapManager.addMaps();
-  resolveMapManager(mapManager);
+document.addEventListener('DOMContentLoaded', async (event) => {
+  const mapManagerInstance = new MapManager();
+  await mapManagerInstance.addMaps();
+  resolveMapManagerWith(mapManagerInstance);
 
   const modalElt = document.getElementById("map-dialog");
   modalElt.addEventListener("click", () => modalElt.close());
   const modalInnerElt = document.getElementById("map-dialog__inner");
   modalInnerElt.addEventListener("click", mapDialogClicked);
-});
+}, { once: true });

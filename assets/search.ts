@@ -6,6 +6,7 @@ import { debug, debugWarn, debugError } from './debug';
 import { buildPagefind } from './pagefind';
 import { slugify } from './utils';
 import { saveSearchResults, makeSearchQuery } from "./searchContext";
+import { resolveSearchManagerWith } from './managers';
 
 let resolveSearchManager;
 const searchManager: Promise<SearchManager> = new Promise((resolve) => { resolveSearchManager = resolve });
@@ -113,10 +114,12 @@ class SearchManager {
   fb;
 
   async initialize() {
+      console.log('init');
       return this.getPagefindInstance()
   }
 
   async makePagefindInstance() {
+      console.log("Make pagefind instance");
       let instance;
       let term = await getTerm();
       const fg: FeatureCollection = {
@@ -329,16 +332,16 @@ class SearchManager {
   }
 };
 
-export async function getSearchManager(): SearchManager | undefined {
-  return searchManager;
-};
+// SearchManager getter is now in managers.ts
 
 window.addEventListener('DOMContentLoaded', async (event) => {
-  if (window.STARCHES_HAS_SEARCH) {
-    const searchManager = new SearchManager();
-    await searchManager.initialize();
-    resolveSearchManager(searchManager);
+  const config = await getConfig();
+  console.log(window.STARCHES_HAS_SEARCH, 'shs', config);
+  if (config.hasSearch) {
+    const searchManagerInstance = new SearchManager();
+    await searchManagerInstance.initialize();
+    resolveSearchManagerWith(searchManagerInstance);
   } else {
-    resolveSearchManager();
+    resolveSearchManagerWith(undefined);
   }
 });

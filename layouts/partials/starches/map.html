@@ -1,9 +1,12 @@
 {{- if not (.Page.Store.Get "notice-style-loaded-flag") -}}
+<link href="https://unpkg.com/maplibre-gl@^5.3.1/dist/maplibre-gl.css" rel="stylesheet" />
 <link rel="stylesheet" href="{{ "css/map.css" | absURL }}">
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
 <link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
 
-{{- $js := resources.Get "map.ts" -}}
+{{ $baseAssets := (slice "map.ts" "search.ts") }}
+{{ range $baseAssets }}
+{{- $js := resources.Get . -}}
 {{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction ) }}
 {{ $sourceMap := cond hugo.IsProduction "" "inline" }}
 {{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" "params" $params }}
@@ -16,6 +19,7 @@
   {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end }}
   type="module">
 </script>
+{{ end }}
 {{- .Page.Store.Set "notice-style-loaded-flag" true -}}
 {{- end -}}
 <div id="map-row">

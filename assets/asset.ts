@@ -5,7 +5,7 @@ import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, Navigat
 import * as Handlebars from 'handlebars';
 import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, utils, viewModels, renderers } from 'alizarin';
 import { addMarkerImage } from './map-tools';
-import { getSearchUrlWithContext, getNavigation, hasSearchContext, getAssetUrlWithContext, getSearchBreadcrumbs, updateBreadcrumbs } from './searchContext';
+import { getSearchUrlWithContext, getNavigation, hasSearchContext, getAssetUrlWithContext, getSearchParams, updateBreadcrumbs } from './searchContext';
 import { debug, debugError } from './debug';
 
 viewModels.CUSTOM_DATATYPES.set("tm65centrepoint", "non-localized-string");
@@ -600,11 +600,11 @@ window.addEventListener('DOMContentLoaded', async (event) => {
   /**
    * Setup navigation elements based on search context
    */
-  function setupAssetNavigation(currentId: string): void {
+  async function setupAssetNavigation(currentId: string): Promise<void> {
     debug("Setting up asset navigation for:", currentId);
     
     // Setup breadcrumbs
-    setupBreadcrumbs();
+    await setupBreadcrumbs();
     
     if (hasSearchContext()) {
       debug("Search context found");
@@ -674,13 +674,9 @@ window.addEventListener('DOMContentLoaded', async (event) => {
   /**
    * Setup breadcrumb information from search context
    */
-  function setupBreadcrumbs(): void {
-    const breadcrumbs = getSearchBreadcrumbs();
-    updateBreadcrumbs(
-      breadcrumbs.searchTerm,
-      breadcrumbs.filters,
-      breadcrumbs.geoBounds
-    );
+  async function setupBreadcrumbs(): Promise<void> {
+    const searchParams = await getSearchParams();
+    updateBreadcrumbs(searchParams);
   };
 
   window.showDialog = (dialogId) => {
