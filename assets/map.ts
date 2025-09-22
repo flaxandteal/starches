@@ -2,9 +2,9 @@ import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, Navigat
 import { getGeoBounds } from './searchContext';
 import { isTouch } from './utils';
 import { getFlatbushWrapper, FlatbushWrapper } from './fbwrapper';
-import { getConfig } from './config';
+import { getConfig } from './managers';
 import { addMarkerImage } from './map-tools';
-import { getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager } from './managers';
+import { getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager, ILayerManager } from './managers';
 
 function resultFunction(map, e) {
     map.stop();
@@ -71,7 +71,7 @@ class ResetViewControl extends NavigationControl {
     };
 }
 
-class LayerManager {
+class LayerManager implements ILayerManager {
     map: Promise<MLMap>;
     fb?: FlatbushWrapper;
     hashToDoc?: Function;

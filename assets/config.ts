@@ -1,4 +1,6 @@
-function makeDefaultConfiguration(): StarchesBaseConfiguration {
+import { StarchesConfiguration, resolveConfigurationWith, getConfig } from './managers';
+
+function makeDefaultConfiguration(): Partial<StarchesConfiguration> {
   return {
     showGeolocateControl: false,
     minSearchZoom: 13,
@@ -9,47 +11,19 @@ function makeDefaultConfiguration(): StarchesBaseConfiguration {
   };
 }
 
-class StarchesBaseConfiguration {
-  [key: string]: any
-
-  showGeolocateControl?: boolean;
-  minSearchZoom?: number;
-  minSearchLength?: number;
-  maxMapPoints?: number;
-  timeToShowLoadingMs?: number;
-
-  constructor(configuration: StarchesBaseConfiguration) {
-    Object.assign(this, makeDefaultConfiguration());
-    Object.assign(this, configuration);
-  }
-}
-
-class StarchesConfiguration extends StarchesBaseConfiguration {
-  hasSearch: boolean;
-
-  constructor(configuration: StarchesConfiguration) {
-    super(configuration);
-    Object.assign(this, configuration);
-  }
-}
-
-let resolveConfiguration;
-const configuration: Promise<StarchesConfiguration> = new Promise((resolve) => { resolveConfiguration = resolve; });
-
 function buildConfig() {
-  const base: StarchesBaseConfiguration = window.STARCHES_BASE_CONFIGURATION ? JSON.parse(window.STARCHES_BASE_CONFIGURATION) : {};
-  const loadedConfiguration = {
+  const base: Partial<StarchesConfiguration> = window.STARCHES_BASE_CONFIGURATION ? JSON.parse(window.STARCHES_BASE_CONFIGURATION) : {};
+  const loadedConfiguration: StarchesConfiguration = {
     hasSearch: !!window.STARCHES_HAS_SEARCH,
+    ...makeDefaultConfiguration(),
     ...base
   };
-  const configuration = new StarchesConfiguration(loadedConfiguration);
-  console.debug("Loaded Starches configuration", configuration);
-  resolveConfiguration(configuration);
+  console.debug("Loaded Starches configuration", loadedConfiguration);
+  resolveConfigurationWith(loadedConfiguration);
 }
 
-export async function getConfig(): Promise<StarchesConfiguration> {
-  return configuration;
-}
+// Re-export for backward compatibility
+export { getConfig };
 
 window.addEventListener('DOMContentLoaded', async (event) => {
   buildConfig();

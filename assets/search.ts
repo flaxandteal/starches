@@ -1,12 +1,11 @@
-import { getMap, getMapManager } from './map';
-import { getConfig } from './config';
+import { getConfig } from './managers';
 import { getFilters, getTerm, updateSearchParams } from './searchContext';
 import { getFlatbushWrapper, FlatbushWrapper } from './fbwrapper';
 import { debug, debugWarn, debugError } from './debug';
 import { buildPagefind } from './pagefind';
 import { slugify } from './utils';
 import { saveSearchResults, makeSearchQuery } from "./searchContext";
-import { resolveSearchManagerWith } from './managers';
+import { resolveSearchManagerWith, getMap, getMapManager } from './managers';
 
 let resolveSearchManager;
 const searchManager: Promise<SearchManager> = new Promise((resolve) => { resolveSearchManager = resolve });
@@ -65,7 +64,7 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
                 text += `<p class='description'>${description}</p>`;
                 text += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`
                 text += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="window.open('${url}', '_blank'); return false;">Open tab</a></li>`;
-                const call = `map.flyTo({center: [${loc[0]}, ${loc[1]}], zoom: ${MIN_SEARCH_ZOOM + 1}})`;
+                const call = `map.flyTo({center: [${loc[0]}, ${loc[1]}], zoom: ${config.minSearchZoom + 1}})`;
                 text += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
                 let marker = {
                     'type': 'Feature',
@@ -114,12 +113,10 @@ class SearchManager {
   fb;
 
   async initialize() {
-      console.log('init');
       return this.getPagefindInstance()
   }
 
   async makePagefindInstance() {
-      console.log("Make pagefind instance");
       let instance;
       let term = await getTerm();
       const fg: FeatureCollection = {
@@ -137,7 +134,6 @@ class SearchManager {
       const searchFilters = await getFilters();
       if (searchFilters && searchFilters.tags && searchFilters.tags.length) {
           searchFilters.tags.forEach(aria => {
-              console.log(aria);
             const elt = document.querySelector(`[aria-label="${aria}"]`);
             elt.parentElement.click();
           });
@@ -149,7 +145,6 @@ class SearchManager {
       if (instance) {
           instance.on("results", async (results) => {
               await getMap();
-              console.log("Results and map ready");
               return handleResults(fg, results).then(async (fg) => {
                   const m = await getMap();
                   m.getSource('assets').setData(fg);
@@ -245,6 +240,7 @@ class SearchManager {
   }
 
   async searchAction(pagefind, term: string, settings: SearchFilters) {
+    const mapManager = await getMapManager();
     if (settings && settings.filters) {
         updateSearchParams({
             searchTerm: term,
@@ -253,12 +249,12 @@ class SearchManager {
         });
         if (settings.filters.tags) {
             const registers = settings.filters.tags.map(t => slugify(t));
-            await LAYER_MANAGER.blankExcept(registers);
-            registers.map(t => LAYER_MANAGER.ensureRegister(t));
+            const layerManager = await mapManager.getLayerManager();
+            await layerManager.blankExcept(registers);
+            registers.map(t => layerManager.ensureRegister(t));
         }
     }
 
-    const mapManager = await getMapManager();
     const map = await getMap();
     const zoom = map && map.getZoom();
     const config = await getConfig();
@@ -336,7 +332,6 @@ class SearchManager {
 
 window.addEventListener('DOMContentLoaded', async (event) => {
   const config = await getConfig();
-  console.log(window.STARCHES_HAS_SEARCH, 'shs', config);
   if (config.hasSearch) {
     const searchManagerInstance = new SearchManager();
     await searchManagerInstance.initialize();

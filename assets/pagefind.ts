@@ -1,6 +1,7 @@
 import * as PagefindModularUI from "@pagefind/modular-ui";
 
 import { makeSearchQuery } from "./searchContext";
+import { getConfig } from './managers';
 
 export async function buildPagefind(searchAction: (term: string, settings: object, pagefind: any) => Promise<any>) {
     const instance = new PagefindModularUI.Instance({
@@ -22,7 +23,7 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
         containerElement: "#filter",
         filter: "tags",
         alwaysShow: true,
-        makeFilter: () => (new PagefindModularUI.ElementBuilder("div")).class("govuk-radios__item"),
+        makeFilterElement: () => (new PagefindModularUI.ElementBuilder.default("div")).class("govuk-radios__item"),
         pillInner: function(val, count) {
             const ariaChecked = this.selected.includes(val);
             console.log(this.defaultPillInner(val, count));
@@ -52,6 +53,7 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
         p.innerText = 'Searching...';
         rc.append(p);
     });
+    const config = await getConfig();
     const resultTemplate = async function (result) {
         let [indexOnly, description] = result.excerpt.split('$$$');
         if (description && description.trim().length > 0) {
@@ -72,7 +74,7 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
         if (location) {
             location = JSON.parse(location);
             if (location) {
-              const call = `map.flyTo({center: [${location[0]}, ${location[1]}], zoom: ${MIN_SEARCH_ZOOM + 1}})`;
+              const call = `map.flyTo({center: [${location[0]}, ${location[1]}], zoom: ${config.minSearchZoom + 1}})`;
               pInner += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
             }
         }
@@ -84,6 +86,7 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
         containerElement: "#results",
         resultTemplate
     });
+    await instance.__load__();
     // This routine from pagefind.
     // instance.__search__ = async function (term, filters) {
     //     this.__dispatch__("loading");

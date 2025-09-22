@@ -3,7 +3,7 @@
  * Provides persistent storage for search parameters and results IDs to enable
  * previous/next navigation on detail pages.
  */
-import { getConfig } from './config';
+import { getConfig } from './managers';
 import { debug, debugError } from './debug';
 
 // LocalStorage key for search context
@@ -199,7 +199,7 @@ export async function updateSearchParams(searchParams: SearchParams): Promise<vo
     };
     const url = await makeSearchQuery("?", searchParams);
     history.pushState(flattenedSearchParams, "", url);
-    updateBreadcrumbs(flattenedSearchParams);
+    updateBreadcrumbs(searchParams);
   }
 }
 
@@ -334,6 +334,7 @@ export function updateBreadcrumbs(searchParams: SearchParams): void {
       <span class="breadcrumb-item">
     `;
     for (const [filter, values] of Object.entries(searchParams.searchFilters)) {
+      console.log(filter, values);
       html += `
           <span class="breadcrumb-label">${filter.charAt(0).toUpperCase() + filter.substr(1)}:</span>
           ${values.join(', ')}
