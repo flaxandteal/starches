@@ -19,6 +19,27 @@ export interface ISearchManager {
   getPagefindInstance(): Promise<any>;
 }
 
+export interface SearchParams {
+  searchTerm?: string;
+  geoBounds?: [number, number, number, number];
+  searchFilters?: {[k: string]: string[]};
+}
+
+export interface SearchContext {
+  /** Array of asset IDs from search results */
+  resultIds: string[];
+  /** Search parameters that produced these results */
+  searchParams: SearchParams;
+  /** Timestamp when search was performed */
+  timestamp: number;
+}
+
+export interface ISearchContextManager {
+  loadContext(): Promise<SearchContext>;
+  saveContext(context: SearchContext): void;
+  saveSearchResults(ids: string[], params: SearchParams): void;
+}
+
 export class StarchesConfiguration {
   [key: string]: any;
   showGeolocateControl?: boolean;
@@ -27,6 +48,7 @@ export class StarchesConfiguration {
   maxMapPoints?: number;
   timeToShowLoadingMs?: number;
   hasSearch?: boolean;
+  allowSearchContext?: boolean;
 }
 
 // Store managers on window to ensure singleton behavior across module instances
@@ -39,6 +61,8 @@ declare global {
       resolveMapManager?: Function;
       searchManager?: Promise<ISearchManager>;
       resolveSearchManager?: Function;
+      searchContextManager?: Promise<ISearchContextManager>;
+      resolveSearchContextManager?: Function;
       configuration?: Promise<StarchesConfiguration>;
       resolveConfiguration?: Function;
     };
@@ -86,6 +110,17 @@ if (!window.__starchesManagers.resolveSearchManager) {
   resolveSearchManager = window.__starchesManagers.resolveSearchManager;
 }
 
+let resolveSearchContextManager: Function;
+export const searchContextManager: Promise<ISearchContextManager> = window.__starchesManagers.searchContextManager ||
+  (window.__starchesManagers.searchContextManager = new Promise((resolve) => {
+    resolveSearchContextManager = window.__starchesManagers.resolveSearchContextManager = resolve;
+  }));
+if (!window.__starchesManagers.resolveSearchContextManager) {
+  resolveSearchContextManager = (value: any) => { /* already resolved */ };
+} else {
+  resolveSearchContextManager = window.__starchesManagers.resolveSearchContextManager;
+}
+
 let resolveConfiguration: Function;
 export const configuration: Promise<StarchesConfiguration> = window.__starchesManagers.configuration ||
   (window.__starchesManagers.configuration = new Promise((resolve) => {
@@ -116,6 +151,12 @@ export function resolveSearchManagerWith(manager: ISearchManager): void {
   delete window.__starchesManagers.resolveSearchManager;
 }
 
+export function resolveSearchContextManagerWith(manager: ISearchContextManager): void {
+  resolveSearchContextManager(manager);
+  // Clear the resolver from window to prevent duplicate calls
+  delete window.__starchesManagers.resolveSearchContextManager;
+}
+
 export function resolveConfigurationWith(config: StarchesConfiguration): void {
   resolveConfiguration(config);
   // Clear the resolver from window to prevent duplicate calls
@@ -135,6 +176,12 @@ export async function getSearchManager(): Promise<ISearchManager> {
   return searchManager;
 }
 
+export async function getSearchContextManager(): Promise<ISearchContextManager> {
+  return searchContextManager;
+}
+
 export async function getConfig(): Promise<StarchesConfiguration> {
   return configuration;
 }
+
+import './config';

@@ -3,7 +3,14 @@
  * Provides persistent storage for search parameters and results IDs to enable
  * previous/next navigation on detail pages.
  */
-import { getConfig } from './managers';
+import {
+  getConfig,
+  getSearchContextManager,
+  resolveSearchContextManagerWith,
+  SearchParams,
+  SearchContext,
+  ISearchContextManager
+} from './managers';
 import { debug, debugError } from './debug';
 
 // LocalStorage key for search context
@@ -15,24 +22,7 @@ export interface SearchParamsKV {
   searchFilters?: string;
 }
 
-export interface SearchParams {
-  searchTerm?: string;
-  geoBounds?: [number, number, number, number];
-  searchFilters?: {[k: string]: string[]};
-}
-
 let urlSearchParams: SearchParams | undefined;
-let resolveSearchContextManager;
-let contextManager: Promise<ISearchContextManager> = new Promise((resolve) => { resolveSearchContextManager = resolve; });
-
-export interface SearchContext {
-  /** Array of asset IDs from search results */
-  resultIds: string[];
-  /** Search parameters that produced these results */
-  searchParams: SearchParams;
-  /** Timestamp when search was performed */
-  timestamp: number;
-}
 
 // Default empty context
 const emptyContext: SearchContext = {
@@ -41,18 +31,16 @@ const emptyContext: SearchContext = {
   timestamp: 0
 };
 
-interface ISearchContextManager {
-  async loadContext(): Promise<SearchContext>;
-};
 
-function updateParamsFromURL(searchParams?: SearchParams, compareEmpty: bool=false): [SearchParams, boolean] {
+function updateParamsFromURL(searchParams?: SearchParams, compareEmpty: boolean=false): [SearchParams, boolean] {
   let changed = false;
 
   // This prevents later URL updates overwriting the original search params
-  urlSearchParams = urlSearchParams || new URLSearchParams(window.location.search);
-  const urlFilters = urlSearchParams.get('searchFilters');
-  const urlBounds = urlSearchParams.get('geoBounds');
-  const urlTerm = urlSearchParams.get('searchTerm');
+  const urlParams = urlSearchParams || new URLSearchParams(window.location.search);
+  if (!urlSearchParams) urlSearchParams = searchParams;
+  const urlFilters = urlParams instanceof URLSearchParams ? urlParams.get('searchFilters') : undefined;
+  const urlBounds = urlParams instanceof URLSearchParams ? urlParams.get('geoBounds') : undefined;
+  const urlTerm = urlParams instanceof URLSearchParams ? urlParams.get('searchTerm') : undefined;
 
   // If there are no URL parameters set, then there is no comparison needed.
   if (!(urlFilters || urlTerm || urlBounds) && !compareEmpty) {
@@ -90,11 +78,11 @@ function updateParamsFromURL(searchParams?: SearchParams, compareEmpty: bool=fal
   return [searchParams, changed];
 }
 
-class UrlOnlySearchContextManager implements SearchContextManager {
+class UrlOnlySearchContextManager implements ISearchContextManager {
   /**
    * Update search context from URL parameters
    */
-  async loadContext(): SearchContext {
+  async loadContext(): Promise<SearchContext> {
     let [searchParams, changed] = updateParamsFromURL({});
     const context = { ...emptyContext };
     context.searchParams = searchParams;
@@ -109,11 +97,11 @@ class UrlOnlySearchContextManager implements SearchContextManager {
     // Nothing to do, as we do not keep context
   }
 }
-class LocalStorageSearchContextManager implements SearchContextManager {
+class LocalStorageSearchContextManager implements ISearchContextManager {
   /**
    * Load search context from localStorage
    */
-  async loadContext(): SearchContext {
+  async loadContext(): Promise<SearchContext> {
     let context;
     try {
       const storedContext = localStorage.getItem(STORAGE_KEY);
@@ -197,7 +185,7 @@ export async function updateSearchParams(searchParams: SearchParams): Promise<vo
       searchFilters: searchParams.searchFilters ? JSON.stringify(searchParams.searchFilters) : undefined,
       geoBounds: searchParams.geoBounds ? JSON.stringify(searchParams.geoBounds) : undefined,
     };
-    const url = await makeSearchQuery("?", searchParams);
+    const url = await makeSearchQuery("?", mergedSearchParams);
     history.pushState(flattenedSearchParams, "", url);
     updateBreadcrumbs(searchParams);
   }
@@ -209,7 +197,7 @@ export async function updateSearchParams(searchParams: SearchParams): Promise<vo
  * @param params Search parameters used to obtain results
  */
 export async function saveSearchResults(ids: string[], params: SearchParams): void {
-  (await contextManager).saveSearchResults(ids, params);
+  (await getSearchContextManager()).saveSearchResults(ids, params);
 }
 
 /**
@@ -217,13 +205,13 @@ export async function saveSearchResults(ids: string[], params: SearchParams): vo
  * @param currentId Current asset ID
  * @returns Object containing previous and next IDs, position info, or null if not available
  */
-export async function getNavigation(currentId: string): { 
-  prev: string | null; 
+export async function getNavigation(currentId: string): Promise<{
+  prev: string | null;
   next: string | null;
   position?: number;
   total?: number;
-} {
-  const context = await (await contextManager).loadContext();
+}> {
+  const context = await (await getSearchContextManager()).loadContext();
   const { resultIds } = context;
   
   debug('Getting navigation for ID:', currentId);
@@ -275,30 +263,30 @@ export async function getNavigation(currentId: string): {
 /**
  * Check if search context is available
  */
-export async function hasSearchContext(): boolean {
-  const context = await (await contextManager).loadContext();
+export async function hasSearchContext(): Promise<boolean> {
+  const context = await (await getSearchContextManager()).loadContext();
   return context.resultIds.length > 0;
 }
 
 /**
  * Clear the current search context
  */
-export async function clearSearchContext(): void {
-  (await contextManager).saveContext(emptyContext);
+export async function clearSearchContext(): Promise<void> {
+  (await getSearchContextManager()).saveContext(emptyContext);
 }
 
 /**
  * Get URL for repeating a search with preserved search context
  */
-export function getSearchUrlWithContext(assetId: string): string {
-  return makeSearchUrl("?");
+export async function getSearchUrlWithContext(assetId: string): Promise<string> {
+  return makeSearchQuery("?");
 }
 
 /**
  * Get URL for navigating to asset with preserved search context
  */
-export async function getAssetUrlWithContext(assetId: string): string {
-  return makeSearchUrl("asset?");
+export async function getAssetUrlWithContext(assetId: string): Promise<string> {
+  return makeSearchQuery("asset?");
 }
 
 /**
@@ -359,23 +347,23 @@ export function updateBreadcrumbs(searchParams: SearchParams): void {
  * Get breadcrumb information from search context
  * @returns Object containing search term, filters and geographical bounds
  */
-export async function getSearchParams(): SearchParams {
+export async function getSearchParams(): Promise<SearchParams> {
   // TODO: stop reloading so much
-  const { searchParams } = await (await contextManager).loadContext();
+  const { searchParams } = await (await getSearchContextManager()).loadContext();
   return searchParams;
 }
 
-export async function getGeoBounds(): [number, number, number, number] | undefined {
+export async function getGeoBounds(): Promise<[number, number, number, number] | undefined> {
   const { geoBounds } = await getSearchParams();
   return geoBounds;
 }
 
-export async function getFilters(): string[] | undefined {
+export async function getFilters(): Promise<{[k: string]: string[]} | undefined> {
   const { searchFilters } = await getSearchParams();
   return searchFilters;
 }
 
-export async function getTerm(): string | undefined {
+export async function getTerm(): Promise<string | undefined> {
   const { searchTerm } = await getSearchParams();
   return searchTerm;
 }
@@ -415,11 +403,11 @@ export async function makeSearchQuery(url: string, searchParams?: SearchParams) 
 window.addEventListener('DOMContentLoaded', async (event) => {
   const config = await getConfig();
 
-  let contextManager;
+  let contextManager: ISearchContextManager;
   if (config.allowSearchContext) {
     contextManager = new LocalStorageSearchContextManager();
   } else {
     contextManager = new UrlOnlySearchContextManager();
   }
-  resolveSearchContextManager(contextManager);
+  resolveSearchContextManagerWith(contextManager);
 });
