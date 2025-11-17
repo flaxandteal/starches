@@ -1,0 +1,62 @@
+{{ if $.Site.Params.Ga4token }}
+<!-- Google Tag Manager (noscript) -- removing noscript fallback for now as incompatible with cookie policy -->
+<!-- <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K3B6FBDS"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript> -->
+<!-- End Google Tag Manager (noscript) -->
+{{ end }}
+
+<script>
+    document.body.className = ((document.body.className) ? document.body.className + ' js-enabled' : 'js-enabled');
+
+</script>
+
+<a href="#main-content" class="govuk-skip-link">Skip to main content</a>
+
+<header class="govuk-header " role="banner" data-module="govuk-header">
+    <div class="govuk-header__container govuk-width-container">
+
+        <div class="govuk-header__logo">
+            <a href="/" class="govuk-header__link govuk-header__link--homepage">
+
+                <div id="logo" class="govuk-header__logotype nihed-logo" alt="Logo"/>
+                    Logo
+                </div>
+
+            </a>
+            <button class="mobile-nav-button govuk-button" id="mobile-nav-control">Menu ▼</button>
+        </div>
+
+    </div>
+    <div class="govuk-header__container govuk-width-container" id="dfc-registry">
+    </div>
+</header>
+
+<div class="govuk-width-container">
+    {{ partial "mobile-nav.html" . }}
+</div>
+
+{{ with $.Site.Params.Banner }}
+<div class="govuk-width-container">
+    <div class="govuk-phase-banner banner-message">
+        <p class="govuk-phase-banner__content">
+            <strong class="govuk-tag">{{ .label }}</strong> {{.message}} <a class="govuk-link govuk-link--inverse" href="{{ .URL }}">Read more</a>
+        </p>
+    </div>
+</div>
+{{ end }}
+
+{{ with $.Site.Params.Phase }}
+<div class="govuk-width-container">
+    <div class="govuk-phase-banner">
+        <p class="govuk-phase-banner__content">
+            <strong class="govuk-tag govuk-phase-banner__content__tag">
+                {{ $.Site.Params.Phase }}
+            </strong>
+            <span class="govuk-phase-banner__text">
+                This is a new service – your <a class="govuk-link" href="{{ $.Site.Params.Feedbackurl }}">feedback</a>
+                will help us to improve it.
+            </span>
+        </p>
+    </div>
+</div>
+{{ end }}

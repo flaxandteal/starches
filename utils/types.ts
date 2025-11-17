@@ -1,7 +1,7 @@
 class AssetMetadata {
   [key: string]: string
 
-  constructor(resourceinstanceid: string, geometry: object, location: object, title: string, slug: string) {
+  constructor(resourceinstanceid: string, geometry: object, location: object, title: string, slug: string, scopes: string) {
     this.resourceinstanceid = resourceinstanceid;
     if (geometry) {
       this.geometry = JSON.stringify(geometry);
@@ -12,6 +12,7 @@ class AssetMetadata {
     this.title = title;
     this.slug = slug;
     this.designations = "[]";
+    this.scopes = scopes;
   }
 };
 
@@ -19,11 +20,13 @@ class Asset {
   meta: AssetMetadata;
   content: string;
   slug: string;
+  type: string;
 
-  constructor(resourceinstanceid: string, geometry: object, location: object, title: string, slug: string, content: string) {
-    this.meta = new AssetMetadata(resourceinstanceid, geometry, location, title, slug);
+  constructor(resourceinstanceid: string, geometry: object, location: object, title: string, slug: string, content: string, type: string, scopes: string[]) {
+    this.meta = new AssetMetadata(resourceinstanceid, geometry, location, title, slug, JSON.stringify(scopes));
     this.content = content;
     this.slug = slug;
+    this.type = type;
   }
 };
 
@@ -38,7 +41,7 @@ class ModelEntry {
 }
 
 interface IAssetFunctions {
-  getMeta(staticAsset: any): Promise<Asset>;
+  getMeta(asset: any, staticAsset: any, prefix: string | undefined, includePrivate: boolean): Promise<Asset>;
   toSlug(staticAsset: any): string;
   initialize(): Promise<never>;
 }

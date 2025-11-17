@@ -1,0 +1,57 @@
+{{- if not (.Page.Store.Get "notice-style-loaded-flag") -}}
+<link href="https://unpkg.com/maplibre-gl@^5.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+<link rel="stylesheet" href="{{ "css/map.css" | absURL }}">
+<link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
+<link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
+
+{{ $baseAssets := (slice "map.ts" "search.ts") }}
+{{ range $baseAssets }}
+{{- $js := resources.Get . -}}
+{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction ) }}
+{{ $sourceMap := cond hugo.IsProduction "" "inline" }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" "params" $params }}
+{{ $js = $js | js.Build $opts }}
+{{ if hugo.IsProduction }}
+  {{ $js = $js | fingerprint }}
+{{ end }}
+<script
+  src="{{ $js.RelPermalink }}"
+  {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end }}
+  type="module">
+</script>
+{{ end }}
+{{- .Page.Store.Set "notice-style-loaded-flag" true -}}
+{{- end -}}
+<div id="map-row">
+{{ if .includeSearch }}
+    <script>window.STARCHES_HAS_SEARCH = true;</script>
+    <div id="search-column">
+        <div id="search"></div>
+        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
+        <div id="result-count" class="result-count"></div>
+        <div id="instructions">
+            <p>Search above to find assets.</p>
+
+            <p>Each result has a <strong>View</strong> button to open it in this tab, and <strong>Open Tab</strong> to open the result in a new tab.</p>
+        </div>
+        <div id="results">
+        </div>
+    </div>
+
+{{ end }}
+    <div id="map-column">
+        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
+        <div id="map-container">
+{{ if .includeSearch }}
+            <div id="map-cover">
+                <div id="map-instructions">
+                    Search by typing 4+ characters into the <strong>searchbox</strong>, or
+                    by choosing a record type and <strong>zooming</strong> in to a small area
+                    - pinch the map or tap a grey dot to zoom.
+                </div>
+            </div>
+{{ end }}
+            <div class="map" data-center="{{ .center }}" data-zoom="{{ .zoom }}" {{ if .mobileZoom }}data-zoom-mobile="{{ .mobileZoom }}"{{ end }}></div>
+        </div>
+    </div>
+</div>

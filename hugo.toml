@@ -1,7 +1,6 @@
 baseURL = "/"
 languageCode = "en-gb"
-title = "Starches"
-theme = "govukhugo"
+title = "Alizarin Viewer"
 publishDir = "docs"
 canonifyurls = true
 
@@ -11,11 +10,31 @@ unsafe = true
 [params]
 govuk = false
 logotext = "ABC"
-product = "Starches Quickview"
+product = "Alizarin Viewer"
 phase = "alpha"
 feedbackurl = "/feedback/"
-archesurl = "http://localhost:8000/"
+cookies = "/cookies/"
 
 [[module.mounts]]
 source = "content"
 target = "content"
+
+[[module.mounts]]
+source = "static"
+target = "static"
+
+[[module.mounts]]
+source = "data"
+target = "data"
+
+[[module.mounts]]
+source = "assets"
+target = "assets"
+
+[[module.mounts]]
+source = "layouts"
+target = "layouts"
+
+[module]
+  [[module.imports]]
+    path = 'github.com/flaxandteal/hugo-cookies'

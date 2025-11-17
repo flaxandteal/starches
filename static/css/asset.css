@@ -1,0 +1,160 @@
+@media screen and (max-width: 1024px) {
+    html {
+        font-size: 70%;
+    }
+}
+
+.navigation-container {
+  display: flex;
+  column-gap: 5rem;
+}
+
+.asset-breadcrumbs {
+  text-align: right;
+}
+
+#map {
+  height: 40vh
+}
+#demo-warning {
+  display: none;
+}
+
+/* Modern Navigation */
+.modern-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+  padding: 10px 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.nav-back {
+}
+
+.nav-position {
+  flex: 2;
+  text-align: center;
+  font-size: 16px;
+  color: #505a5f;
+  font-weight: normal;
+}
+
+.nav-buttons {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+#prev-asset-top, #next-asset-top, #prev-asset-bottom, #next-asset-bottom {
+  min-width: 100px;
+  text-align: center;
+}
+
+#asset-title {
+  background-color: rgba(0, 32, 92, 1.0) !important;
+  padding-left: 0.4rem;
+  color: white;
+  font-size: 2rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  font-weight: bold;
+}
+
+#demo-warning {
+  max-width: 90vw;
+  padding: 10px;
+  background: rgba(227, 38, 54, 1);
+  color: white;
+  font-size: 120%;
+  font-weight: bold
+}
+
+#demo-warning a {
+  color: white;
+}
+
+h1, h2 {
+  padding-top: 5vh;
+}
+
+.map-hidden {
+  display: none;
+}
+
+dialog img {
+  max-height: 70vh;
+  max-width: 70vw;
+  display: block;
+  margin: auto;
+}
+
+.node-alias {
+  color: #999;
+}
+.node-value {
+  color: #050;
+}
+.node-empty {
+  color: #500;
+}
+.node-name {
+  line-height: 2.3rem;
+  color: #444;
+}
+.node-name details {
+  margin-bottom: 0;
+}
+.node-type {
+  background-color: #efe;
+}
+.node-description {
+  background-color: #eee;
+  border-right: thick black solid;
+  padding-right: 3rem;
+}
+article {
+  font-size: 1.4rem;
+}
+article ul {
+  list-style: none;
+}
+hr {
+  color: rgba(127, 86, 197, 0.8);
+}
+hr:after {
+  content: '';
+  display: block;
+  height: 1rem;
+  background: rgba(127, 86, 197, 0.04);
+}
+article h2 {
+  font-size: 130%;
+  background-color: #f8f8f8;
+  border-top: 0.3rem solid rgba(0, 32, 92, 1.0);
+  padding-left: 0.3rem;
+  padding-top: 2.3rem;
+  margin-top: 3.5rem;
+  padding-bottom: 0.3rem;
+  font-weight: normal;
+}
+article h3, article h4 {
+  font-size: 100%;
+  font-weight: normal;
+}
+
+article details.govuk-details {
+  font-size: 100%;
+  display: inline-block;
+  margin-bottom: 0;
+}
+article details.govuk-details .govuk-details__text {
+  background-color: #eee;
+  border-right: thick #ddd solid;
+  padding-right: 3rem;
+}
+article table.govuk-table {
+  font-size: 80%;
+}

@@ -1,0 +1,9 @@
+<!-- Would be great to have govuk Forms support -->
+{{- with .Get "formid" }}
+<iframe src="https://docs.google.com/forms/d/e/{{ $.Get "formid" }}/viewform?embedded=true" width="640" height="382" frameborder="0" marginheight="0" marginwidth="0">
+    Loading... if this form does not appear, you can reach it here:
+    <a href="https://docs.google.com/forms/d/e/{{ $.Get "formid" }}/viewform">https://docs.google.com/forms/d/e/{{ $.Get "formid" }}/viewform</a>
+</iframe>
+{{- else }}
+  {{- errorf "The %q shortcode requires a 'formid' argument: see %s" .Name .Position }}
+{{- end -}}

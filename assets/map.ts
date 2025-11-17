@@ -1,28 +1,58 @@
-import * as PagefindModularUI from "@pagefind/modular-ui";
-import { FeatureCollection, Feature } from 'geojson';
-import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, NavigationControl } from 'maplibre-gl';
-// import * as L from "leaflet";
-import { FlatbushWrapper } from './fb';
+import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, NavigationControl, GeolocateControl } from 'maplibre-gl';
+import { getGeoBounds } from './searchContext';
+import { isTouch } from './utils';
+import { getConfig } from './managers';
 import { addMarkerImage } from './map-tools';
+import { ensureFlatbushLoaded } from './fbwrapper';
+import { getFlatbushManager, getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager, ILayerManager } from './managers';
 
-const MAX_MAP_POINTS = 500;
-const MIN_SEARCH_LENGTH = 4;
-const TIME_TO_SHOW_LOADING_MS = 50;
-let doSearch = (geoOnly: boolean) => (console.error("Not yet loaded", geoOnly));
+function resultFunction(map, e) {
+    map.stop();
+    const coordinates = e.features[0].geometry.coordinates.slice();
+    map.targeting = coordinates;
+    const touch = isTouch();
 
-// @ts-expect-error No resetView on window
-window.resetView = () => {};
+    if (touch) {
+        document.getElementById("map-dialog__heading").innerHTML = `<h3>${e.features[0].properties.title}</h3>`;
+        document.getElementById("map-dialog__content").innerHTML = e.features[0].properties.description;
+
+        const modalElt = document.getElementById("map-dialog");
+        if (!modalElt.classList.contains("peeking")) {
+            modalElt.classList.toggle("peeking");
+        }
+        modalElt.showModal();
+    } else {
+        let description = `<h3>${e.features[0].properties.title}</h3>`;
+        description += `<div class='map-popup-body'>`;
+        description += e.features[0].properties.description;
+        description += '</div>';
+
+        // (maplibre)
+        // Ensure that if the map is zoomed out such that multiple
+        // copies of the feature are visible, the popup appears
+        // over the copy being pointed to.
+        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+        }
+
+        new Popup()
+            .setLngLat(coordinates)
+            .setHTML(description)
+            .addTo(window.map);
+    }
+}
 
 class ResetViewControl extends NavigationControl {
     defaultLatLng: [number, number];
     defaultZoom: number;
-    fb: FlatbushWrapper;
+    fb: FlatbushManager;
     _resetButton: HTMLButtonElement;
 
-    constructor(defaultLatLng: [number, number], defaultZoom: number, fb: FlatbushWrapper, options?: NavigationControlOptions) {
+    constructor(defaultLatLng: [number, number], defaultZoom: number, fb: FlatbushManager, options?: NavigationControlOptions) {
         super(options);
         this.defaultLatLng = defaultLatLng;
         this.defaultZoom = defaultZoom;
+        console.log(fb, 'fb');
         this.fb = fb;
     }
 
@@ -36,342 +66,390 @@ class ResetViewControl extends NavigationControl {
     }
 
     resetView() {
-        this.fb.setFiltered(false);
+        this.fb && this.fb.setFiltered(false);
         this._map.setCenter(this.defaultLatLng);
         this._map.setZoom(this.defaultZoom);
     };
 }
 
-async function buildMap(fb: FlatbushWrapper, fg: FeatureCollection): Promise<Map> {
-    const defaultCentre: [number, number] = [-6.4, 54.61];
-    const defaultZoom = 8;
-    const searchParams = new URLSearchParams(window.location.search);
-    let geoBounds = searchParams.get("geoBounds");
-    var map = new Map({
-        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-        container: 'map',
-        center: defaultCentre,
-        zoom: defaultZoom
+class LayerManager implements ILayerManager {
+    map: Promise<MLMap>;
+    fb?: FlatbushWrapper;
+    hashToDoc?: Function;
+    _mapResolve?: Function;
+    registers?: Promise<Map<string, string | boolean> | false>;
+
+    constructor() {
+        this.map = new Promise(resolve => { this._mapResolve = resolve; });
+    }
+
+    initialize(map: MLMap, fb: FlatbushWrapper, hashToDoc: Function) {
+        this.fb = fb;
+        this.hashToDoc = hashToDoc;
+        this._mapResolve(map);
+    }
+
+    async blankExcept(except: string[]) {
+        const map = await this.map;
+        const registers = await this.registers;
+        if (registers && map) {
+            for (const [register, layerName] of registers.entries()) {
+                if (typeof layerName === 'string' && !except.includes(register)) {
+                    map.setLayoutProperty(layerName, 'visibility', 'none');
+                }
+            }
+        }
+    }
+
+    async ensureRegister(register: string): Promise<boolean | undefined> {
+        let resolver;
+        let registers: Map<string, string | boolean>;
+        if (this.registers === undefined) {
+            this.registers = new Promise(async resolve => {
+                try {
+                    registers = new Map(Object.keys(await (await fetch('/fgb/index.json')).json()).map((key: string) => [key, register === key]));
+                } catch (e) {
+                    resolve(false);
+                    return false;
+                }
+                resolve(registers);
+            })
+            const r = await this.registers;
+            if (r === false) {
+                throw Error("Could not load fgb");
+            }
+            registers = r;
+        } else {
+            const r = await this.registers;
+            if (r === false) {
+                // Already errored;
+                return false;
+            }
+            registers = r;
+            if (registers.get(register) === true) {
+                return undefined;
+            }
+        }
+        let layerName = registers.get(register);
+        if (layerName === undefined) {
+            debugWarn("Layer missing from fgb", layerName, registers);
+            return false;
+        }
+        const map = await this.map;
+        if (layerName === false || layerName === true) {
+            let response
+            try {
+                response = await fetch(`/fgb/${register}.fgb`);
+            } catch (e) {
+                debugWarn(`Register ${register} fgb missing`, e);
+                return false;
+            }
+
+            if (!response) {
+                debugWarn(`Register ${register} fgb empty response`);
+                return false;
+            }
+            const fc: FeatureCollection = {
+                type: "FeatureCollection",
+                features: []
+            };
+            let i = 0;
+            for await (const f of fgbDeserialize(response.body)) {
+                fc.features.push({
+                    id: i,
+                    ...f,
+                });
+            }
+            layerName = `register-${register}`;
+            const source = map.addSource(layerName, {
+                type: 'geojson',
+                data: fc,
+            });
+            map.addLayer({
+                'id': layerName,
+                'type': 'circle',
+                'source': layerName,
+                'paint': {
+                    'circle-color': '#888888',
+                    'circle-radius': 6,
+                    "circle-stroke-width": 10,
+                    "circle-stroke-color": 'rgba(0, 0, 0, 0)'
+                },
+                'layout': {
+                    'visibility': 'none',
+                }
+            }, 'assets-flat');
+            map.on('click', layerName, async (e) => {
+                if (map.targeting) {
+                    console.warn("Refusing to search again while still moving to previous tapped location");
+                } else if (map.getZoom() < config.minSearchZoom + 1 && this.fb) {
+                    console.warn("Searching");
+                    map.targeting = true;
+                    const nearest = await this.fb.nearest(e.lngLat.toArray(), e.features[0].properties.regcode);
+                    // It is possible that, for example, a result function was hit before nearest was found.
+                    if (map.targeting === true) {
+                        let targeting;
+                        if (nearest) {
+                            targeting = nearest.geometry.coordinates;
+                        } else {
+                            targeting = e.lngLat;
+                        }
+                        map.targeting = targeting;
+                    }
+                    // TODO: bubble up nearest to be selected
+                }
+                if (Array.isArray(map.targeting)) {
+                    await map.flyTo({center: map.targeting, zoom: config.minSearchZoom + 1});
+                    map.targeting = false;
+                }
+            });
+            registers.set(register, layerName);
+        }
+
+        map.setLayoutProperty(layerName, 'visibility', 'visible');
+        if (resolver) {
+            resolver(registers);
+        }
+        return true;
+    }
+}
+
+class MapManager implements IMapManager {
+  fb: Promise<FlatbushManager | undefined>;
+  lm: Promise<LayerManager | undefined>;
+
+  async getLayerManager() {
+    if (this.layerManager) {
+      return this.layerManager;
+    }
+
+    this.layerManager = new Promise(async (resolve) => {
+    console.log('im');
+      const lm = new LayerManager();
+    console.log('om');
+      const map = await getMap(); // We only build the layer manager for the "primary" map
+    console.log('ma');
+      const fb = await getFlatbushManager();
+    console.log('am');
+      const sm = await getSearchManager();
+      if (sm) {
+        const hashToDoc = sm.getDocByHash
+        lm.initialize(map, fb, hashToDoc);
+        resolve(lm);
+      }
+      resolve();
     });
-    window.map = map;
+  }
+
+  async addMap(container: HTMLElement, center: [number, number], zoom: number, geoBounds?: [number, number, number, number], touch: boolean) {
+    var map = new Map({
+      style: 'https://tiles.openfreemap.org/styles/bright',
+      pitch: 0,
+      bearing: 0,
+      container: container,
+      center: center,
+      zoom: zoom,
+      cooperativeGestures: touch,
+    });
+    map.dragRotate.disable();
+    map.touchZoomRotate.disableRotation();
+    map.targeting = false;
 
     return new Promise((resolve) => {
-        map.on('load', async () => {
-            const fg: FeatureCollection = {
-                'type': 'FeatureCollection',
-                'features': []
-            };
-
-            const fsSourceId = 'featureserver-src'
-
-            const image = await map.loadImage('https://maplibre.org/maplibre-gl-js/docs/assets/osgeo-logo.png');
-            map.addImage('custom-marker', image.data);
-            const resetViewControl = new ResetViewControl(
-                defaultCentre,
-                defaultZoom,
-                fb,
-                {
-                    visualizePitch: true,
-                    visualizeRoll: true,
-                    showZoom: true,
-                    showCompass: true
-                }
-            )
-            map.addControl(resetViewControl);
-
-            // @ts-expect-error No resetView on window
-            window.resetView = resetViewControl.resetView.bind(resetViewControl);
-
-            if (geoBounds && /^[-,\[\]_0-9a-f.]*$/i.exec(geoBounds)) {
-                const bounds: [number, number, number, number] = JSON.parse(geoBounds);
-                map.fitBounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]]);
-            }
-            map.addSource('osm', {
-                type: 'raster',
-                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                tileSize: 256,
-            });
-            map.addLayer({
-                id: 'osm-layer',
-                type: 'raster',
-                source: 'osm',
-            });
-
-            await addMarkerImage(map);
-
-            const source = map.addSource('assets', {
-                type: 'geojson',
-                data: fg,
-            });
-            map.addLayer({
-                'id': 'asset-boundaries',
-                'type': 'fill',
-                'source': 'assets',
-                'paint': {
-                    'fill-color': '#888888',
-                    'fill-opacity': 0.4
-                },
-                'filter': ['==', '$type', 'Polygon']
-            });
-            map.addLayer({
-                'id': 'assets',
-                'type': 'symbol',
-                'source': 'assets',
-                'layout': {
-                    'icon-image': 'marker',
-                    'text-offset': [0, 1.25],
-                    'text-anchor': 'top'
-                },
-                'filter': ['==', '$type', 'Point']
-            });
-
-            map.on('click', 'assets', (e) => {
-                const coordinates = e.features[0].geometry.coordinates.slice();
-                const description = e.features[0].properties.description;
-
-                // (maplibre)
-                // Ensure that if the map is zoomed out such that multiple
-                // copies of the feature are visible, the popup appears
-                // over the copy being pointed to.
-                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-                }
-
-                new Popup()
-                    .setLngLat(coordinates)
-                    .setHTML(description)
-                    .addTo(map);
-            });
-
-            map.on('mouseenter', 'assets', () => {
-                map.getCanvas().style.cursor = 'pointer';
-            });
-
-            map.on('mouseleave', 'assets', () => {
-                map.getCanvas().style.cursor = '';
-            });
-
-            resolve(map);
-        });
-
-        const moveEnd = function(e) {
-           var bounds = map.getBounds();
-            if (fb.getFiltered() === false) {
-                fb.setFiltered(null);
-            } else {
-                const sw = bounds.getSouthWest();
-                const ne = bounds.getNorthEast();
-                fb.filter([sw.lng, sw.lat, ne.lng, ne.lat]);
-            }
-            doSearch(true);
+        map.on('load', () => this.onMapLoad(map, resolve, center, zoom, geoBounds));
+        const moveEnd = async function(e) {
+          var bounds = map.getBounds();
+          const fb = await getFlatbushManager();
+          if (fb && (await fb.getFiltered()) === false) {
+              fb.setFiltered(null);
+          } else {
+              const sw = bounds.getSouthWest();
+              const ne = bounds.getNorthEast();
+              fb && fb.filter([sw.lng, sw.lat, ne.lng, ne.lat]);
+          }
+          const sm = await getSearchManager();
+          const instance = await sm.getPagefindInstance();
+          instance.retriggerSearch();
+          map.targeting = false;
         };
         map.on('dragend', moveEnd);
         map.on('zoomend', moveEnd);
     });
-}
+  }
 
-async function buildGeoIndex() {
-    const fb = new FlatbushWrapper();
-    await fb.initialize('/flatbush.bin');
-    return fb;
-}
-
-function makeAssetUrl(url: string) {
-    return `${url}&searchTerm=${lastTerm}&geoBounds=${JSON.stringify(fb.bounds)}`;
-}
-
-class GeoSearchFilter {
-    [key: string]: any
-
-    constructor(searchFilters: {[key: string]: any}) {
-        for (let [k, v] of Object.entries(searchFilters)) {
-            this[k] = v;
-        }
-    }
-};
-async function buildTextIndex(searchAction: (term: string, settings: object, pagefind: any) => Promise<any>) {
-    const instance = new PagefindModularUI.Instance({
-        showImages: false,
-        debounceTimeoutMs: 800,
-        bundlePath: "/pagefind/"
-    });
-    const input = new PagefindModularUI.Input({
-        containerElement: "#search",
-    });
-    const filters = new PagefindModularUI.FilterPills({
-        containerElement: "#filter",
-        filter: "tags",
-        alwaysShow: true
-    });
-    instance.add(filters);
-
-    instance.add(input);
-    instance.on("loading", () => {
-        let rc = document.getElementById("result-count");
-        rc.innerHTML = "";
-        let p = document.createElement("p");
-        p.classList = 'fade';
-        p.innerText = 'Searching...';
-        rc.append(p);
-    });
-    await instance.__load__();
-    const pagefind = instance.__pagefind__;
-    instance.__pagefind__ = {
-        filters: pagefind.filters,
-        search: async (term, settings) => searchAction(term, settings, pagefind)
-    };
-    const resultList = new PagefindModularUI.ResultList({
-        containerElement: "#results",
-    });
-    resultList._resultTemplateReal = resultList.resultTemplate;
-    resultList.resultTemplate = (result) => {
-        const el = resultList._resultTemplateReal(result);
-        let p = document.createElement("p");
-        p.classList = "result-links"
-        let location = result.meta.location;
-        let pInner = "<div class='govuk-button-group'>";
-
-        const url = makeAssetUrl(result.url);
-        pInner += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`
-        pInner += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" target='_blank'>Open tab</a></li>`;
-        if (location) {
-            location = JSON.parse(location);
-            if (location) {
-              const call = `map.flyTo({center: [${location[0]}, ${location[1]}], zoom: 13})`;
-              pInner += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
-            }
-        }
-        p.innerHTML = pInner;
-        el.children[1].append(p);
-        return el;
-    };
-    instance.add(resultList);
-    doSearch = function (geoOnly: boolean=true) {
-        let filters = instance.searchFilters;
-        if (geoOnly) {
-            filters = new GeoSearchFilter(filters);
-        }
-        // TODO: find a cleaner approach
-        instance.__search__(input.inputEl.value, filters);
-    };
-    return instance;
-}
-
-function handleResults(fg: FeatureCollection, results): Promise<FeatureCollection> {
-      // fg.clearLayers();
-      let resultCount = document.getElementById("result-count");
-      if (results.geofilteredResultCount) {
-          if (results.geofilteredResultCount == results.unfilteredResultCount) {
-            resultCount.innerHTML = `Showing all <strong>${results.unfilteredResultCount}</strong> search results`;
-          } else {
-            resultCount.innerHTML = `Showing first <strong>${results.geofilteredResultCount}</strong> / <strong>${results.unfilteredResultCount}</strong> search results`;
-          }
-      } else {
-          resultCount.innerHTML = "";
-      }
-      const visibleIds = new Set(fg.features.map(marker => marker.properties.id).filter(marker => marker));
-      return Promise.all(results.results.slice(0, MAX_MAP_POINTS).map(r => {
-          return r.data().then(re => {
-            if (re.meta.location) {
-              const loc = JSON.parse(re.meta.location);
-              const id = re.meta.resourceinstanceid;
-              if (loc && !visibleIds.has(id)) {
-                const url = makeAssetUrl(re.url);
-                let marker = {
-                    'type': 'Feature',
-                    'geometry': {
-                        'type': 'Point',
-                        'coordinates': [loc[0], loc[1]]
-                    },
-                    'properties': {
-                        'id': id,
-                        'title': re.meta.title,
-                        'description':
-                            `<p>${re.meta.title}</p><p><a href='${url}'>View record...</a><br><a href='${url}' target='_blank'>Open in new tab...</a></p>`,
-                        'icon': 'theatre'
-                    },
-                };
-                fg.features.push(marker);
-              }
-            visibleIds.delete(id);
-            }
-          });
-      })).then(() => {;
-          fg.features = fg.features.filter(marker => {
-            if (marker.properties.id && visibleIds.has(marker.properties.id)) {
-                return false;
-            }
-            return true;
-          });
-          return fg;
-      });
-}
-
-var cachedResults;
-var lastTerm;
-class SearchFilters {
-    filters: object | GeoSearchFilter | undefined = undefined
-}
-
-var fb;
-window.addEventListener('DOMContentLoaded', async (event) => {
-    fb = await buildGeoIndex();
+  async onMapLoad(map, resolve, defaultCenter, defaultZoom, bounds) {
     const fg: FeatureCollection = {
         'type': 'FeatureCollection',
         'features': []
     };
 
-    const map = buildMap(fb, fg);
-    const searchAction = async function (term: string, settings: SearchFilters, pagefind) {
-      if (term && term.length < MIN_SEARCH_LENGTH) {
-          return {results: []};
-      }
+    const fsSourceId = 'featureserver-src'
 
-      let results;
-      lastTerm = term;
-      if (settings && settings.filters && settings.filters instanceof GeoSearchFilter) {
-        // We are doing a geo update, so assume results exist;
-        results = cachedResults;
-        results.results = results.unfilteredResults;
-      } else {
-        results = await pagefind.search(term, settings);
-        cachedResults = results;
-        results.unfilteredResults = results.results;
-      }
-      results.context = {term, settings};
-      const filtered = fb.getFiltered();
-      if (filtered) {
-          results.results = results.results.filter(r => filtered.has(r.id));
-      }
-      results.results = results.results.slice(0, MAX_MAP_POINTS);
-      results.geofilteredResultCount = results.results.length;
-      return results;
-    }
-    const instance = await buildTextIndex(searchAction);
-
-    instance.on("results", results => handleResults(fg, results).then(async (fg) => {
-        const m = await map;
-        console.log(m.loaded());
-        m.getSource('assets').setData(fg);
-    }));
-
-    const searchParams = new URLSearchParams(window.location.search);
-    const term = searchParams.get("searchTerm");
-    if (term && /^[_0-9a-z]*$/i.exec(term)) {
-        const input = document.getElementById("pfmod-input-0");
-        input.value = term;
-        doSearch(false);
-    }
-
-    var target = document.querySelector('div#results')
-    var instructions = document.querySelector('div#instructions')
-    var observer = new MutationObserver(() => {
-        if (target.childNodes.length === 0) {
-            instructions.classList = "";
-        } else {
-            instructions.classList = "instructions-hidden";
+    const fb = await getFlatbushManager();
+    const resetViewControl = new ResetViewControl(
+        defaultCenter,
+        defaultZoom,
+        fb,
+        {
+            visualizePitch: false,
+            visualizeRoll: false,
+            showZoom: true,
+            showCompass: true
         }
+    )
+    map.addControl(resetViewControl);
+    const config = await getConfig();
+
+    if (config.showGeolocateControl) {
+      map.addControl(
+          new GeolocateControl({
+              fitBoundsOptions: {
+                  maxZoom: config.minSearchZoom + 1
+              },
+              positionOptions: {
+                  enableHighAccuracy: true
+              },
+              trackUserLocation: true
+          })
+      );
+    }
+
+    // @ts-expect-error No resetView on window
+    window.resetView = resetViewControl.resetView.bind(resetViewControl);
+
+    if (bounds) {
+        map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]]);
+    }
+
+    await addMarkerImage(map);
+
+    const source = map.addSource('assets', {
+        type: 'geojson',
+        data: fg,
     });
-    var config = { characterData: true, attributes: false, childList: true, subtree: true };
-    observer.observe(target, config);
-});
+    map.addLayer({
+        'id': 'asset-boundaries',
+        'type': 'fill',
+        'source': 'assets',
+        'paint': {
+            'fill-color': '#888888',
+            'fill-opacity': 0.4
+        },
+        'filter': ['==', '$type', 'Polygon']
+    });
+    map.addLayer({
+        'id': 'assets-flat',
+        'maxzoom': config.minSearchZoom,
+        'type': 'circle',
+        'source': 'assets',
+        'paint': {
+            'circle-color': '#ff8888',
+            'circle-radius': 12,
+            "circle-stroke-width": 1,
+            "circle-stroke-color": '#fff'
+        },
+        'layout': {
+            'visibility': 'none',
+        },
+        'filter': ['==', '$type', 'Point']
+    });
+    map.addLayer({
+        'id': 'assets',
+        'type': 'symbol',
+        'source': 'assets',
+        'minzoom': config.minSearchZoom,
+        'layout': {
+            'icon-image': 'marker-new',
+            'icon-allow-overlap': true,
+            'text-allow-overlap': true,
+            'text-offset': [0, 1.25],
+            'text-anchor': 'top'
+        },
+        'filter': ['==', '$type', 'Point']
+    });
+
+    map.on('click', 'assets', (e) => resultFunction(map, e));
+    map.on('click', 'assets-flat', (e) => resultFunction(map, e));
+
+    map.on('mouseenter', 'assets', () => {
+        map.getCanvas().style.cursor = 'pointer';
+    });
+
+    map.on('mouseleave', 'assets', () => {
+        map.getCanvas().style.cursor = '';
+    });
+
+    resolve(map);
+  }
+
+  async addMaps() {
+    let geoBounds = await getGeoBounds();
+
+    const maps = document.querySelectorAll(".map");
+    const mapPromises = [];
+    let foundPrimaryMap;
+
+    console.log('iw');
+    for (const mapElt of maps) {
+      const center = JSON.parse(mapElt.dataset.center);
+      const zoom = JSON.parse(mapElt.dataset.zoom);
+      const primary = !!mapElt.dataset.primary;
+      let mobileZoom: number;
+      if (mobileZoom) {
+        try {
+          mobileZoom = JSON.parse(mapElt.dataset.zoom);
+          if (isNaN(parseInt(mobileZoom))) {
+            mobileZoom = undefined;
+          }
+        } catch (e: Exception) {
+          console.error(e, 'Could not parse mobile zoom default');
+        }
+      }
+      const touch = isTouch();
+      const defaultZoom = touch ? (mobileZoom | zoom) : zoom;
+
+      const map = this.addMap(mapElt, center, defaultZoom, geoBounds, touch);
+      if (map && (!foundPrimaryMap || primary)) {
+        foundPrimaryMap = map;
+      }
+    }
+    console.log('ow');
+    if (foundPrimaryMap) {
+      foundPrimaryMap.then(map => resolvePrimaryMapWith(map));
+    } else {
+      resolvePrimaryMapWith(undefined); // TODO: handle map load failure
+    }
+  }
+
+  setMapCover(status: boolean) {
+      document.getElementById("map-cover").style.display = status ? "block" : "none";
+  }
+}
+
+// Map getter is now in managers.ts
+
+function mapDialogClickedOutside() {
+    const modalElt = document.getElementById("map-dialog");
+    modalElt.close();
+}
+
+function mapDialogClicked(event) {
+    const modalElt = document.getElementById("map-dialog");
+    modalElt.classList.toggle("peeking");
+    event.stopPropagation()
+}
+
+// MapManager getter is now in managers.ts
+
+document.addEventListener('DOMContentLoaded', async (event) => {
+  const mapManagerInstance = new MapManager();
+  await mapManagerInstance.addMaps();
+  resolveMapManagerWith(mapManagerInstance);
+
+  const modalElt = document.getElementById("map-dialog");
+  modalElt.addEventListener("click", () => modalElt.close());
+  const modalInnerElt = document.getElementById("map-dialog__inner");
+  modalInnerElt.addEventListener("click", mapDialogClicked);
+
+  ensureFlatbushLoaded();
+}, { once: true });

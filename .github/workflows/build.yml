@@ -1,0 +1,72 @@
+name: Run full build
+run-name: Run full build
+on:
+  workflow_dispatch: {}
+env:
+  REGION: europe-west2
+  GAR_LOCATION: europe-west2-docker.pkg.dev/${{ secrets.GCLOUD_PROJECT_ID }}/coral-starches
+jobs:
+  Build-Arches:
+    runs-on: [self-hosted]
+    strategy:
+      matrix:
+        visibility:
+        - image: coral-starches-public
+          starches_include_private: '0'
+        - image: coral-starches
+          starches_include_private: '1'
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          submodules: 'true'
+      - name: Set up Docker Context for Buildx
+        id: buildx-context
+        run: |
+          docker context create builders
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          version: latest
+          endpoint: builders
+      - run: |
+          echo "AWS_ACCESS_KEY_ID_PRIVATE=${AWS_ACCESS_KEY_ID_PRIVATE}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY_PRIVATE=${AWS_SECRET_ACCESS_KEY_PRIVATE}" >> $GITHUB_ENV
+      - name: Get latest coral-starches
+        uses: flaxandteal/fork-action-mc@master
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID_PRIVATE }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY_PRIVATE }}
+          MC_URL: "http://srv-minio.srv-minio.svc.cluster.local:9000"
+          MC_ALIAS: thebfc
+        with:
+          args: get thebfc/fat-crl-data/build-latest.tgz build-latest.tgz
+      - name: Get latest coral-starches
+        uses: flaxandteal/fork-action-mc@master
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID_PRIVATE }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY_PRIVATE }}
+          MC_URL: "http://srv-minio.srv-minio.svc.cluster.local:9000"
+          MC_ALIAS: thebfc
+        with:
+          args: get thebfc/fat-crl-data/pagefind pagefind-bin
+      - name: Untar build
+        run: |
+          tar -xzf build-latest.tgz
+      - id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+      - name: Use gcloud CLI
+        run: gcloud info
+      - name: Docker auth
+        run: |-
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Build image
+        run: docker build . --file ./Dockerfile --tag ${{ env.GAR_LOCATION }}/${{ matrix.visibility.image }}:latest-${{ github.run_id }} --build-arg STARCHES_INCLUDE_PRIVATE=${{ matrix.visibility.starches_include_private }}
+        working-directory: .
+      - name: Push image
+        run: docker push ${{ env.GAR_LOCATION }}/${{ matrix.visibility.image }}:latest-${{ github.run_id }}

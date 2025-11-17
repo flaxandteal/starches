@@ -1,0 +1,259 @@
+<footer class="govuk-footer " role="contentinfo">
+    <div class="govuk-width-container ">
+        <div class="govuk-footer__meta">
+            <div class="govuk-footer__meta-item govuk-footer__meta-item--grow">
+
+                <h2 class="govuk-visually-hidden">Support links</h2>
+                <ul class="govuk-footer__inline-list">
+
+                    {{ $currPage := . }}
+
+                    {{ with .Site.Params.help }}
+                    <li class="govuk-footer__inline-list-item">
+                        <a class="govuk-footer__link" href="{{ relref  $currPage . }}">
+                            Help
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ with .Site.Params.accessibility }}
+                    <li class="govuk-footer__inline-list-item">
+                        <a class="govuk-footer__link" href="{{ relref  $currPage . }}">
+                            Accessibility
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ with .Site.Params.privacy }}
+                    <li class="govuk-footer__inline-list-item">
+                        <a class="govuk-footer__link" href="{{ relref  $currPage . }}">
+                            Privacy
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ with .Site.Params.cookies }}
+                    <li class="govuk-footer__inline-list-item">
+                        <a class="govuk-footer__link" href="{{ relref  $currPage . }}">
+                            Cookies
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ with .Site.Params.contact }}
+                    <li class="govuk-footer__inline-list-item">
+                        <a class="govuk-footer__link" href="{{ relref  $currPage . }}">
+                            Contact
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ with .Site.Params.terms }}
+                    <li class="govuk-footer__inline-list-item">
+                        <a class="govuk-footer__link" href="{{ relref  $currPage . }}">
+                            Terms
+                        </a>
+                    </li>
+                    {{ end }}
+                    {{ with .Site.Params.builtby }}
+                    <li class="govuk-footer__inline-list-item">
+                        Built by <a class="govuk-footer__link" href="{{ $.Site.Params.builtbyurl }}">
+                            {{ . }}
+                        </a>
+                    </li>
+                    {{ end }}
+
+                </ul>
+
+                <svg aria-hidden="true" focusable="false" class="govuk-footer__licence-logo"
+                    xmlns="http://www.w3.org/2000/svg" viewBox="0 0 483.2 195.7" height="17" width="41">
+                    <path fill="currentColor"
+                        d="M421.5 142.8V.1l-50.7 32.3v161.1h112.4v-50.7zm-122.3-9.6A47.12 47.12 0 0 1 221 97.8c0-26 21.1-47.1 47.1-47.1 16.7 0 31.4 8.7 39.7 21.8l42.7-27.2A97.63 97.63 0 0 0 268.1 0c-36.5 0-68.3 20.1-85.1 49.7A98 98 0 0 0 97.8 0C43.9 0 0 43.9 0 97.8s43.9 97.8 97.8 97.8c36.5 0 68.3-20.1 85.1-49.7a97.76 97.76 0 0 0 149.6 25.4l19.4 22.2h3v-87.8h-80l24.3 27.5zM97.8 145c-26 0-47.1-21.1-47.1-47.1s21.1-47.1 47.1-47.1 47.2 21 47.2 47S123.8 145 97.8 145" />
+                </svg>
+                <span class="govuk-footer__licence-description">
+                    All content is available under the
+                    <a class="govuk-footer__link"
+                        href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+                        rel="license">Open Government Licence v3.0</a>, except where otherwise stated
+                </span>
+            </div>
+            <div class="govuk-footer__meta-item">
+                <a style="background-image:url({{ .Site.BaseURL }}images/govuk-crest.png);"
+                    class="govuk-footer__link govuk-footer__copyright-logo"
+                    href="https://www.nationalarchives.gov.uk/information-management/re-using-public-sector-information/uk-government-licensing-framework/crown-copyright/">©
+                    Crown copyright </a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Apply GOV.UK and govukhugo tagging -->
+<script type="text/javascript">
+
+    function applyGOVUK(tag, govuk_class) {
+        var elements = document.querySelector("div.dashboard-content").getElementsByTagName(tag)
+
+        var i;
+        for (i = 0; i < elements.length; i++) {
+            if (elements[i].classList.contains("lntable") || elements[i].classList.contains("lntd")) {
+                null;
+            } else if (tag == "P" && (elements[i].classList.contains("govuk-body-l") || elements[i].classList.contains("govuk-body-s"))) {
+                null;
+            } else if (tag == "HR" && (elements[i].classList.contains("govuk-section-break"))) {
+                null;
+            } else {
+                elements[i].classList.add(govuk_class);
+            }
+
+        };
+
+    };
+
+    /* Style paragraphs */
+    applyGOVUK("P", "govuk-body");
+
+    /* Style tables */
+    applyGOVUK("TABLE", "govuk-table");
+    applyGOVUK("CAPTION", "govuk-table__caption");
+    applyGOVUK("CAPTION", "govuk-table__caption--m");
+    applyGOVUK("TR", "govuk-table__row");
+    applyGOVUK("TD", "govuk-table__cell");
+    applyGOVUK("THEAD", "govuk-table__head");
+    applyGOVUK("TH", "govuk-table__header");
+
+    /* Style other typography */
+    applyGOVUK("BLOCKQUOTE", "govuk-inset-text");
+    applyGOVUK("STRONG", "govuk-!-font-weight-bold");
+    applyGOVUK("B", "govuk-!-font-weight-bold");
+
+    /* Style lists */
+    applyGOVUK("UL", "govuk-list");
+    applyGOVUK("UL", "govuk-list--bullet");
+    applyGOVUK("OL", "govuk-list");
+    applyGOVUK("OL", "govuk-list--number");
+
+    /* Section breaks*/
+    applyGOVUK("HR", "govuk-section-break--l");
+    applyGOVUK("HR", "govuk-section-break");
+
+    /* Endnotes */
+    var fn_p = document.querySelectorAll("div.footnotes li p")
+    if (fn_p.length > 0) {
+        document.querySelector("div.footnotes ol").classList.add("govuk-body-s")
+        for (var i = 0; i < fn_p.length; i++) {
+            fn_p[i].classList.add("govuk-body-s")
+        }
+    }
+
+    /* Add spacing to code highlight divs */
+    function styleCodeBlocks() {
+        var code_elements = document.querySelectorAll("div.highlight")
+        var i;
+
+        for (i = 0; i < code_elements.length; i++) {
+            code_elements[i].classList.add("govuk-body");
+        };
+    };
+    styleCodeBlocks();
+
+    /* Style in-page TOCs */
+    function restyleTOC() {
+
+        var toc_elements = document.querySelectorAll("#page_toc #TableOfContents ul")
+
+        var i;
+
+        for (i = 0; i < toc_elements.length; i++) {
+            toc_elements[i].classList.remove("govuk-list");
+            toc_elements[i].classList.remove("govuk-list--bullet");
+            toc_elements[i].classList.add("toc-list");
+
+        };
+
+        var toc_links = document.querySelectorAll("#page_toc #TableOfContents a")
+
+        for (i = 0; i < toc_links.length; i++) {
+            toc_links[i].classList.add("toc-link");
+        };
+
+    };
+    restyleTOC();
+
+    {{ with .Params.rmarkdown }}
+
+    /* style datatables */
+    govuk_DT_styling = function () {
+        $("table.dataTable").addClass("govuk-table");
+        $("table.dataTable caption").addClass("govuk-table__caption govuk-table__caption--m");
+        $("table.dataTable thead").addClass("govuk-table__head");
+        $("table.dataTable tbody").addClass("govuk-table__body");
+        $("table.dataTable tr").addClass("govuk-table__row");
+        $("table.dataTable th").addClass("govuk-table__header");
+        $("table.dataTable td").addClass("govuk-table__cell");
+        $(".datatables label").addClass("govuk-label govuk-!-font-size-16");
+        $(".datatables select").addClass("govuk-select govuk-!-font-size-16");
+        $(".datatables input").addClass("govuk-input govuk-!-font-size-16");
+        $(".datatables .dataTables_info").addClass("govuk-!-font-size-14");
+        $(".dataTables_paginate").addClass("govuk-!-font-size-14");
+        $(".datatables a.ui-button.ui-state-disabled").addClass("govuk-tag govuk-!-font-size-14");
+        $(".datatables a.ui-button.previous.ui-state-disabled").css("display", "none");
+        $(".datatables a.ui-button.next.ui-state-disabled").css("display", "none");
+        $(".datatables table").css("border-bottom", "unset");
+        $("button.dt-button.ui-button").addClass("govuk-!-font-size-14");
+        $(".crosstalk-input .control-label").addClass("govuk-label govuk-!-font-size-16");
+    };
+
+    reset_filters = function () {
+        $(".selectized").each(function (index, element) {
+            element.selectize && element.selectize.clear()
+        });
+
+        $("input[type='search']").val('')
+
+        $(".datatables table").DataTable().search("")
+
+    };
+
+    $(".datatables").on('init.dt', function () {
+        $('.dataTables_filter').insertAfter("#fs_org");
+        $('.loading').css("display", "none");
+    });
+
+    $(".datatables").on('draw.dt', function () { govuk_DT_styling(); });
+
+    $("#clear-filters").on('click', function () { reset_filters();});
+
+    {{ end }}
+
+    function scrollTop() {
+        if (window.innerWidth <= 768) {
+            document.getElementById("scroll-back").style.display = "none";
+        } else if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+            document.getElementById("scroll-back").style.display = "block";
+        } else {
+            document.getElementById("scroll-back").style.display = "none";
+        };
+    }
+
+    window.onscroll = function() { scrollTop() };
+
+    function mobileNav() {
+        var navState = document.getElementById("mobile-nav").style.display
+        if (navState == '' || navState == "none") {
+            document.getElementById("mobile-nav").style.display = "block";
+        } else {
+            document.getElementById("mobile-nav").style.display = "none";
+        }
+        console.log(navState)
+    }
+
+    document.getElementById("mobile-nav-control").onclick = function() { mobileNav() };
+
+    $("a.govuk-tabs__tab").on("click", function() {
+        window.dispatchEvent(new Event('resize'))
+    })
+
+</script>
+
+{{ partial "hugo-cookies/consent.html" . }}
+
+<!-- GOV.UK scripting -->
+<script src="{{ "js/govuk-frontend-4.0.0.min.js" | absURL }}"></script>
+<script>
+    window.GOVUKFrontend.initAll()
+</script>
