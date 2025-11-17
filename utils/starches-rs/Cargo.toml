@@ -1,8 +1,0 @@
-[package]
-name = "starches-utils"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-flatgeobuf = "4.6.0"
-geozero = "0.14.0"
