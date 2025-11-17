@@ -26,6 +26,7 @@
     "marked": "^15.0.7",
     "marked-plaintify": "^1.1.1",
     "pagefind": "file:pagefind/wrappers/node",
+    "starches-builder": "github:flaxandteal/starches-builder#main",
     "toml": "^3.0.0"
   },
   "name": "starches-coral",
@@ -63,5 +64,12 @@
     "vite": "^6.3.5",
     "vite-hugo-plugin": "^5.1.0",
     "vitest": "^3.2.3"
-  }
+  },
+  "sideEffects": [
+    "./assets/fbwrapper.ts",
+    "./assets/searchContext.ts",
+    "./assets/search.ts",
+    "./assets/pagefind.ts",
+    "./assets/config.ts"
+  ]
 }

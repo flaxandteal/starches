@@ -74,7 +74,7 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
         if (location) {
             location = JSON.parse(location);
             if (location) {
-              const call = `map.flyTo({center: [${location[0]}, ${location[1]}], zoom: ${config.minSearchZoom + 1}})`;
+              const call = `window.__starchesManagers.primaryMap.then(map => map.flyTo({center: [${location[0]}, ${location[1]}], zoom: ${config.minSearchZoom + 1}}))`;
               pInner += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
             }
         }

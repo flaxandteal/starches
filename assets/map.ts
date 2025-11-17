@@ -1,10 +1,10 @@
 import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, NavigationControl, GeolocateControl } from 'maplibre-gl';
 import { getGeoBounds } from './searchContext';
 import { isTouch } from './utils';
-import { getFlatbushWrapper, FlatbushWrapper } from './fbwrapper';
 import { getConfig } from './managers';
 import { addMarkerImage } from './map-tools';
-import { getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager, ILayerManager } from './managers';
+import { ensureFlatbushLoaded } from './fbwrapper';
+import { getFlatbushManager, getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager, ILayerManager } from './managers';
 
 function resultFunction(map, e) {
     map.stop();
@@ -45,13 +45,14 @@ function resultFunction(map, e) {
 class ResetViewControl extends NavigationControl {
     defaultLatLng: [number, number];
     defaultZoom: number;
-    fb: FlatbushWrapper;
+    fb: FlatbushManager;
     _resetButton: HTMLButtonElement;
 
-    constructor(defaultLatLng: [number, number], defaultZoom: number, fb: FlatbushWrapper, options?: NavigationControlOptions) {
+    constructor(defaultLatLng: [number, number], defaultZoom: number, fb: FlatbushManager, options?: NavigationControlOptions) {
         super(options);
         this.defaultLatLng = defaultLatLng;
         this.defaultZoom = defaultZoom;
+        console.log(fb, 'fb');
         this.fb = fb;
     }
 
@@ -214,7 +215,7 @@ class LayerManager implements ILayerManager {
 }
 
 class MapManager implements IMapManager {
-  fb: Promise<FlatbushWrapper | undefined>;
+  fb: Promise<FlatbushManager | undefined>;
   lm: Promise<LayerManager | undefined>;
 
   async getLayerManager() {
@@ -223,9 +224,13 @@ class MapManager implements IMapManager {
     }
 
     this.layerManager = new Promise(async (resolve) => {
+    console.log('im');
       const lm = new LayerManager();
+    console.log('om');
       const map = await getMap(); // We only build the layer manager for the "primary" map
-      const fb = await getFlatbushWrapper();
+    console.log('ma');
+      const fb = await getFlatbushManager();
+    console.log('am');
       const sm = await getSearchManager();
       if (sm) {
         const hashToDoc = sm.getDocByHash
@@ -254,7 +259,7 @@ class MapManager implements IMapManager {
         map.on('load', () => this.onMapLoad(map, resolve, center, zoom, geoBounds));
         const moveEnd = async function(e) {
           var bounds = map.getBounds();
-          const fb = await getFlatbushWrapper();
+          const fb = await getFlatbushManager();
           if (fb && (await fb.getFiltered()) === false) {
               fb.setFiltered(null);
           } else {
@@ -280,7 +285,7 @@ class MapManager implements IMapManager {
 
     const fsSourceId = 'featureserver-src'
 
-    const fb = await getFlatbushWrapper();
+    const fb = await getFlatbushManager();
     const resetViewControl = new ResetViewControl(
         defaultCenter,
         defaultZoom,
@@ -384,6 +389,7 @@ class MapManager implements IMapManager {
     const mapPromises = [];
     let foundPrimaryMap;
 
+    console.log('iw');
     for (const mapElt of maps) {
       const center = JSON.parse(mapElt.dataset.center);
       const zoom = JSON.parse(mapElt.dataset.zoom);
@@ -407,6 +413,7 @@ class MapManager implements IMapManager {
         foundPrimaryMap = map;
       }
     }
+    console.log('ow');
     if (foundPrimaryMap) {
       foundPrimaryMap.then(map => resolvePrimaryMapWith(map));
     } else {
@@ -443,4 +450,6 @@ document.addEventListener('DOMContentLoaded', async (event) => {
   modalElt.addEventListener("click", () => modalElt.close());
   const modalInnerElt = document.getElementById("map-dialog__inner");
   modalInnerElt.addEventListener("click", mapDialogClicked);
+
+  ensureFlatbushLoaded();
 }, { once: true });

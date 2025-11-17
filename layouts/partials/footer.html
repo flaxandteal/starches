@@ -81,18 +81,6 @@
         </div>
     </div>
 </footer>
-<dialog id="map-dialog" aria-labelledby="map-dialog__heading">
-<div id="map-dialog__inner">
-    <div id="map-dialog__heading"></div>
-
-    <div id="map-dialog__content"></div>
-
-    <button class="govuk-button dialog-cancel" type="button" id="map-dialog__cancel"
-        onclick="document.getElementById('map-dialog').close()">
-        Cancel
-    </button>
-</div>
-</dialog>
 
 <!-- Apply GOV.UK and govukhugo tagging -->
 <script type="text/javascript">
@@ -262,7 +250,7 @@
 
 </script>
 
-{{ partial "consent.html" . }}
+{{ partial "hugo-cookies/consent.html" . }}
 
 <!-- GOV.UK scripting -->
 <script src="{{ "js/govuk-frontend-4.0.0.min.js" | absURL }}"></script>

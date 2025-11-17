@@ -40,6 +40,13 @@ export interface ISearchContextManager {
   saveSearchResults(ids: string[], params: SearchParams): void;
 }
 
+export interface IFlatbushManager {
+  bounds: null | [number, number, number, number];
+  getFiltered(withMetadata?: boolean): Promise<any>;
+  nearest(loc: [number, number], regcode: number | undefined): Promise<any>;
+  setFiltered(val);
+}
+
 export class StarchesConfiguration {
   [key: string]: any;
   showGeolocateControl?: boolean;
@@ -61,6 +68,8 @@ declare global {
       resolveMapManager?: Function;
       searchManager?: Promise<ISearchManager>;
       resolveSearchManager?: Function;
+      flatbushManager?: Promise<IFlatbushManager>;
+      resolveFlatbushManager?: Function;
       searchContextManager?: Promise<ISearchContextManager>;
       resolveSearchContextManager?: Function;
       configuration?: Promise<StarchesConfiguration>;
@@ -110,6 +119,17 @@ if (!window.__starchesManagers.resolveSearchManager) {
   resolveSearchManager = window.__starchesManagers.resolveSearchManager;
 }
 
+let resolveFlatbushManager: Function;
+export const flatbushManager: Promise<IFlatbushManager> = window.__starchesManagers.flatbushManager ||
+  (window.__starchesManagers.flatbushManager = new Promise((resolve) => {
+    resolveFlatbushManager = window.__starchesManagers.resolveFlatbushManager = resolve;
+  }));
+if (!window.__starchesManagers.resolveFlatbushManager) {
+  resolveFlatbushManager = (value: any) => { /* already resolved */ };
+} else {
+  resolveFlatbushManager = window.__starchesManagers.resolveFlatbushManager;
+}
+
 let resolveSearchContextManager: Function;
 export const searchContextManager: Promise<ISearchContextManager> = window.__starchesManagers.searchContextManager ||
   (window.__starchesManagers.searchContextManager = new Promise((resolve) => {
@@ -151,6 +171,12 @@ export function resolveSearchManagerWith(manager: ISearchManager): void {
   delete window.__starchesManagers.resolveSearchManager;
 }
 
+export function resolveFlatbushManagerWith(manager?: IFlatbushManager): void {
+  resolveFlatbushManager(manager);
+  // Clear the resolver from window to prevent duplicate calls
+  delete window.__starchesManagers.resolveFlatbushManager;
+}
+
 export function resolveSearchContextManagerWith(manager: ISearchContextManager): void {
   resolveSearchContextManager(manager);
   // Clear the resolver from window to prevent duplicate calls
@@ -174,6 +200,10 @@ export async function getMapManager(): Promise<IMapManager> {
 
 export async function getSearchManager(): Promise<ISearchManager> {
   return searchManager;
+}
+
+export async function getFlatbushManager(): Promise<IFlatbushManager> {
+  return flatbushManager;
 }
 
 export async function getSearchContextManager(): Promise<ISearchContextManager> {

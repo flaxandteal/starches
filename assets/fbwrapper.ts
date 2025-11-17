@@ -1,10 +1,16 @@
 import Flatbush from "flatbush";
 import { deserialize as fgbDeserialize } from 'flatgeobuf/lib/mjs/geojson.js';
 import { nearestPoint } from "@turf/nearest-point";
+import { resolveFlatbushManagerWith } from './managers';
 
 const NEAREST_RADIUS = 0.03;
 
-export class FlatbushWrapper {
+export function ensureFlatbushLoaded() {
+    // This is necessary because flatbush lazy-loads and hugo's build does not respect package.json side-effects.
+    console.debug("Ensuring Flatbush");
+}
+
+export class FlatbushManager {
     __filtered__: null | false | Set<[number, number]> = null;
     __filteredWithMetadata__: null | false | Set<[number, number]> = null;
     index: Flatbush | null = null;
@@ -36,9 +42,6 @@ export class FlatbushWrapper {
 
     handleHeader(headerMeta) {
         this.totalFeatures = headerMeta.featuresCount;
-        if (headerMeta?.description) {
-            console.log(headerMeta.description);
-        }
     }
 
     async getFiltered(withMetadata?: boolean) {
@@ -84,12 +87,10 @@ export class FlatbushWrapper {
             'type': 'FeatureCollection',
             'features': []
         };
-        console.log({ minX: loc[0] - NEAREST_RADIUS, minY: loc[1] - NEAREST_RADIUS, maxX: loc[0] + NEAREST_RADIUS, maxY: loc[1] + NEAREST_RADIUS });
         for await (const re of fgbDeserialize(
             '/fgb/nihed-assets.fgb',
              { minX: loc[0] - NEAREST_RADIUS, minY: loc[1] - NEAREST_RADIUS, maxX: loc[0] + NEAREST_RADIUS, maxY: loc[1] + NEAREST_RADIUS }
         )) {
-            console.log(regcode, re.properties.regcode, re);
             if (!regcode || re.properties.regcode === regcode) {
                 fg.features.push(re);
             }
@@ -116,19 +117,12 @@ export class FlatbushWrapper {
     }
 };
 
-let resolveFlatbushWrapper;
-const flatbushWrapper = new Promise((resolve) => { resolveFlatbushWrapper = resolve; });
-
-export async function getFlatbushWrapper() {
-  return flatbushWrapper;
-}
-
 window.addEventListener('DOMContentLoaded', async (event) => {
   // TODO: check if there is a realistic race condition
-  const flatbushWrapper = new FlatbushWrapper();
-  if (await flatbushWrapper.initialize('/flatbush.bin')) {
-      resolveFlatbushWrapper(flatbushWrapper);
+  const flatbushManager = new FlatbushManager();
+  if (await flatbushManager.initialize('/flatbush.bin')) {
+      resolveFlatbushManagerWith(flatbushManager);
   } else {
-      resolveFlatbushWrapper();
+      resolveFlatbushManagerWith(undefined);
   }
 });

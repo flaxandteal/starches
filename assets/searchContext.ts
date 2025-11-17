@@ -185,7 +185,7 @@ export async function updateSearchParams(searchParams: SearchParams): Promise<vo
       searchFilters: searchParams.searchFilters ? JSON.stringify(searchParams.searchFilters) : undefined,
       geoBounds: searchParams.geoBounds ? JSON.stringify(searchParams.geoBounds) : undefined,
     };
-    const url = await makeSearchQuery("?", mergedSearchParams);
+    const url = await makeSearchQuery("?", searchParams);
     history.pushState(flattenedSearchParams, "", url);
     updateBreadcrumbs(searchParams);
   }

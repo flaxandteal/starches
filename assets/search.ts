@@ -1,11 +1,10 @@
 import { getConfig } from './managers';
 import { getFilters, getTerm, updateSearchParams } from './searchContext';
-import { getFlatbushWrapper, FlatbushWrapper } from './fbwrapper';
 import { debug, debugWarn, debugError } from './debug';
 import { buildPagefind } from './pagefind';
 import { slugify } from './utils';
 import { saveSearchResults, makeSearchQuery } from "./searchContext";
-import { resolveSearchManagerWith, getMap, getMapManager } from './managers';
+import { resolveSearchManagerWith, getMap, getMapManager, getFlatbushManager } from './managers';
 
 let resolveSearchManager;
 const searchManager: Promise<SearchManager> = new Promise((resolve) => { resolveSearchManager = resolve });
@@ -64,7 +63,7 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
                 text += `<p class='description'>${description}</p>`;
                 text += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`
                 text += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="window.open('${url}', '_blank'); return false;">Open tab</a></li>`;
-                const call = `map.flyTo({center: [${loc[0]}, ${loc[1]}], zoom: ${config.minSearchZoom + 1}})`;
+                const call = `window.__starchesManagers.primaryMap.then(map => map.flyTo({center: [${loc[0]}, ${loc[1]}], zoom: ${config.minSearchZoom + 1}}))`;
                 text += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
                 let marker = {
                     'type': 'Feature',
@@ -139,9 +138,6 @@ class SearchManager {
           });
       }
 
-      this.fb = await getFlatbushWrapper();
-      const geoBounds = this.fb && this.fb.bounds;
-
       if (instance) {
           instance.on("results", async (results) => {
               await getMap();
@@ -169,6 +165,9 @@ class SearchManager {
                     return slugs;
                   };
                   
+                  this.fb = await getFlatbushManager();
+                  const geoBounds = this.fb && this.fb.bounds;
+
                   collectSlugs().then(slugs => {
                     debug("Extracted slugs for navigation:", slugs);
                     
@@ -182,6 +181,7 @@ class SearchManager {
                     debug("Saved search context with " + slugs.length + " slugs", slugs);
                   });
 
+                  console.log('UPDATING', this.lastTerm, this.lastFilters, geoBounds);
                   await updateSearchParams({
                     searchTerm: this.lastTerm, 
                     searchFilters: this.lastFilters,
@@ -190,6 +190,9 @@ class SearchManager {
               })
           });
       }
+
+      this.fb = await getFlatbushManager();
+      const geoBounds = this.fb && this.fb.bounds;
 
       if (term) {
           const input = document.getElementById("pfmod-input-0");
