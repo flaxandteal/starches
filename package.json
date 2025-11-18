@@ -25,7 +25,7 @@
     "mapbox-gl-arcgis-featureserver": "^0.0.8",
     "marked": "^15.0.7",
     "marked-plaintify": "^1.1.1",
-    "starches-builder": "github:flaxandteal/starches-builder#main",
+    "starches-builder": "github:flaxandteal/starches-builder#master",
     "toml": "^3.0.0"
   },
   "name": "starches-coral",
