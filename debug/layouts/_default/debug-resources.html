@@ -1,0 +1,31 @@
+{{ define "main" }}
+
+<div class="govuk-width-container">
+  <main class="govuk-main-wrapper" id="main-content" role="main">
+    <a href="/debug/graphs/" class="govuk-back-link">Back to graphs</a>
+
+    <h1 class="govuk-heading-xl">Resources</h1>
+
+    <div class="graph-selector-container">
+      <label for="graph-selector" class="govuk-label">
+        Select a resource type (graph):
+      </label>
+      <select id="graph-selector" class="govuk-select">
+        <option value="">Select a graph...</option>
+      </select>
+    </div>
+
+    <div id="resources-stats"></div>
+
+    <div id="empty-state">
+      <p class="govuk-body">Select a graph above to view its resources</p>
+    </div>
+
+    {{ partial "starches/debug-resources.html" . }}
+
+    <div id="scroll-sentinel"></div>
+    <div id="loading-indicator">Loading...</div>
+  </main>
+</div>
+
+{{ end }}

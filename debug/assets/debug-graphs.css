@@ -1,0 +1,176 @@
+/* GOV.UK Notify-style Summary Statistics Cards */
+.summary-cards {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.summary-card {
+  background-color: #ffffff;
+  border: 1px solid #b1b4b6;
+  padding: 20px;
+  min-width: 200px;
+  flex: 1;
+}
+
+.summary-card__number {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 10px;
+  color: #0b0c0c;
+}
+
+.summary-card__label {
+  font-size: 19px;
+  line-height: 1.3;
+  color: #505a5f;
+}
+
+/* GOV.UK Blue Graph Cards - Grid Layout */
+#graph-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.graph-card {
+  background-color: #1d70b8; /* GOV.UK blue */
+  color: #ffffff;
+  padding: 16px;
+  border-radius: 0;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.graph-card:hover {
+  background-color: #003078; /* Darker GOV.UK blue */
+}
+
+.graph-card:focus {
+  outline: 3px solid #ffdd00; /* GOV.UK focus yellow */
+  outline-offset: 0;
+}
+
+.graph-card__inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.graph-card__heading {
+  color: #ffffff;
+  margin: 0 0 8px 0;
+  font-size: 19px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: 0;
+}
+
+.graph-card__subtitle {
+  color: #ffffff;
+  opacity: 0.9;
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  flex: 1;
+  min-height: 0;
+}
+
+.graph-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+}
+
+.graph-card__stat {
+  white-space: nowrap;
+}
+
+.graph-card__stat strong {
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+.graph-card__details {
+  margin: 0;
+  padding: 8px 0 0 0;
+  font-size: 13px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.graph-card__detail-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  margin-bottom: 6px;
+  align-items: baseline;
+}
+
+.graph-card__detail-row dt {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.graph-card__detail-row dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-card__detail-row code {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 13px;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .summary-cards {
+    flex-direction: column;
+  }
+
+  .summary-card {
+    min-width: 100%;
+  }
+
+  .graph-card__detail-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .graph-card__detail-row dt {
+    min-width: auto;
+  }
+}

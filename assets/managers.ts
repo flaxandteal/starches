@@ -44,7 +44,21 @@ export interface IFlatbushManager {
   bounds: null | [number, number, number, number];
   getFiltered(withMetadata?: boolean): Promise<any>;
   nearest(loc: [number, number], regcode: number | undefined): Promise<any>;
-  setFiltered(val);
+  setFiltered(val: any): void;
+}
+
+export interface AssetMetadata {
+  resourceinstanceid: string;
+  geometry: any;
+  location: [number, number] | null;
+  title: string;
+}
+
+export interface IAssetManager {
+  initialize(): Promise<void>;
+  loadAssetFromUrl(): Promise<{ asset: any; meta: AssetMetadata }>;
+  render(publicView: boolean): Promise<void>;
+  getAsset(): { asset: any; meta: AssetMetadata } | null;
 }
 
 export class StarchesConfiguration {
@@ -72,6 +86,8 @@ declare global {
       resolveFlatbushManager?: Function;
       searchContextManager?: Promise<ISearchContextManager>;
       resolveSearchContextManager?: Function;
+      assetManager?: Promise<IAssetManager>;
+      resolveAssetManager?: Function;
       configuration?: Promise<StarchesConfiguration>;
       resolveConfiguration?: Function;
     };
@@ -141,6 +157,17 @@ if (!window.__starchesManagers.resolveSearchContextManager) {
   resolveSearchContextManager = window.__starchesManagers.resolveSearchContextManager;
 }
 
+let resolveAssetManager: Function;
+export const assetManager: Promise<IAssetManager> = window.__starchesManagers.assetManager ||
+  (window.__starchesManagers.assetManager = new Promise((resolve) => {
+    resolveAssetManager = window.__starchesManagers.resolveAssetManager = resolve;
+  }));
+if (!window.__starchesManagers.resolveAssetManager) {
+  resolveAssetManager = (value: any) => { /* already resolved */ };
+} else {
+  resolveAssetManager = window.__starchesManagers.resolveAssetManager;
+}
+
 let resolveConfiguration: Function;
 export const configuration: Promise<StarchesConfiguration> = window.__starchesManagers.configuration ||
   (window.__starchesManagers.configuration = new Promise((resolve) => {
@@ -183,6 +210,12 @@ export function resolveSearchContextManagerWith(manager: ISearchContextManager):
   delete window.__starchesManagers.resolveSearchContextManager;
 }
 
+export function resolveAssetManagerWith(manager: IAssetManager): void {
+  resolveAssetManager(manager);
+  // Clear the resolver from window to prevent duplicate calls
+  delete window.__starchesManagers.resolveAssetManager;
+}
+
 export function resolveConfigurationWith(config: StarchesConfiguration): void {
   resolveConfiguration(config);
   // Clear the resolver from window to prevent duplicate calls
@@ -208,6 +241,10 @@ export async function getFlatbushManager(): Promise<IFlatbushManager> {
 
 export async function getSearchContextManager(): Promise<ISearchContextManager> {
   return searchContextManager;
+}
+
+export async function getAssetManager(): Promise<IAssetManager> {
+  return assetManager;
 }
 
 export async function getConfig(): Promise<StarchesConfiguration> {

@@ -1,47 +1,41 @@
 import { marked } from 'marked';
 import dompurify from 'dompurify';
-import markedPlaintify from 'marked-plaintify'
-import { Popup, Source, Marker, Map, IControl, NavigationControlOptions, NavigationControl } from 'maplibre-gl';
 import * as Handlebars from 'handlebars';
-import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, utils, viewModels, renderers } from 'alizarin';
-import { addMarkerImage } from './map-tools';
-import { getSearchUrlWithContext, getNavigation, hasSearchContext, getAssetUrlWithContext, getSearchParams, updateBreadcrumbs } from './searchContext';
+import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, renderers, wasmReady, slugify } from 'alizarin';
+import {
+  getSearchUrlWithContext,
+  getNavigation,
+  hasSearchContext,
+  getAssetUrlWithContext,
+  getSearchParams as getSearchContextParams,
+  updateBreadcrumbs
+} from './searchContext';
 import { debug, debugError } from './debug';
+import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './managers';
 
-viewModels.CUSTOM_DATATYPES.set("tm65centrepoint", "non-localized-string");
+// Types and interfaces
+interface AssetUrlParams {
+  slug: string;
+  publicView: boolean;
+}
 
-Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replaceAll(fm, to) : base);
-Handlebars.registerHelper("nl", (base, nl) => base ? base.replaceAll("\n", nl) : base);
-Handlebars.registerHelper("plus", (a, b) => a + b);
-Handlebars.registerHelper("default", function (a, b) { return a === undefined || a === null ? b : a; });
-Handlebars.registerHelper("defaulty", function (a, b) { return a != undefined && a != null && a != false ? a : b; });
-Handlebars.registerHelper("equal", function (a, b) { return a == b; });
-Handlebars.registerHelper("or", function (a, b) { return a || b; });
-Handlebars.registerHelper("join", function (...args) {
-  if (args.length == 3 && Array.isArray(args[0])) {
-    return args.join(args[1]);
-  }
-  return args.slice(0, args.length - 2).join(args[args.length - 2]);
-});
-Handlebars.registerHelper("and", function (a, b) { return a && b; });
-Handlebars.registerHelper("not", function (a, b) { return a != b; });
-Handlebars.registerHelper("in", function (a, b) { return Array.isArray(b) ? b.includes(a) : (a in b); });
-Handlebars.registerHelper("nospace", function (a) { return a.replaceAll(" ", "%20") });
-Handlebars.registerHelper("escapeExpression", function (a) { return Handlebars.Utils.escapeExpression(a); });
-Handlebars.registerHelper("clean", function (a) {
-  if (a instanceof renderers.Cleanable) {
-    return a.__clean;
-  }
+interface Asset {
+  asset: AlizarinModel<any>;
+  meta: AssetMetadata;
+}
 
-  return a;
-});
-Handlebars.registerHelper("concat", function (...args) { return args.slice(0, args.length - 1).join(""); });
-Handlebars.registerHelper("array", function (...args) { return args; });
-Handlebars.registerHelper("dialogLink", function (options) { return new Handlebars.SafeString(`<button class="govuk-button dialog-link" data-dialog-id="${options.hash.id}">Show</button>`); });
+interface Dialog {
+  title: string;
+  body: string;
+}
 
-const archesUrl = window.archesUrl;
+interface ModelFileConfig {
+  graph: string;
+  template?: string;
+}
 
-const MODEL_FILES = {
+// Configuration
+const MODEL_FILES: Record<string, ModelFileConfig> = {
   "076f9381-7b00-11e9-8d6b-80000b44d1d9": {
     graph: "Heritage Asset.json",
     template: '/templates/heritage-asset-public-hb.md'
@@ -62,671 +56,631 @@ const MODEL_FILES = {
   }
 };
 
-async function initializeAlizarin() {
-  const archesClient = new client.ArchesClientRemoteStatic('', {
-    allGraphFile: (() => "definitions/graphs/_all.json"),
-    graphToGraphFile: ((graph: staticTypes.StaticGraphMeta) => `definitions/graphs/resource_models/${graph.name.en}.json`),
-    resourceIdToFile: ((resourceId) => `definitions/business_data/${resourceId}.json`),
-    collectionIdToFile: ((collectionId) => `definitions/reference_data/collections/${collectionId}.json`)
+declare global {
+  interface Window {
+    archesUrl?: string;
+    alizarinAsset?: Asset;
+    showDialog?: (dialogId: string) => void;
+  }
+}
+
+// Handlebars setup
+function registerHandlebarsHelpers(): void {
+  viewModels.CUSTOM_DATATYPES.set("tm65centrepoint", "non-localized-string");
+
+  Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replaceAll(fm, to) : base);
+  Handlebars.registerHelper("nl", (base, nl) => base ? base.replaceAll("\n", nl) : base);
+  Handlebars.registerHelper("plus", (a, b) => a + b);
+  Handlebars.registerHelper("default", (a, b) => a === undefined || a === null ? b : a);
+  Handlebars.registerHelper("defaulty", (a, b) => a != undefined && a != null && a != false ? a : b);
+  Handlebars.registerHelper("equal", (a, b) => a == b);
+  Handlebars.registerHelper("or", (a, b) => a || b);
+  Handlebars.registerHelper("join", (...args) => {
+    if (args.length == 3 && Array.isArray(args[0])) {
+      return args.join(args[1]);
+    }
+    return args.slice(0, args.length - 2).join(args[args.length - 2]);
   });
+  Handlebars.registerHelper("and", (a, b) => a && b);
+  Handlebars.registerHelper("not", (a, b) => a != b);
+  Handlebars.registerHelper("in", (a, b) => Array.isArray(b) ? b.includes(a) : (a in b));
+  Handlebars.registerHelper("nospace", (a) => a.replaceAll(" ", "%20"));
+  Handlebars.registerHelper("escapeExpression", (a) => Handlebars.Utils.escapeExpression(a));
+  Handlebars.registerHelper("clean", (a) => {
+    if (a instanceof renderers.Cleanable) {
+      return a.__clean;
+    }
+    return a;
+  });
+  Handlebars.registerHelper("concat", (...args) => args.slice(0, args.length - 1).join(""));
+  Handlebars.registerHelper("array", (...args) => args);
+  Handlebars.registerHelper("dialogLink", (options) => {
+    return new Handlebars.SafeString(
+      `<button class="govuk-button dialog-link" data-dialog-id="${options.hash.id}">Show</button>`
+    );
+  });
+}
+
+// URL parameter parsing (distinct from search context params)
+function parseAssetUrlParams(): AssetUrlParams {
+  const urlParams = new URLSearchParams(window.location.search);
+  const slug = urlParams.get("slug");
+
+  if (!slug || slug !== slugify(slug)) {
+    console.error("Bad slug");
+  }
+
+  return {
+    slug: slug || '',
+    publicView: urlParams.get("full") !== "true"
+  };
+}
+
+// Alizarin initialization
+async function initializeAlizarin(): Promise<typeof graphManager> {
+  await wasmReady;
+
+  const archesClient = new client.ArchesClientRemoteStatic('', {
+    allGraphFile: () => "definitions/graphs/_all.json",
+    graphToGraphFile: (graph: staticTypes.StaticGraphMeta) =>
+      `definitions/graphs/resource_models/${graph.name.toString()}.json`,
+    resourceIdToFile: (resourceId: string) =>
+      `definitions/business_data/${resourceId}.json`,
+    collectionIdToFile: (collectionId: string) =>
+      `definitions/reference_data/collections/${collectionId}.json`
+  });
+
   graphManager.archesClient = archesClient;
   staticStore.archesClient = archesClient;
   RDM.archesClient = archesClient;
 
-  await graphManager.initialize();
+  await graphManager.initialize({ graphs: null, defaultAllowAllNodegroups: true });
   return graphManager;
 }
 
-class SearchParams {
-  slug: string
-  publicView: boolean | undefined
-
-  constructor(slug: string, publicView: boolean | undefined) {
-    this.slug = slug;
-    this.publicView = publicView;
-  }
-};
-
-
-class Asset {
-  asset: any
-  meta: any
-
-  constructor(asset: any, meta: any) {
-    this.asset = asset;
-    this.meta = meta;
-  }
-}
-
-function getSearchParams() {
-  const searchParams = new URLSearchParams(window.location.search);
-  if (!searchParams.has("slug") || !searchParams.get("slug").match(/^[a-z0-9_]+$/i)) {
-    console.error("Bad slug"); // Keep this as a real error
-  }
-  const slug = searchParams.get("slug");
-  let publicView = true;
-  if (searchParams.get("full") === "true") {
-    publicView = false;
-  }
-  return new SearchParams(slug, publicView);
-}
-
-class Dialog {
-  title: string
-  body: string
-
-  constructor(title: string, body: string) {
-    this.title = title;
-    this.body = body;
-  }
-}
-
-class HeritageAsset extends AlizarinModel<HeritageAsset> { };
-
-async function loadAsset(slug: string, graphManager): Promise<Asset> {
-  const asset = await graphManager.getResource(slug, false);
+// Asset loading
+async function loadAsset(slug: string, gm: typeof graphManager): Promise<Asset> {
+  const asset = await gm.getResource(slug, false);
+  debug('Loaded asset from graph manager');
   const meta = await getAssetMetadata(asset);
-  return new Asset(asset, meta);
+  return { asset, meta };
 }
 
-async function loadMaritimeAsset(slug: string, graphManager): Promise<Asset> {
-  const MaritimeVessel = await graphManager.get("MaritimeVessel");
-  const asset = (await MaritimeVessel.find(slug, false));
+async function loadMaritimeAsset(slug: string, gm: typeof graphManager): Promise<Asset> {
+  const MaritimeVessel = await gm.get("MaritimeVessel");
+  const asset = await MaritimeVessel.find(slug, false);
   const meta = await getAssetMetadata(asset);
-  return new Asset(asset, meta);
+  return { asset, meta };
 }
 
-async function fetchTemplate(asset: AlizarinModel) {
+async function fetchTemplate(asset: AlizarinModel<any>): Promise<HandlebarsTemplateDelegate | undefined> {
   const graphId = asset.__.wkrm.graphId;
-  if (graphId in MODEL_FILES) {
-    const templateFile = MODEL_FILES[graphId].template;
-    if (templateFile) {
-      const md = await fetch(templateFile);
-      return Handlebars.compile(await md.text());
-    }
+  const config = MODEL_FILES[graphId];
+
+  if (config?.template) {
+    const response = await fetch(config.template);
+    return Handlebars.compile(await response.text());
   }
 }
 
-async function getAssetMetadata(asset) {
-  let location = null;
-  let geometry = null;
+async function getAssetMetadata(asset: AlizarinModel<any>): Promise<AssetMetadata> {
+  let location: [number, number] | null = null;
+  let geometry: any = null;
+
   if (await asset.__has('location_data') && await asset.location_data) {
     const locationData = await asset.location_data;
+
     if (await locationData.__has('statistical_output_areas') && await locationData.statistical_output_areas) {
       for await (const outputArea of await locationData.statistical_output_areas) {
         debug(outputArea);
       }
     }
+
     if (await locationData.geometry && await locationData.geometry.geospatial_coordinates) {
       geometry = await (await asset.location_data.geometry.geospatial_coordinates).forJson();
-      location = geometry;
-      if (location) {
-        const polygon = location["features"][0]["geometry"]["coordinates"];
-        if (Array.isArray(polygon[0])) {
-          let polygons = polygon[0];
-          if ((Array.isArray(polygons[0][0]))) {
-            polygons = polygons.flat();
-          }
-          const centre = polygons.reduce((c: Array<number>, p: Array<number>) => {
-            c[0] += p[0] / polygons.length;
-            c[1] += p[1] / polygons.length;
-            return c;
-          }, [0, 0]);
-          location = {
-            "features": [{
-              "geometry": {
-                "type": "Point",
-                "coordinates": centre
-              }
-            }]
-          }
-        }
-      }
-      if (location) {
-        location = location["features"][0]["geometry"]["coordinates"];
-      }
+      location = extractCentrePoint(geometry);
     }
   }
 
-  let title = await asset.$.getName(true);
-
   return {
     resourceinstanceid: `${await asset.id}`,
-    geometry: geometry,
-    location: location,
-    title: title
+    geometry,
+    location,
+    title: await asset.$.getName(true)
   };
 }
 
-async function renderAssetForDebug(asset: Asset): Promise<{ [key: string]: Dialog }> {
-  const alizarinRenderer = new renderers.FlatMarkdownRenderer({
-    conceptValueToUrl: async (conceptValue: viewModels.ConceptValueViewModel) => {
-      return null; // No URLs for now.
-      const value = await conceptValue.getValue()
-      const text = await value.toString();
+function extractCentrePoint(geometry: any): [number, number] | null {
+  if (!geometry?.features?.[0]?.geometry?.coordinates) {
+    return null;
+  }
 
-      if (value.__concept) {
-        return `${archesUrl}search?term-filter=` + encodeURI(`
-          [{"context_label":"${conceptValue.describeFieldGroup()}","nodegroupid":"${conceptValue.__parentPseudo.node.nodegroup_id}","text":"${text}","type":"concept","value":"${value.__concept.id}","inverted":false,"selected":true}]
-        `.replace(/\n/g, ' '))
+  const coordinates = geometry.features[0].geometry.coordinates;
+
+  // If it's already a point, return coordinates directly
+  if (!Array.isArray(coordinates[0])) {
+    return coordinates as [number, number];
+  }
+
+  // Handle polygon - calculate centroid
+  let polygons = coordinates[0];
+  if (Array.isArray(polygons[0]?.[0])) {
+    polygons = polygons.flat();
+  }
+
+  const centre = polygons.reduce(
+    (c: [number, number], p: [number, number]) => {
+      c[0] += p[0] / polygons.length;
+      c[1] += p[1] / polygons.length;
+      return c;
+    },
+    [0, 0] as [number, number]
+  );
+
+  return centre;
+}
+
+// Shared renderer options (URLs disabled for now)
+const RENDERER_OPTIONS = {
+  conceptValueToUrl: async () => null,
+  domainValueToUrl: async () => null,
+  resourceReferenceToUrl: async () => null
+};
+
+// Create GOV.UK-styled marked renderer
+// Note: Using explicit `this` typing for table method to access parser
+function createGovukMarkedRenderer(
+  nodes: Map<string, any>,
+  options: { showNodeDetails?: boolean } = {}
+) {
+  return {
+    link(token: { href?: string; title?: string; text: string }) {
+      if (token.href?.startsWith("@")) {
+        const alias = token.href.substring(1);
+        const node = nodes.get(alias);
+
+        if (!node) {
+          debugError(`${alias} not found in nodes`);
+          return `<span>${token.text}</span>`;
+        }
+
+        const detailsContent = options.showNodeDetails
+          ? `<strong>Alias: ${node.alias}</strong><br/>
+             <strong>Type: ${node.datatype}</strong><br/>
+             <p>Description: ${node.description}</p>`
+          : `<p>${node.description || node.name}</p>`;
+
+        return `
+          <details class="govuk-details">
+            <summary class="govuk-details__summary">
+              <span class="govuk-details__summary-text">${token.text}</span>
+            </summary>
+            <div class="govuk-details__text${options.showNodeDetails ? ' node-description' : ''}">
+              ${detailsContent}
+            </div>
+          </details>
+        `;
       }
-      return null;
+      return `<a title="${token.title || ''}" href="${token.href}">${token.text}</a>`;
     },
-    domainValueToUrl: async (domainValue: viewModels.DomainValueViewModel) => {
-      return null; // No URLs for now.
-      const value = await domainValue.getValue();
-      return `${archesUrl}search?term-filter=` + encodeURI(`
-        [{"context_label":"${domainValue.describeFieldGroup()}","nodegroupid":"${domainValue.__parentPseudo.node.nodegroup_id}","text":"${value.toString()}","type":"term","value":"${value.toString()}","inverted":false,"selected":true}]
-      `.replace(/\n/g, ' '))
+
+    hr() {
+      return '<hr class="govuk-section-break govuk-section-break--visible">';
     },
-    resourceReferenceToUrl: async (value: viewModels.ResourceInstanceViewModel) => null, // `${archesUrl}report/${await value.id}`
+
+    table(this: { parser: { parseInline: (tokens: any[]) => string } }, token: { header: any[]; rows: any[][] }) {
+      const headers = token.header
+        .map((header: { tokens: any[] }) =>
+          `<th scope="col" class="govuk-table__header">${this.parser.parseInline(header.tokens)}</th>`
+        )
+        .join('\n');
+
+      const rows = token.rows
+        .map((row: { tokens: any[] }[]) => {
+          const cells = row
+            .map((col: { tokens: any[] }) =>
+              `<td class="govuk-table__cell">${this.parser.parseInline(col.tokens)}</td>`
+            )
+            .join('\n');
+          return `<tr class="govuk-table__row">${cells}</tr>`;
+        })
+        .join('\n');
+
+      return `
+        <table class="govuk-table">
+          <thead class="govuk-table__head">
+            <tr class="govuk-table__row">${headers}</tr>
+          </thead>
+          <tbody class="govuk-table__body">${rows}</tbody>
+        </table>
+      `;
+    }
+  };
+}
+
+async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeDetails = false): Promise<string> {
+  const renderer = createGovukMarkedRenderer(nodes, { showNodeDetails }) as Parameters<typeof marked.use>[0]['renderer'];
+  marked.use({ renderer });
+  const parsed = await marked.parse(markdown);
+  return dompurify.sanitize(parsed);
+}
+
+// Rendering functions
+async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>> {
+  const alizarinRenderer = new renderers.FlatMarkdownRenderer({
+    ...RENDERER_OPTIONS,
     nodeToUrl: (node: staticTypes.StaticNode) => `@${node.alias}`
   });
+
   let markdown = await alizarinRenderer.render(asset.asset);
   if (Array.isArray(markdown)) {
     markdown = markdown.join("\n\n");
   }
 
   const nodes = asset.asset.__.getNodeObjectsByAlias();
+  const html = await renderToHtml(markdown, nodes, true);
 
-  // <pre>{{ js }}</pre>
-  const renderer = {
-    link(token) {
-      if (token.href && token.href.startsWith("@")) {
-        const alias = token.href.substr(1);
-        const node = nodes.get(alias);
-        return `
-        <details class="govuk-details">
-          <summary class="govuk-details__summary">
-            <span class="govuk-details__summary-text">
-              ${token.text}
-            </span>
-          </summary>
-          <div class="govuk-details__text node-description">
-            <strong>Alias: ${node.alias}<strong><br/>
-            <strong>Type: ${node.datatype}<strong><br/>
-            <p>Description: ${node.description}</p>
-          </div>
-        </details>
-        `;
-      }
-      return `<a title="${token.title}" href="${token.href}">${token.text}</a>`;
-    },
-    hr(token) {
-      return '<hr class="govuk-section-break govuk-section-break--visible">';
-    },
-    table(token) {
-      const headers = token.header.map(
-        header => `
-          <th scope="col" class="govuk-table__header">${this.parser.parseInline(header.tokens)}</th>
-        `
-      ).join('\n');
+  const assetElement = document.getElementById('asset');
+  if (assetElement) {
+    assetElement.innerHTML = html;
+  }
 
-      const rows = token.rows.map(
-        row => {
-          const rowText = row.map(col => {
-            return `<td class="govuk-table__cell">${this.parser.parseInline(col.tokens)}</td>`;
-          }).join('\n');
-          return `
-            <tr class="govuk-table__row">
-              ${rowText}
-            </tr>
-          `;
-        }).join('\n');
-      return `
-        <table class="govuk-table">
-          <thead class="govuk-table__head">
-            <tr class="govuk-table__row">
-              ${headers}
-            </tr>
-          </thead>
-          <tbody class="govuk-table__body">
-            ${rows}
-          </tbody>
-        </table>
-      `;
-    }
-  };
-  marked.use({ renderer });
-  const parsed = await marked.parse(markdown);
-  document.getElementById('asset').innerHTML = dompurify.sanitize(parsed);
-  addAssetToMap(asset);
   return {};
 }
 
-async function renderAsset(asset: Asset, template): Promise<{ [key: string]: Dialog }> {
-  const alizarinRenderer = new renderers.MarkdownRenderer({
-    conceptValueToUrl: async (conceptValue: viewModels.ConceptValueViewModel) => {
-      return null; // No URLs for now.
-      const value = await conceptValue.getValue()
-      const text = await value.toString();
+interface ImageRef {
+  image: any;
+  index: number;
+}
 
-      if (value.__concept) {
-        return `${archesUrl}search?term-filter=` + encodeURI(`
-          [{"context_label":"${conceptValue.describeFieldGroup()}","nodegroupid":"${conceptValue.__parentPseudo.node.nodegroup_id}","text":"${text}","type":"concept","value":"${value.__concept.id}","inverted":false,"selected":true}]
-        `.replace(/\n/g, ' '))
-      }
-      return null;
-    },
-    domainValueToUrl: async (domainValue: viewModels.DomainValueViewModel) => {
-      return null; // No URLs for now.
-      const value = await domainValue.getValue();
-      return `${archesUrl}search?term-filter=` + encodeURI(`
-        [{"context_label":"${domainValue.describeFieldGroup()}","nodegroupid":"${domainValue.__parentPseudo.node.nodegroup_id}","text":"${value.toString()}","type":"term","value":"${value.toString()}","inverted":false,"selected":true}]
-      `.replace(/\n/g, ' '))
-    },
-    resourceReferenceToUrl: async (value: viewModels.ResourceInstanceViewModel) => null // `${archesUrl}report/${await value.id}`
-  });
+async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): Promise<Record<string, Dialog>> {
+  const alizarinRenderer = new renderers.MarkdownRenderer(RENDERER_OPTIONS);
   const nonstaticAsset = await alizarinRenderer.render(asset.asset);
-  const staticAsset = JSON.stringify(nonstaticAsset, null, 2);
-  const images = [];
-  const files = [];
-  const ecrs = nonstaticAsset.external_cross_references;
-  const otherEcrs = [];
-  if (ecrs && ecrs.length) {
-    for (const [n, ecr] of ecrs.entries()) {
-      const type = ecr.external_cross_reference_notes && ecr.external_cross_reference_notes.external_cross_reference_description &&
-        ecr.external_cross_reference_notes.external_cross_reference_description.toLowerCase();
-      if (ecr.url && (type === 'image')) {
-        images.push({
-          image: ecr,
-          index: n
-        });
-      } else if (ecr.url && (type === 'pdf' || type === 'doc' || type === 'docx')) {
-        files.push(ecr)
-      } else {
-        otherEcrs.push(ecr)
-      }
-    }
-  }
+  debug('Rendered non-static asset');
 
-  const markdown = template({ title: await asset.meta.title, ha: nonstaticAsset, js: staticAsset, images: images, files: files, ecrs: otherEcrs }, {
-    allowProtoPropertiesByDefault: true,
-    allowProtoMethodsByDefault: true,
-  });
+  const { images, files, otherEcrs } = categorizeExternalReferences(nonstaticAsset);
+
+  const markdown = template(
+    {
+      title: asset.meta.title,
+      ha: nonstaticAsset,
+      js: JSON.stringify(nonstaticAsset, null, 2),
+      images,
+      files,
+      ecrs: otherEcrs
+    },
+    {
+      allowProtoPropertiesByDefault: true,
+      allowProtoMethodsByDefault: true
+    }
+  );
 
   const nodes = asset.asset.__.getNodeObjectsByAlias();
+  const html = await renderToHtml(markdown, nodes, false);
 
-  // <pre>{{ js }}</pre>
-  const renderer = {
-    link(token) {
-      if (token.href && token.href.startsWith("@")) {
-        const alias = token.href.substr(1);
-        const node = nodes.get(alias);
-        if (!node) {
-          debugError(`${alias} not found in nodes`);
-        }
-        return `
-        <details class="govuk-details">
-          <summary class="govuk-details__summary">
-            <span class="govuk-details__summary-text">
-              ${token.text}
-            </span>
-          </summary>
-          <div class="govuk-details__text">
-            <p>${node.description || node.name}</p>
-          </div>
-        </details>
-        `;
-      }
-      return `<a title="${token.title}" href="${token.href}">${token.text}</a>`;
-    },
-    hr(token) {
-      return '<hr class="govuk-section-break govuk-section-break--visible">';
-    },
-    table(token) {
-      const headers = token.header.map(
-        header => `
-          <th scope="col" class="govuk-table__header">${this.parser.parseInline(header.tokens)}</th>
-        `
-      ).join('\n');
-      const rows = token.rows.map(
-        row => {
-          const rowText = row.map(col => {
-            return `<td class="govuk-table__cell">${this.parser.parseInline(col.tokens)}</td>`;
-          }).join('\n');
-          return `
-            <tr class="govuk-table__row">
-              ${rowText}
-            </tr>
-          `;
-        }).join('\n');
-      return `
-        <table class="govuk-table">
-          <thead class="govuk-table__head">
-            <tr class="govuk-table__row">
-              ${headers}
-            </tr>
-          </thead>
-          <tbody class="govuk-table__body">
-            ${rows}
-          </tbody>
-        </table>
-      `;
+  const assetElement = document.getElementById('asset');
+  if (assetElement) {
+    assetElement.innerHTML = html;
+  }
+
+  setupDialogLinks();
+
+  return buildImageDialogs(images, asset.meta.title);
+}
+
+function categorizeExternalReferences(nonstaticAsset: any): {
+  images: ImageRef[];
+  files: any[];
+  otherEcrs: any[];
+} {
+  const images: ImageRef[] = [];
+  const files: any[] = [];
+  const otherEcrs: any[] = [];
+
+  const ecrs = nonstaticAsset.external_cross_references;
+  if (!ecrs?.length) {
+    return { images, files, otherEcrs };
+  }
+
+  ecrs.forEach((ecr: any, index: number) => {
+    const type = ecr.external_cross_reference_notes?.external_cross_reference_description?.toLowerCase();
+
+    if (ecr.url && type === 'image') {
+      images.push({ image: ecr, index });
+    } else if (ecr.url && ['pdf', 'doc', 'docx'].includes(type)) {
+      files.push(ecr);
+    } else {
+      otherEcrs.push(ecr);
     }
-  };
-  marked.use({ renderer });
-  const parsed = await marked.parse(markdown);
-  document.getElementById('asset').innerHTML = dompurify.sanitize(parsed);
+  });
+
+  return { images, files, otherEcrs };
+}
+
+function setupDialogLinks(): void {
   const dialogLinks = document.getElementsByClassName("dialog-link");
   for (const link of dialogLinks) {
-    link.addEventListener("click", (function () { showDialog(this.getAttribute("data-dialog-id")); }).bind(link));
-  };
-  addAssetToMap(asset);
-  const dialogs = {};
-  for (const image of images) {
-    dialogs[`image_${image.index}`] = new Dialog(
-      `<h3>Image for ${asset.meta.title}</h3>\n<h4>${await image.image.external_cross_reference}</h4>`,
-      `<img src='${image.image.url.__clean}' />`
-    );
+    link.addEventListener("click", function(this: HTMLElement) {
+      const dialogId = this.getAttribute("data-dialog-id");
+      if (dialogId) {
+        window.showDialog?.(dialogId);
+      }
+    });
   }
+}
+
+async function buildImageDialogs(images: ImageRef[], assetTitle: string): Promise<Record<string, Dialog>> {
+  const dialogs: Record<string, Dialog> = {};
+
+  for (const { image, index } of images) {
+    dialogs[`image_${index}`] = {
+      title: `<h3>Image for ${assetTitle}</h3>\n<h4>${await image.external_cross_reference}</h4>`,
+      body: `<img src='${image.url.__clean}' />`
+    };
+  }
+
   return dialogs;
 }
 
-function addAssetToMap(asset: Asset) {
-  const location = asset.meta.location;
-  if (location) {
-    var centre = location;
-    const zoom = 16;
-    var map = new Map({
-      style: 'https://tiles.openfreemap.org/styles/bright',
-      pitch: 20,
-      bearing: 0,
-      container: 'map',
-      center: centre,
-      zoom: zoom
-    });
-    window.map = map;
-    map.on('load', async () => {
-      await addMarkerImage(map);
-      const source = map.addSource('assets', {
-        type: 'geojson',
-        data: asset.meta.geometry,
-      });
-      const sourceMarker = map.addSource('assets-marker', {
-        type: 'geojson',
-        data: {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            "type": "Point",
-            "coordinates": asset.meta.location,
-          }
-        }
-      });
-      let paint: {
-        'fill-color': string,
-        'fill-opacity': number,
-        'fill-outline-color'?: string | null
-      } = {
-        'fill-color': '#a88',
-        'fill-opacity': 0.8,
-      };
-      if (asset.meta.geometry.type === "FeatureCollection" && asset.meta.geometry.features.length == 1) {
-        const feature = asset.meta.geometry.features[0];
-        if (feature.properties && feature.properties.type === 'Grid Square') {
-          paint = {
-            'fill-color': 'rgba(255, 255, 255, 0.1)',
-            'fill-outline-color': '#aa4444',
-            'fill-opacity': 0.4
-          }
-        }
+// Asset page manager
+class AssetManager implements IAssetManager {
+  private graphManager: typeof graphManager | null = null;
+  private asset: Asset | null = null;
+  private dialogs: Record<string, Dialog> = {};
+
+  async initialize(): Promise<void> {
+    registerHandlebarsHelpers();
+    this.graphManager = await initializeAlizarin();
+    debug("Alizarin initialized");
+  }
+
+  async loadAssetFromUrl(): Promise<Asset> {
+    const { slug, publicView } = parseAssetUrlParams();
+    debug("Loading asset:", slug, "publicView:", publicView);
+
+    if (!this.graphManager) {
+      throw new Error("AssetManager not initialized");
+    }
+
+    const isMaritime = slug.startsWith('MAR') || slug.startsWith('MAL');
+    this.asset = isMaritime
+      ? await loadMaritimeAsset(slug, this.graphManager)
+      : await loadAsset(slug, this.graphManager);
+
+    window.alizarinAsset = this.asset;
+    debug("Asset loaded and attached to window.alizarinAsset");
+
+    return this.asset;
+  }
+
+  async render(publicView: boolean): Promise<void> {
+    if (!this.asset) {
+      throw new Error("No asset loaded");
+    }
+
+    const template = await fetchTemplate(this.asset.asset);
+    debug("Template loaded:", !!template, "publicView:", publicView);
+
+    this.dialogs = (publicView && template)
+      ? await renderAsset(this.asset, template)
+      : await renderAssetForDebug(this.asset);
+
+    this.setupShowDialog();
+    debug("Dialogs configured:", Object.keys(this.dialogs));
+  }
+
+  private setupShowDialog(): void {
+    window.showDialog = (dialogId: string) => {
+      const dialog = this.dialogs[dialogId];
+      if (!dialog) {
+        throw new Error(`Could not find dialog: ${dialogId}`);
       }
-      map.addLayer({
-        'id': '3d-buildings',
-        'source': 'openmaptiles',
-        'source-layer': 'building',
-        'filter': [
-          "!",
-          ["to-boolean",
-            ["get", "hide_3d"]
-          ]
-        ],
-        'type': 'fill-extrusion',
-        'minzoom': 13,
-        'paint': {
-          'fill-extrusion-color': 'lightgray',
-          'fill-extrusion-opacity': 0.5,
-          'fill-extrusion-height': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            13,
-            0,
-            16,
-            ['get', 'render_height']
-          ],
-          'fill-extrusion-base': ['case',
-            ['>=', ['get', 'zoom'], 16],
-            ['get', 'render_min_height'], 0
-          ]
-        }
-      });
-      map.addLayer({
-        'id': 'asset-boundaries',
-        'type': 'fill',
-        'source': 'assets',
-        'paint': paint,
-        'filter': ['==', '$type', 'Polygon']
-      });
-      map.addLayer({
-        'id': 'assets-marker',
-        'type': 'symbol',
-        'source': 'assets-marker',
-        'layout': {
-          'icon-image': 'marker-new',
-          'text-offset': [0, 1.25],
-          'text-anchor': 'top'
-        },
-        'filter': ['==', '$type', 'Point']
-      });
-    });
-  } else {
-    document.getElementById('map').classList = 'map-hidden';
+
+      const headingEl = document.getElementById("map-dialog__heading");
+      const contentEl = document.getElementById("map-dialog__content");
+      const dialogEl = document.getElementById("map-dialog") as HTMLDialogElement | null;
+
+      if (headingEl) headingEl.innerHTML = dialog.title;
+      if (contentEl) contentEl.innerHTML = dialog.body;
+      dialogEl?.showModal();
+    };
+  }
+
+  getAsset(): Asset | null {
+    return this.asset;
   }
 }
 
-window.addEventListener('DOMContentLoaded', async (event) => {
-  const gm = await initializeAlizarin();
-  const searchParams = getSearchParams();
-  let publicView = true;
-  if (searchParams.publicView === false) {
-    publicView = false;
-  }
-  const slug = searchParams.slug;
+// Navigation setup
+async function setupAssetNavigation(currentId: string): Promise<void> {
+  debug("Setting up asset navigation for:", currentId);
 
-  debug("Displaying for public view (NB: full data loaded regardless!):", publicView);
-  let asset: Asset;
-  // TODO: switch to generic loading.
-  const isMaritime: boolean = (slug.startsWith('MAR') || slug.startsWith('MAL'));
+  const searchParams = await getSearchContextParams();
+  updateBreadcrumbs(searchParams);
 
-  if (isMaritime) {
-    asset = await loadMaritimeAsset(slug, gm);
-  } else {
-    asset = await loadAsset(slug, gm);
-  }
-  debug("Loaded asset", asset);
-  debug("Asset being added");
-  window.alizarinAsset = asset;
-  debug("Asset added to window: window.alizarinAsset", window.alizarinAsset);
-
-  // Set up navigation buttons if we have search context
-  // Add a slight delay to ensure localStorage is fully available
-  setTimeout(() => {
-    debug('Setting up navigation with delay');
-    setupAssetNavigation(slug);
-  }, 500);
-
-  if (await asset.asset.__has('record_and_registry_membership')) {
-    document.getElementById('dfc-registry').innerHTML = "<ul>" + (await Promise.all((await asset.asset.record_and_registry_membership).map(async membership => {
-      return `<li>${(await (await membership.record_or_registry).forJson()).meta.title}</li>`
-    }))).join("\n") + "</ul>";
-  } else {
-    document.getElementById('dfc-registry').innerHTML = "<ul><li>" + asset.asset.__.wkrm.modelClassName + "</li></ul>";
+  if (!await hasSearchContext()) {
+    debug("No search context available");
+    hideNavigationCounters();
+    return;
   }
 
-  const template = await fetchTemplate(asset.asset);
-  debug("Loaded template", template, publicView, isMaritime);
+  debug("Search context found");
+  const { prev, next, position, total } = await getNavigation(currentId);
+  debug("Navigation:", { prev, next, position, total });
 
-  debug("Rendering asset");
-  const dialogs: { [key: string]: Dialog } = publicView && template ? (
-    await renderAsset(asset, template)
-  ) : (
-    await renderAssetForDebug(asset)
-  );
-  debug("Dialogs:", dialogs);
+  const sections = [
+    { location: 'top', prevId: 'prev-asset-top', nextId: 'next-asset-top', counterId: 'position-counter-top' },
+    { location: 'bottom', prevId: 'prev-asset-bottom', nextId: 'next-asset-bottom', counterId: 'position-counter-bottom' }
+  ];
 
-  const swapLink: HTMLAnchorElement | null = document.querySelector("a#swap-link");
-  debug("Swap Link:", swapLink);
-  if (swapLink) {
-    if (publicView) {
-      swapLink.href = `?slug=${slug}&full=true`;
-      swapLink.innerHTML = "visit full view";
-    } else {
-      swapLink.href = `?slug=${slug}&full=false`;
-      swapLink.innerHTML = "visit public view";
+  for (const section of sections) {
+    const prevButton = document.getElementById(section.prevId) as HTMLAnchorElement | null;
+    const nextButton = document.getElementById(section.nextId) as HTMLAnchorElement | null;
+    const counter = document.getElementById(section.counterId);
+
+    if (counter) {
+      if (position && total) {
+        counter.innerHTML = `Result ${position} of ${total}`;
+        counter.style.display = 'block';
+      } else {
+        counter.style.display = 'none';
+      }
+    }
+
+    if (prevButton) {
+      if (prev) {
+        prevButton.href = await getAssetUrlWithContext(prev);
+        prevButton.style.display = 'inline-block';
+      } else {
+        prevButton.style.display = 'none';
+      }
+    }
+
+    if (nextButton) {
+      if (next) {
+        nextButton.href = await getAssetUrlWithContext(next);
+        nextButton.style.display = 'inline-block';
+      } else {
+        nextButton.style.display = 'none';
+      }
     }
   }
+}
 
-  const backUrl = getSearchUrlWithContext();
+function hideNavigationCounters(): void {
+  const topCounter = document.getElementById('position-counter-top');
+  const bottomCounter = document.getElementById('position-counter-bottom');
+  if (topCounter) topCounter.style.display = 'none';
+  if (bottomCounter) bottomCounter.style.display = 'none';
+}
 
-  document.querySelectorAll('a.back-link').forEach(elt => {
+// UI setup functions
+function setupSwapLink(slug: string, publicView: boolean): void {
+  const swapLink = document.querySelector<HTMLAnchorElement>("a#swap-link");
+  if (swapLink) {
+    swapLink.href = `?slug=${slug}&full=${publicView}`;
+    swapLink.innerHTML = publicView ? "visit full view" : "visit public view";
+  }
+}
+
+async function setupBackLinks(): Promise<void> {
+  const backUrl = await getSearchUrlWithContext('');
+  document.querySelectorAll<HTMLAnchorElement>('a.back-link').forEach(elt => {
     elt.href = backUrl;
   });
-  // const archesRoot = document.getElementById("arches-link").getAttribute("data-arches-root");
-  // document.getElementById("arches-link").href = `${archesRoot}report/${asset.meta.resourceinstanceid}`;
-  document.getElementById("asset-title").innerText = `${asset.meta.title}`;
+}
 
-  /**
-   * Setup navigation elements based on search context
-   */
-  async function setupAssetNavigation(currentId: string): Promise<void> {
-    debug("Setting up asset navigation for:", currentId);
-    
-    // Setup breadcrumbs
-    await setupBreadcrumbs();
-    
-    if (hasSearchContext()) {
-      debug("Search context found");
-      const { prev, next, position, total } = getNavigation(currentId);
-      debug("Navigation:", { prev, next, position, total });
+function setupAssetTitle(title: string): void {
+  const titleEl = document.getElementById("asset-title");
+  if (titleEl) {
+    titleEl.innerText = title;
+  }
+}
 
-      // Set up both top and bottom navigation sections
-      const navigationSections = [
-        {
-          prev: document.getElementById('prev-asset-top') as HTMLAnchorElement,
-          next: document.getElementById('next-asset-top') as HTMLAnchorElement,
-          counter: document.getElementById('position-counter-top'),
-          location: 'top'
-        },
-        {
-          prev: document.getElementById('prev-asset-bottom') as HTMLAnchorElement,
-          next: document.getElementById('next-asset-bottom') as HTMLAnchorElement,
-          counter: document.getElementById('position-counter-bottom'),
-          location: 'bottom'
-        }
-      ];
+async function setupRegistryInfo(asset: Asset): Promise<void> {
+  const dfcRegistryElement = document.getElementById('dfc-registry');
+  if (!dfcRegistryElement) return;
 
-      // Configure each navigation section
-      navigationSections.forEach(section => {
-        const { prev: prevButton, next: nextButton, counter, location } = section;
-        
-        // Set position counter if available
-        if (counter && position && total) {
-          counter.innerHTML = `Result ${position} of ${total}`;
-          counter.style.display = 'block';
-        } else if (counter) {
-          counter.style.display = 'none';
-        }
-        
-        if (prevButton && nextButton) {
-          debug(`Setting up ${location} navigation buttons`);
-          
-          if (prev) {
-            prevButton.href = getAssetUrlWithContext(prev);
-            prevButton.style.display = 'inline-block';
-            debug(`Showing ${location} prev button to:`, prev);
-          } else {
-            prevButton.style.display = 'none';
-            debug(`Hiding ${location} prev button`);
+  if (await asset.asset.__has('record_and_registry_membership')) {
+    const memberships = await asset.asset.record_and_registry_membership;
+    const items = await Promise.all(
+      memberships.map(async (membership: any) => {
+        const registry = await membership.record_or_registry;
+        const json = await registry.forJson();
+        return `<li>${json.meta.title}</li>`;
+      })
+    );
+    dfcRegistryElement.innerHTML = `<ul>${items.join("\n")}</ul>`;
+  } else {
+    dfcRegistryElement.innerHTML = `<ul><li>${asset.asset.__.wkrm.modelClassName}</li></ul>`;
+  }
+}
+
+async function setupLegacyRecord(asset: Asset, publicView: boolean): Promise<any[] | null> {
+  if (publicView || !(await asset.asset.__has('_legacy_record'))) {
+    const container = document.getElementById("legacy-record-container");
+    if (container) container.style.display = 'none';
+    return null;
+  }
+
+  let legacyData = await asset.asset._legacy_record;
+  if (legacyData === false) {
+    const container = document.getElementById("legacy-record-container");
+    if (container) container.style.display = 'none';
+    return null;
+  }
+
+  if (!Array.isArray(legacyData)) {
+    legacyData = [legacyData];
+  }
+
+  const legacyRecord: any[] = [];
+  for (const record of legacyData) {
+    const dataString = await record;
+    const parsed = JSON.parse(dataString);
+    legacyRecord.push(
+      Object.fromEntries(
+        Object.entries(parsed).map(([key, block]) => {
+          try {
+            return [key, JSON.parse(block as string)];
+          } catch {
+            return [key, block];
           }
-
-          if (next) {
-            nextButton.href = getAssetUrlWithContext(next);
-            nextButton.style.display = 'inline-block';
-            debug(`Showing ${location} next button to:`, next);
-          } else {
-            nextButton.style.display = 'none';
-            debug(`Hiding ${location} next button`);
-          }
-        } else {
-          debug(`Navigation buttons for ${location} not found in DOM`);
-        }
-      });
-    } else {
-      debug("No search context available");
-      // Hide counters if no context
-      document.getElementById('position-counter-top').style.display = 'none';
-      document.getElementById('position-counter-bottom').style.display = 'none';
-    }
-  };
-  
-  /**
-   * Setup breadcrumb information from search context
-   */
-  async function setupBreadcrumbs(): Promise<void> {
-    const searchParams = await getSearchParams();
-    updateBreadcrumbs(searchParams);
-  };
-
-  window.showDialog = (dialogId) => {
-    const image = dialogs[dialogId];
-    if (!image) {
-      throw Error("Could not find dialog for image");
-    }
-    document.getElementById("map-dialog__heading").innerHTML = image.title;
-    document.getElementById("map-dialog__content").innerHTML = image.body;
-    document.getElementById("map-dialog").showModal();
-  };
-
-  let legacyRecord: null | any[] = null;
-  if (!publicView && (await asset.asset.__has('_legacy_record'))) {
-    let legacyData = await asset.asset._legacy_record;
-    if (legacyData != false) {
-      if (!Array.isArray(legacyData)) {
-        legacyData = [legacyData];
-      }
-      legacyRecord = [];
-      for (let record of legacyData) {
-        const dataString = await record;
-        legacyRecord.push(
-          Object.fromEntries(Object.entries(JSON.parse(dataString)).map(([key, block]) => {
-            let text;
-            try {
-              text = JSON.parse(block);
-            } catch {
-              text = block;
-            }
-            return [key, text];
-          }))
-        ); // RMV
-      }
-      document.getElementById("legacy-record").innerText = JSON.stringify(legacyRecord, null, 2);
-    }
+        })
+      )
+    );
   }
 
-  if (legacyRecord === null) {
-    document.getElementById("legacy-record-container").style.display = 'none';
+  const legacyEl = document.getElementById("legacy-record");
+  if (legacyEl) {
+    legacyEl.innerText = JSON.stringify(legacyRecord, null, 2);
   }
 
-  document.getElementById("demo-warning").style.display = 'block';
-  if (Array.isArray(asset.asset.$.scopes) && asset.asset.$.scopes.includes('public') && publicView && !legacyRecord) {
-    document.getElementById("demo-warning").style.display = 'none';
-  }
+  return legacyRecord;
+}
 
-  document.querySelectorAll('time').forEach(elt => {
+function setupDemoWarning(asset: Asset, publicView: boolean, hasLegacyRecord: boolean): void {
+  const warningEl = document.getElementById("demo-warning");
+  if (!warningEl) return;
+
+  const isPublicScope = Array.isArray(asset.asset.$.scopes) && asset.asset.$.scopes.includes('public');
+  warningEl.style.display = (isPublicScope && publicView && !hasLegacyRecord) ? 'none' : 'block';
+}
+
+function formatTimeElements(): void {
+  document.querySelectorAll<HTMLTimeElement>('time').forEach(elt => {
     const date = new Date(elt.dateTime);
     elt.innerHTML = date.toLocaleDateString();
   });
+}
+
+// Main entry point
+window.addEventListener('DOMContentLoaded', async () => {
+  const assetManagerInstance = new AssetManager();
+
+  await assetManagerInstance.initialize();
+  resolveAssetManagerWith(assetManagerInstance);
+
+  const { slug, publicView } = parseAssetUrlParams();
+  const asset = await assetManagerInstance.loadAssetFromUrl();
+
+  // Run UI setup tasks concurrently where possible
+  await Promise.all([
+    assetManagerInstance.render(publicView),
+    setupRegistryInfo(asset),
+    setupBackLinks()
+  ]);
+
+  setupAssetTitle(asset.meta.title);
+  setupSwapLink(slug, publicView);
+
+  const legacyRecord = await setupLegacyRecord(asset, publicView);
+  setupDemoWarning(asset, publicView, !!legacyRecord);
+
+  formatTimeElements();
+
+  // Navigation setup with slight delay for localStorage availability
+  setTimeout(() => setupAssetNavigation(slug), 100);
+
   history.pushState({}, "", `?slug=${slug}&full=${!publicView}`);
-});
+}, { once: true });

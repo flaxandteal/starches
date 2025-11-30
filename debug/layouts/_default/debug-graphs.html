@@ -1,0 +1,15 @@
+{{ define "main" }}
+
+<div class="govuk-width-container">
+  <main class="govuk-main-wrapper" id="main-content" role="main">
+    <h1 class="govuk-heading-xl">{{ .Title }}</h1>
+
+    <div class="govuk-body">
+      {{ .Content }}
+    </div>
+
+    {{ partial "starches/debug-graphs.html" . }}
+  </main>
+</div>
+
+{{ end }}

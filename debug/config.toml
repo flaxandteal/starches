@@ -1,0 +1,11 @@
+[[module.mounts]]
+source = "../content-debug"
+target = "content"
+
+[[module.mounts]]
+source = "layouts"
+target = "layouts"
+
+[[module.mounts]]
+source = "assets"
+target = "assets"

@@ -1,0 +1,32 @@
+{{- if not (.Page.Store.Get "debug-graphs-loaded-flag") -}}
+{{ $css := resources.Get "debug-graphs.css" -}}
+{{ if hugo.IsProduction }}
+  {{ $css = $css | minify | fingerprint }}
+{{ end }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}"{{ if hugo.IsProduction }} integrity="{{ $css.Data.Integrity }}"{{ end }}>
+
+<script>window.STARCHES_IS_PRODUCTION = {{ hugo.IsProduction }};</script>
+
+{{ $js := resources.Get "debug-graphs.ts" -}}
+{{ $sourceMap := cond hugo.IsProduction "" "inline" }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" }}
+{{ $js = $js | js.Build $opts }}
+{{ if hugo.IsProduction }}
+  {{ $js = $js | fingerprint }}
+{{ end }}
+<script
+  src="{{ $js.RelPermalink }}"
+  {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end }}
+  type="module">
+</script>
+{{- .Page.Store.Set "debug-graphs-loaded-flag" true -}}
+{{- end -}}
+
+<div id="summary-stats" class="govuk-!-margin-bottom-6">
+  <p class="govuk-body">Loading statistics...</p>
+</div>
+
+<h2 class="govuk-heading-m">Resource Models</h2>
+<div id="graph-cards">
+  <p class="govuk-body">Loading graphs...</p>
+</div>

@@ -1,0 +1,27 @@
+{{- if not (.Page.Store.Get "graph-detail-loaded-flag") -}}
+{{ $css := resources.Get "graph-detail.css" -}}
+{{ if hugo.IsProduction }}
+  {{ $css = $css | minify | fingerprint }}
+{{ end }}
+<link rel="stylesheet" href="{{ $css.RelPermalink }}"{{ if hugo.IsProduction }} integrity="{{ $css.Data.Integrity }}"{{ end }}>
+
+<script>window.STARCHES_IS_PRODUCTION = {{ hugo.IsProduction }};</script>
+
+{{ $js := resources.Get "graph-detail.ts" -}}
+{{ $sourceMap := cond hugo.IsProduction "" "inline" }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" }}
+{{ $js = $js | js.Build $opts }}
+{{ if hugo.IsProduction }}
+  {{ $js = $js | fingerprint }}
+{{ end }}
+<script
+  src="{{ $js.RelPermalink }}"
+  {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end }}
+  type="module">
+</script>
+{{- .Page.Store.Set "graph-detail-loaded-flag" true -}}
+{{- end -}}
+
+<div id="tree-container">
+  <p class="govuk-body">Loading graph structure...</p>
+</div>

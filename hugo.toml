@@ -4,6 +4,12 @@ title = "Alizarin Viewer"
 publishDir = "docs"
 canonifyurls = true
 
+[build.buildStats]
+  enable = true
+
+[build.buildStats.esbuild]
+  external = ["fs", "path", "url", "crypto", "stream", "util", "events", "buffer", "os", "node:fs", "node:path", "node:url"]
+
 [markup.goldmark.renderer]
 unsafe = true
 

@@ -139,6 +139,7 @@ starches/
 - **Detail-Level Paging**: Navigate between search results with preserved context
 - **Responsive Design**: Works on mobile and desktop devices
 - **Accessibility**: Follows GOV.UK Design System principles
+- **Debug Tools**: Optional debug pages for development (see Debug Pages below)
 
 ## 🛠️ Development Guidelines
 
@@ -170,6 +171,25 @@ console.error("Critical error: Application cannot continue");
 Environment-specific configuration is managed through:
 - `.env.development` - Debug mode enabled
 - `.env.production` - Debug mode disabled
+
+### Debug Pages
+
+Starches includes optional debug pages that can be enabled in consuming Hugo sites. These pages are **completely excluded** from the site build by default and only appear when explicitly enabled.
+
+To enable debug pages, add this import to your consuming site's `hugo.toml`:
+
+```toml
+[[module.imports]]
+  path = 'github.com/flaxandteal/starches'
+
+[[module.imports]]
+  path = 'github.com/flaxandteal/starches/debug'
+```
+
+Available debug pages:
+- `/debug/graphs/` - Lists all Alizarin resource graphs loaded from data definitions
+
+Without the `starches/debug` module import, debug pages will not be built or included in the site output.
 
 ### Code Style
 

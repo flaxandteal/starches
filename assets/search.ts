@@ -1,8 +1,9 @@
+import { utils } from 'alizarin';
+const { slugify } = utils;
 import { getConfig } from './managers';
 import { getFilters, getTerm, updateSearchParams } from './searchContext';
 import { debug, debugWarn, debugError } from './debug';
 import { buildPagefind } from './pagefind';
-import { slugify } from './utils';
 import { saveSearchResults, makeSearchQuery } from "./searchContext";
 import { resolveSearchManagerWith, getMap, getMapManager, getFlatbushManager } from './managers';
 

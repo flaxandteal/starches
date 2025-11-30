@@ -1,0 +1,148 @@
+/* Tree View Styles */
+.tree-root {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.tree-node {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree-node__header {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  padding-left: calc(var(--level, 0) * 24px);
+  border-radius: 2px;
+  transition: background-color 0.15s ease;
+}
+
+.tree-node__header:hover {
+  background-color: #f3f2f1;
+}
+
+.tree-node__toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1;
+  color: #0b0c0c;
+  margin-right: 4px;
+  border-radius: 2px;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.tree-node__toggle:hover {
+  background-color: #d2d2d2;
+}
+
+.tree-node__toggle:focus {
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+}
+
+.tree-node__spacer {
+  display: inline-block;
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.tree-node__content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tree-node__alias {
+  display: inline-block;
+  background-color: #1d70b8;
+  color: #ffffff;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 3px;
+  flex-shrink: 0;
+  font-family: monospace;
+  transition: background-color 0.15s ease;
+}
+
+.tree-node__alias[style*="cursor: pointer"]:hover {
+  background-color: #003078;
+}
+
+.tree-node__alias[style*="cursor: pointer"]:active {
+  background-color: #002d68;
+}
+
+.tree-node__name {
+  font-weight: 600;
+  color: #0b0c0c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-node__type {
+  color: #505a5f;
+  font-size: 13px;
+  font-style: italic;
+  flex-shrink: 0;
+}
+
+.tree-node__copy-button {
+  background: none;
+  border: 1px solid #b1b4b6;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: #505a5f;
+  border-radius: 3px;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: monospace;
+  transition: all 0.15s ease;
+}
+
+.tree-node__copy-button:hover {
+  background-color: #f3f2f1;
+  border-color: #0b0c0c;
+  color: #0b0c0c;
+}
+
+.tree-node__copy-button:focus {
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+}
+
+.tree-node__copy-button:active {
+  background-color: #d2d2d2;
+}
+
+.tree-node__copy-button--copied {
+  background-color: #00703c;
+  color: #ffffff;
+  border-color: #00703c;
+}
+
+.tree-node__children {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* GOV.UK Back Link Override */
+.govuk-back-link {
+  margin-bottom: 20px;
+}

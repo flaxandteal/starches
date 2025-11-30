@@ -1,0 +1,21 @@
+{{ define "main" }}
+
+<div class="govuk-width-container">
+  <main class="govuk-main-wrapper" id="main-content" role="main">
+    <a href="/debug/graphs/" class="govuk-back-link">Back to graphs</a>
+
+    <h1 class="govuk-heading-xl" id="graph-name">Loading...</h1>
+
+    <div id="wkrm-info" class="govuk-!-margin-bottom-6">
+    </div>
+
+    <div id="graph-info" class="govuk-!-margin-bottom-6">
+    </div>
+
+    <h2 class="govuk-heading-m">Graph Structure</h2>
+
+    {{ partial "starches/graph-detail.html" . }}
+  </main>
+</div>
+
+{{ end }}
