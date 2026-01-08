@@ -11,7 +11,7 @@
     "@types/geojson": "^7946.0.16",
     "@types/leaflet": "^1.9.17",
     "@types/leaflet.markercluster": "^1.5.5",
-    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.3/alizarin-0.2.1-alpha.3.tgz",
+    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.10/alizarin-0.2.1-alpha.10.tgz",
     "dompurify": "^3.2.6",
     "flatbush": "^4.4.0",
     "flatgeobuf": "^4.0.1",
@@ -25,11 +25,11 @@
     "mapbox-gl-arcgis-featureserver": "^0.0.8",
     "marked": "^15.0.7",
     "marked-plaintify": "^1.1.1",
-    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.3/starches-builder-v2.0.0-alpha.3.tar.gz",
+    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.10/starches-builder-v2.0.0-alpha.10.tar.gz",
     "toml": "^3.0.0"
   },
   "name": "starches",
-  "version": "0.2.1-alpha.3",
+  "version": "0.2.1-alpha.10",
   "description": "Static Arches export for Coral",
   "main": "reindex.js",
   "directories": {
@@ -57,8 +57,7 @@
     "potree-core": "^2.0.10",
     "three": "^0.175.0",
     "ts-node": "^10.9.2",
-    "tsc": "^2.0.4",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.3",
     "vite": "^6.3.5",
     "vite-hugo-plugin": "^5.1.0",
     "vitest": "^3.2.3"
