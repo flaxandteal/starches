@@ -11,7 +11,7 @@
     "@types/geojson": "^7946.0.16",
     "@types/leaflet": "^1.9.17",
     "@types/leaflet.markercluster": "^1.5.5",
-    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.12/alizarin-0.2.1-alpha.12.tgz",
+    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.13/alizarin-0.2.1-alpha.13.tgz",
     "dompurify": "^3.2.6",
     "flatbush": "^4.4.0",
     "flatgeobuf": "^4.0.1",
