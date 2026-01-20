@@ -46,12 +46,13 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
   return Promise.all(results.results.slice(0, config.maxMapPoints).map(r => {
       let data = null;
       try {
-          data = r.data().then(re => {
+          data = r.data().then(async re => {
             if (re.meta.location) {
               const loc = JSON.parse(re.meta.location);
               const slug = re.meta.slug;
               if (loc && !visibleIds.has(slug)) {
-                const url = makeSearchQuery(re.url);
+                console.log("URL", re.url);
+                const url = await makeSearchQuery(re.url);
                 let [indexOnly, description] = re.content.split('$$$');
                 if (!(description && description.trim().length > 0)) {
                     description = indexOnly;
@@ -62,10 +63,7 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
                     text += `<p class='registry'>${registries.join(', ')}</p>`;
                 }
                 text += `<p class='description'>${description}</p>`;
-                text += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`
-                text += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="window.open('${url}', '_blank'); return false;">Open tab</a></li>`;
-                const call = `window.__starchesManagers.primaryMap.then(map => map.flyTo({center: [${loc[0]}, ${loc[1]}], zoom: ${config.minSearchZoom + 1}}))`;
-                text += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
+
                 let marker = {
                     'type': 'Feature',
                     'geometry': {
@@ -75,7 +73,9 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
                     'properties': {
                         'slug': slug,
                         'title': re.meta.title,
-                        'description': text,
+                        'description': description,
+                        'url': url,
+                        'category': re.meta.category || null
                     },
                 };
                 fg.features.push(marker);
@@ -196,8 +196,10 @@ class SearchManager {
       const geoBounds = this.fb && this.fb.bounds;
 
       if (term) {
-          const input = document.getElementById("pfmod-input-0");
-          input.value = term;
+          const input = document.getElementById("search") as HTMLInputElement;
+          if (input) {
+              input.value = term;
+          }
           if (instance) {
               instance.searchTerm = term;
           }

@@ -3,7 +3,8 @@
   "baseUrl": ".",
   "paths": {
    "*": [
-    "*"
+    "*",
+    "../../../../../../../.cache/hugo_cache/modules/filecache/modules/pkg/mod/github.com/flaxandteal/starches@v0.2.1-alpha.16/assets/*"
    ]
   }
  }

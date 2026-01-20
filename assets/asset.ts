@@ -1,17 +1,29 @@
-import { marked } from 'marked';
+import { marked, Token, Tokens } from 'marked';
 import dompurify from 'dompurify';
 import * as Handlebars from 'handlebars';
+import { Map as MLMap } from 'maplibre-gl';
 import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, renderers, wasmReady, slugify } from 'alizarin';
+import '@alizarin/filelist';
+import { addMarkerImage } from 'map-tools';
 import {
-  getSearchUrlWithContext,
   getNavigation,
   hasSearchContext,
   getAssetUrlWithContext,
   getSearchParams as getSearchContextParams,
-  updateBreadcrumbs
+  updateBreadcrumbs,
+  makeSearchQuery
 } from './searchContext';
 import { debug, debugError } from './debug';
 import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './managers';
+import { loadTemplate, getPrecompiledTemplate } from 'handlebar-utils';
+import { initSwiper } from 'swiper';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TDocumentDefinitions } from 'pdfmake/interfaces';
+import { markdownToPdf } from 'pdf-make';
+
+pdfMake.vfs = pdfFonts.vfs;
+import * as params from '@params';
 
 // Types and interfaces
 interface AssetUrlParams {
@@ -64,41 +76,9 @@ declare global {
   }
 }
 
-// Handlebars setup
-function registerHandlebarsHelpers(): void {
+// Alizarin-specific setup (Handlebars helpers are registered in static/js/handlebars-helpers.js)
+function initializeAlizarinConfig(): void {
   viewModels.CUSTOM_DATATYPES.set("tm65centrepoint", "non-localized-string");
-
-  Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replaceAll(fm, to) : base);
-  Handlebars.registerHelper("nl", (base, nl) => base ? base.replaceAll("\n", nl) : base);
-  Handlebars.registerHelper("plus", (a, b) => a + b);
-  Handlebars.registerHelper("default", (a, b) => a === undefined || a === null ? b : a);
-  Handlebars.registerHelper("defaulty", (a, b) => a != undefined && a != null && a != false ? a : b);
-  Handlebars.registerHelper("equal", (a, b) => a == b);
-  Handlebars.registerHelper("or", (a, b) => a || b);
-  Handlebars.registerHelper("join", (...args) => {
-    if (args.length == 3 && Array.isArray(args[0])) {
-      return args.join(args[1]);
-    }
-    return args.slice(0, args.length - 2).join(args[args.length - 2]);
-  });
-  Handlebars.registerHelper("and", (a, b) => a && b);
-  Handlebars.registerHelper("not", (a, b) => a != b);
-  Handlebars.registerHelper("in", (a, b) => Array.isArray(b) ? b.includes(a) : (a in b));
-  Handlebars.registerHelper("nospace", (a) => a.replaceAll(" ", "%20"));
-  Handlebars.registerHelper("escapeExpression", (a) => Handlebars.Utils.escapeExpression(a));
-  Handlebars.registerHelper("clean", (a) => {
-    if (a instanceof renderers.Cleanable) {
-      return a.__clean;
-    }
-    return a;
-  });
-  Handlebars.registerHelper("concat", (...args) => args.slice(0, args.length - 1).join(""));
-  Handlebars.registerHelper("array", (...args) => args);
-  Handlebars.registerHelper("dialogLink", (options) => {
-    return new Handlebars.SafeString(
-      `<button class="govuk-button dialog-link" data-dialog-id="${options.hash.id}">Show</button>`
-    );
-  });
 }
 
 // URL parameter parsing (distinct from search context params)
@@ -156,10 +136,15 @@ async function loadMaritimeAsset(slug: string, gm: typeof graphManager): Promise
 async function fetchTemplate(asset: AlizarinModel<any>): Promise<HandlebarsTemplateDelegate | undefined> {
   const graphId = asset.__.wkrm.graphId;
   const config = MODEL_FILES[graphId];
-
   if (config?.template) {
-    const response = await fetch(config.template);
-    return Handlebars.compile(await response.text());
+    // Use precompiled template if available
+    try {
+      return getPrecompiledTemplate(config.template);
+    } catch (e) {
+      console.warn(`Precompiled template not found for ${config.template}, falling back to runtime compilation`);
+      const response = await fetch(config.template);
+      return Handlebars.compile(await response.text());
+    }
   }
 }
 
@@ -186,7 +171,7 @@ async function getAssetMetadata(asset: AlizarinModel<any>): Promise<AssetMetadat
     resourceinstanceid: `${await asset.id}`,
     geometry,
     location,
-    title: await asset.$.getName(true)
+    title: await asset.$.getName()
   };
 }
 
@@ -298,11 +283,217 @@ function createGovukMarkedRenderer(
   };
 }
 
-async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeDetails = false): Promise<string> {
+// Return type for sectioned HTML output
+interface SectionedHtml {
+  [sectionId: string]: string;
+}
+
+async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeDetails = false): Promise<SectionedHtml> {
+  const nodeTemplate = await loadTemplate('/templates/asset-nodegroup-template.html', true) as HandlebarsTemplateDelegate;
+
+  // Custom token type for nodeBlock
+  interface NodeBlockField {
+    alias: string;      // The node alias (from @alias)
+    label: string;      // Display label
+    value: string;      // The value after the colon
+    slug?: string;      // The url slug for the related resource
+    node?: any;         // Looked up node data
+  }
+
+  interface NodeBlockToken {
+    type: 'nodeBlock';
+    raw: string;
+    title: string;
+    icon?: string;
+    body: string;
+    fields: NodeBlockField[];
+    tokens: Token[];
+    sectionId?: string;
+  }
+
+  interface SectionToken {
+    type: 'section';
+    raw: string;
+    sectionId: string;
+    tokens: Token[];
+  }
+
+  // Track sections and their content
+  const sections: SectionedHtml = {};
+  let currentSectionId: string = 'default';
+  sections[currentSectionId] = '';
+
+  // Register extensions for sections and nodeBlocks
+  marked.use({
+    extensions: [
+      {
+        name: 'section',
+        level: 'block',
+        start(src: string) {
+          return src.match(/^<!--section:/)?.index;
+        },
+        tokenizer(this: any, src: string): SectionToken | undefined {
+          // Match <!--section:id--> followed by content until next section or end
+          const match = src.match(/^<!--section:([\w-]+)-->\n?([\s\S]*?)(?=<!--section:|\s*$)/);
+          if (match) {
+            const sectionId = match[1];
+            const content = match[2];
+
+            currentSectionId = sectionId;
+
+            const token: SectionToken = {
+              type: 'section',
+              raw: match[0],
+              sectionId: sectionId,
+              tokens: []
+            };
+
+            // Tokenize the inner content
+            this.lexer.blockTokens(content, token.tokens);
+
+            return token;
+          }
+        },
+        renderer(this: any, token: SectionToken) {
+          const innerHtml = this.parser.parse(token.tokens);
+          // Store in sections map and return with marker for later extraction
+          return `<!--section:${token.sectionId}-->${innerHtml}`;
+        }
+      },
+      // NodeBlock extension
+      {
+        name: 'nodeBlock',
+        level: 'block',
+        start(src: string) {
+          return src.match(/^::/)?.index;
+        },
+        tokenizer(src: string): NodeBlockToken | undefined {
+          // Match ::Title{icon}::\n...content...\n::end:: (icon is optional)
+          const match = src.match(/^::([^:{]+)(?:\{([^}]+)\})?::\n([\s\S]*?)::end::/);
+          if (match) {
+            const title = match[1].trim();
+            const icon = match[2]?.trim();
+            let body = match[3].trim();
+
+            // Parse fields - capture multi-line values until next [field] or end
+            // Use multiline mode with ^ to only match [label] at start of line
+            const fields: NodeBlockField[] = [];
+            const fieldPattern = /^\[([^\]]+)\]\s+([\s\S]*?)(?=\n\[|$)/gm;
+            let fieldMatch: RegExpExecArray | null;
+
+            while ((fieldMatch = fieldPattern.exec(body)) !== null) {
+              const label = fieldMatch[1].trim();
+              const value = fieldMatch[2].trim();
+
+              // Check if it's a node reference (starts with @)
+              const isNodeRef = label.startsWith('@');
+              const alias = isNodeRef ? label.substring(1) : null;
+              const node = alias ? nodes.get(alias) : null;
+
+              // Extract data-id from alizarin-resource-instance spans to build slug
+              const dataIdMatch = value.match(/data-id=['"]([^'"]+)['"]/);
+              const resourceId = dataIdMatch ? dataIdMatch[1] : null;
+              const slug = resourceId ? `?slug=${resourceId}` : null
+
+              fields.push({
+                alias: alias || '',
+                label: isNodeRef ? (node?.name || alias) : label,
+                value,
+                slug,
+                node
+              });
+            }
+
+            if (!body) {
+              body = '<p><strong>No data available</strong></p>';
+            }
+
+            const token: NodeBlockToken = {
+              type: 'nodeBlock',
+              raw: match[0],
+              title,
+              icon,
+              body,
+              fields,
+              tokens: [],
+              sectionId: currentSectionId
+            };
+
+            return token;
+          }
+        },
+        renderer(token) {
+          const nodeToken = token as NodeBlockToken;
+          const titleId = nodeToken.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+          const sectionId = nodeToken.sectionId || 'default';
+          const id = `${titleId}-${sectionId}`;
+
+          return nodeTemplate({
+            title: nodeToken.title,
+            icon: nodeToken.icon,
+            fields: nodeToken.fields,
+            body: nodeToken.body,
+            id: id,
+            sectionId: sectionId
+          });
+        }
+      }
+    ]
+  });
+
   const renderer = createGovukMarkedRenderer(nodes, { showNodeDetails }) as Parameters<typeof marked.use>[0]['renderer'];
   marked.use({ renderer });
+
   const parsed = await marked.parse(markdown);
-  return dompurify.sanitize(parsed);
+
+  // Split the parsed output by section markers and collect into sections object
+  const sectionPattern = /<!--section:([\w-]+)-->/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let activeSectionId = 'default';
+
+  while ((match = sectionPattern.exec(parsed)) !== null) {
+    // Add content before this marker to the active section
+    const content = parsed.slice(lastIndex, match.index);
+    if (content.trim()) {
+      sections[activeSectionId] = (sections[activeSectionId] || '') + content;
+    }
+    // Switch to new section
+    activeSectionId = match[1];
+    if (!sections[activeSectionId]) {
+      sections[activeSectionId] = '';
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining content to the last active section
+  const remainingContent = parsed.slice(lastIndex);
+  if (remainingContent.trim()) {
+    sections[activeSectionId] = (sections[activeSectionId] || '') + remainingContent;
+  }
+
+  // Remove empty default section if other sections exist
+  if (sections['default']?.trim() === '' && Object.keys(sections).length > 1) {
+    delete sections['default'];
+  }
+
+  return sections;
+}
+
+// Helper to inject sectioned HTML into the DOM
+function injectSections(sections: SectionedHtml): void {
+  for (const [sectionId, html] of Object.entries(sections)) {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.innerHTML = html;
+    } else {
+      // Fallback: if no matching element, append to 'asset' element
+      const assetElement = document.getElementById('asset');
+      if (assetElement) {
+        assetElement.innerHTML += html;
+      }
+    }
+  }
 }
 
 // Rendering functions
@@ -318,12 +509,9 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
   }
 
   const nodes = asset.asset.__.getNodeObjectsByAlias();
-  const html = await renderToHtml(markdown, nodes, true);
+  const sections = await renderToHtml(markdown, nodes, true);
 
-  const assetElement = document.getElementById('asset');
-  if (assetElement) {
-    assetElement.innerHTML = html;
-  }
+  injectSections(sections);
 
   return {};
 }
@@ -333,15 +521,19 @@ interface ImageRef {
   index: number;
 }
 
+function renderPDFAsset(markdown: string, nodes: Map<string, any>, title: string) {
+  const pdf = markdownToPdf(markdown, nodes, title);
+  pdfMake.createPdf(pdf).download(`${title}.pdf`);
+}
+
 async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): Promise<Record<string, Dialog>> {
   const alizarinRenderer = new renderers.MarkdownRenderer(RENDERER_OPTIONS);
   const nonstaticAsset = await alizarinRenderer.render(asset.asset);
   debug('Rendered non-static asset');
-
   const { images, files, otherEcrs } = categorizeExternalReferences(nonstaticAsset);
-
   const markdown = template(
     {
+      meta: asset.meta,
       title: asset.meta.title,
       ha: nonstaticAsset,
       js: JSON.stringify(nonstaticAsset, null, 2),
@@ -355,13 +547,41 @@ async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): 
     }
   );
 
-  const nodes = asset.asset.__.getNodeObjectsByAlias();
-  const html = await renderToHtml(markdown, nodes, false);
+  console.log("META", asset.meta);
 
-  const assetElement = document.getElementById('asset');
-  if (assetElement) {
-    assetElement.innerHTML = html;
+  const nodes = asset.asset.__.getNodeObjectsByAlias();
+
+  const sections = await renderToHtml(markdown, nodes, false);
+
+  const downloadPDF = () => {
+    renderPDFAsset(markdown, nodes, asset.meta.title);
   }
+
+  // This is a sample list of images
+  const imageArray = ((await asset.asset.images) || [[]])
+  const testImages = [];
+  await Promise.all(imageArray.map(async (i) => {
+    for (const image of (await i)) {
+      testImages.push({
+        name: await image.name,
+        url: await image.url,
+        alt: (await image._file.alt_text) || (await image.name)
+      });
+    }
+  }));
+
+  console.log("testImages", testImages);
+
+  initSwiper(testImages, 'media/images')
+
+  injectSections(sections);
+
+  const downloadPdfButton = document.getElementById('asset-download');
+  if (downloadPdfButton) {
+    downloadPdfButton.addEventListener('click', downloadPDF);
+  }
+
+  addAssetToMap(asset);
 
   setupDialogLinks();
 
@@ -422,6 +642,108 @@ async function buildImageDialogs(images: ImageRef[], assetTitle: string): Promis
   return dialogs;
 }
 
+function addAssetToMap(asset: Asset) {
+  const location = asset.meta.location;
+  if (location) {
+    const centre = location;
+    const zoom = 16;
+    const map = new MLMap({
+      style: 'https://tiles.openfreemap.org/styles/bright',
+      pitch: 20,
+      bearing: 0,
+      container: 'map',
+      center: centre,
+      zoom: zoom
+    });
+    map.on('load', async () => {
+      await addMarkerImage(map as any);
+      const source = map.addSource('assets', {
+        type: 'geojson',
+        data: asset.meta.geometry,
+      });
+      const sourceMarker = map.addSource('assets-marker', {
+        type: 'geojson',
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            "type": "Point",
+            "coordinates": asset.meta.location,
+          }
+        }
+      });
+      let paint: {
+        'fill-color': string,
+        'fill-opacity': number,
+        'fill-outline-color'?: string | null
+      } = {
+        'fill-color': '#a88',
+        'fill-opacity': 0.8,
+      };
+      if (asset.meta.geometry.type === "FeatureCollection" && asset.meta.geometry.features.length == 1) {
+        const feature = asset.meta.geometry.features[0];
+        if (feature.properties && feature.properties.type === 'Grid Square') {
+          paint = {
+            'fill-color': 'rgba(255, 255, 255, 0.1)',
+            'fill-outline-color': '#aa4444',
+            'fill-opacity': 0.4
+          }
+        }
+      }
+      map.addLayer({
+        'id': '3d-buildings',
+        'source': 'openmaptiles',
+        'source-layer': 'building',
+        'filter': [
+          "!",
+          ["to-boolean",
+            ["get", "hide_3d"]
+          ]
+        ],
+        'type': 'fill-extrusion',
+        'minzoom': 13,
+        'paint': {
+          'fill-extrusion-color': 'lightgray',
+          'fill-extrusion-opacity': 0.5,
+          'fill-extrusion-height': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            13,
+            0,
+            16,
+            ['get', 'render_height']
+          ],
+          'fill-extrusion-base': ['case',
+            ['>=', ['get', 'zoom'], 16],
+            ['get', 'render_min_height'], 0
+          ]
+        }
+      });
+      map.addLayer({
+        'id': 'asset-boundaries',
+        'type': 'fill',
+        'source': 'assets',
+        'paint': paint,
+        'filter': ['==', '$type', 'Polygon']
+      });
+      map.addLayer({
+        'id': 'assets-marker',
+        'type': 'symbol',
+        'source': 'assets-marker',
+        'layout': {
+          'icon-image': 'marker-new',
+          'text-offset': [0, 1.25],
+          'text-anchor': 'top'
+        },
+        'filter': ['==', '$type', 'Point']
+      });
+    });
+  } else {
+    document.getElementById('map').classList = 'map-hidden';
+  }
+}
+
 // Asset page manager
 class AssetManager implements IAssetManager {
   private graphManager: typeof graphManager | null = null;
@@ -429,7 +751,7 @@ class AssetManager implements IAssetManager {
   private dialogs: Record<string, Dialog> = {};
 
   async initialize(): Promise<void> {
-    registerHandlebarsHelpers();
+    initializeAlizarinConfig();
     this.graphManager = await initializeAlizarin();
     debug("Alizarin initialized");
   }
@@ -459,7 +781,7 @@ class AssetManager implements IAssetManager {
     }
 
     const template = await fetchTemplate(this.asset.asset);
-    debug("Template loaded:", !!template, "publicView:", publicView);
+    console.log("Template loaded:", template, !!template, "publicView:", publicView);
 
     this.dialogs = (publicView && template)
       ? await renderAsset(this.asset, template)
@@ -563,11 +885,16 @@ function setupSwapLink(slug: string, publicView: boolean): void {
   }
 }
 
-async function setupBackLinks(): Promise<void> {
-  const backUrl = await getSearchUrlWithContext('');
-  document.querySelectorAll<HTMLAnchorElement>('a.back-link').forEach(elt => {
-    elt.href = backUrl;
-  });
+async function setupBackLinks(currentSlug: string): Promise<void> {
+  // Add search params from sessionStorage to back link URLs to restore search context
+  // The lastViewedAsset in sessionStorage handles the focus/scroll behavior separately
+  const searchParams = await getSearchContextParams();
+  const backLinks = document.querySelectorAll<HTMLAnchorElement>('a.back-link')
+  for (const elt of Array.from(backLinks)) {
+    const basePath = new URL(elt.href, window.location.origin).pathname;
+    const url = await makeSearchQuery(basePath, searchParams);
+    elt.href = url;
+  }
 }
 
 function setupAssetTitle(title: string): void {
@@ -668,7 +995,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   await Promise.all([
     assetManagerInstance.render(publicView),
     setupRegistryInfo(asset),
-    setupBackLinks()
+    setupBackLinks(slug)
   ]);
 
   setupAssetTitle(asset.meta.title);
@@ -681,6 +1008,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Navigation setup with slight delay for localStorage availability
   setTimeout(() => setupAssetNavigation(slug), 100);
+
+  // Store current slug for browser back button focus behavior
+  sessionStorage.setItem('lastViewedAsset', slug);
 
   history.pushState({}, "", `?slug=${slug}&full=${!publicView}`);
 }, { once: true });

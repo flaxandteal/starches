@@ -1,12 +1,7 @@
-<dialog id="map-dialog" aria-labelledby="map-dialog__heading">
-<div id="map-dialog__inner">
-    <div id="map-dialog__heading"></div>
-
-    <div id="map-dialog__content"></div>
-
-    <button class="govuk-button dialog-cancel" type="button" id="map-dialog__cancel"
-        onclick="document.getElementById('map-dialog').close()">
-        Cancel
-    </button>
+<div class="offcanvas offcanvas-bottom" data-bs-scroll="true" data-bs-backdrop="false" tabindex="-1" id="map-offcanvas" aria-label="Asset details">
+    <div class="offcanvas-header">
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body" id="map-offcanvas__content">
+    </div>
 </div>
-</dialog>

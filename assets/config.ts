@@ -7,7 +7,7 @@ function makeDefaultConfiguration(): Partial<StarchesConfiguration> {
     minSearchLength: 4,
     maxMapPoints: 300,
     timeToShowLoadingMs: 50,
-    allowSearchContext: false
+    allowSearchContext: true
   };
 }
 
