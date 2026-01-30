@@ -20,9 +20,8 @@ export interface SearchParamsKV {
   searchTerm?: string;
   geoBounds?: string;
   searchFilters?: string;
+  selectionPolygon?: string;
 }
-
-let urlSearchParams: SearchParams | undefined;
 
 // Default empty context
 const emptyContext: SearchContext = {
@@ -36,14 +35,14 @@ function updateParamsFromURL(searchParams?: SearchParams, compareEmpty: boolean=
   let changed = false;
 
   // This prevents later URL updates overwriting the original search params
-  const urlParams = urlSearchParams || new URLSearchParams(window.location.search);
-  if (!urlSearchParams) urlSearchParams = searchParams;
+  const urlParams = new URLSearchParams(window.location.search);
   const urlFilters = urlParams instanceof URLSearchParams ? urlParams.get('searchFilters') : undefined;
   const urlBounds = urlParams instanceof URLSearchParams ? urlParams.get('geoBounds') : undefined;
   const urlTerm = urlParams instanceof URLSearchParams ? urlParams.get('searchTerm') : undefined;
+  const urlPolygon = urlParams instanceof URLSearchParams ? urlParams.get('selectionPolygon') : undefined;
 
   // If there are no URL parameters set, then there is no comparison needed.
-  if (!(urlFilters || urlTerm || urlBounds) && !compareEmpty) {
+  if (!(urlFilters || urlTerm || urlBounds || urlPolygon) && !compareEmpty) {
     return [searchParams || {}, false];
   }
 
@@ -73,6 +72,15 @@ function updateParamsFromURL(searchParams?: SearchParams, compareEmpty: boolean=
   } else {
     changed ||= !!searchParams.geoBounds;
     searchParams.geoBounds = undefined;
+  }
+
+  if (urlPolygon && /^[-,\[\]_0-9a-z."':{}@]*$/i.exec(urlPolygon)) {
+    const parsedPolygon = JSON.parse(urlPolygon);
+    changed ||= (JSON.stringify(searchParams.selectionPolygon) !== urlPolygon);
+    searchParams.selectionPolygon = parsedPolygon;
+  } else {
+    changed ||= !!searchParams.selectionPolygon;
+    searchParams.selectionPolygon = undefined;
   }
 
   return [searchParams, changed];
@@ -184,9 +192,11 @@ export async function updateSearchParams(searchParams: SearchParams): Promise<vo
       searchTerm: searchParams.searchTerm,
       searchFilters: searchParams.searchFilters ? JSON.stringify(searchParams.searchFilters) : undefined,
       geoBounds: searchParams.geoBounds ? JSON.stringify(searchParams.geoBounds) : undefined,
+      selectionPolygon: searchParams.selectionPolygon ? JSON.stringify(searchParams.selectionPolygon) : undefined,
     };
     const url = await makeSearchQuery("?", searchParams);
     history.pushState(flattenedSearchParams, "", url);
+    // Update the cached URL params so subsequent reads see the new values
     updateBreadcrumbs(searchParams);
   }
 }
@@ -358,6 +368,16 @@ export async function getGeoBounds(): Promise<[number, number, number, number] |
   return geoBounds;
 }
 
+export async function getSelectionPolygon(): Promise<GeoJSON.Polygon | null | undefined> {
+  const { selectionPolygon } = await getSearchParams();
+  return selectionPolygon;
+}
+
+export async function hasSelectionPolygon(): Promise<boolean> {
+  const polygon = await getSelectionPolygon();
+  return polygon != null;
+}
+
 export async function getFilters(): Promise<{[k: string]: string[]} | undefined> {
   const { searchFilters } = await getSearchParams();
   return searchFilters;
@@ -395,6 +415,10 @@ export async function makeSearchQuery(url: string, searchParams?: SearchParams) 
   
   if (searchParams.searchFilters) {
     params.set('searchFilters', JSON.stringify(searchParams.searchFilters));
+  }
+
+  if (searchParams.selectionPolygon) {
+    params.set('selectionPolygon', JSON.stringify(searchParams.selectionPolygon));
   }
 
   return `${fullUrl}${params.toString()}`;

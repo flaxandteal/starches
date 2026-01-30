@@ -23,6 +23,8 @@ export interface SearchParams {
   searchTerm?: string;
   geoBounds?: [number, number, number, number];
   searchFilters?: {[k: string]: string[]};
+  /** Optional selection polygon - when set, geoBounds should not be updated by map pan/zoom */
+  selectionPolygon?: GeoJSON.Polygon | null;
 }
 
 export interface SearchContext {

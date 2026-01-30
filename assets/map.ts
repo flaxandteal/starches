@@ -154,11 +154,20 @@ class LayerManager implements ILayerManager {
                 features: []
             };
             let i = 0;
-            for await (const f of fgbDeserialize(response.body)) {
-                fc.features.push({
-                    id: i,
-                    ...f,
-                });
+            try {
+                for await (const f of fgbDeserialize(response.body)) {
+                    // Skip features with null/invalid geometry
+                    if (!f || !f.geometry) {
+                        continue;
+                    }
+                    fc.features.push({
+                        id: i,
+                        ...f,
+                    });
+                    i++;
+                }
+            } catch (e) {
+                debugWarn(`Error deserializing FGB for register ${register}:`, e);
             }
             layerName = `register-${register}`;
             const source = map.addSource(layerName, {

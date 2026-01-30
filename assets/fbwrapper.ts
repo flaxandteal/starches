@@ -51,23 +51,31 @@ export class FlatbushManager {
                     return null;
                 }
                 this.__filteredWithMetadata__ = [];
-                for await (const re of fgbDeserialize(
-                    '/fgb/nihed-assets.fgb',
-                     { minX: this.bounds[0], minY: this.bounds[1], maxX: this.bounds[2], maxY: this.bounds[3] },
-                     this.handleHeader.bind(this)
-                )) {
-                    this.__filteredWithMetadata__.push({
-                        // Needs corrected to the hash
-                        id: re.id,
-                        excerpt: re.properties.content,
-                        filters: re.properties?.filters,
-                        data: async () => {
-                            const data = {};
-                            Object.assign(data, re.properties);
-                            data.excerpt = re.properties.content || '';
-                            return data;
+                try {
+                    for await (const re of fgbDeserialize(
+                        '/fgb/nihed-assets.fgb',
+                         { minX: this.bounds[0], minY: this.bounds[1], maxX: this.bounds[2], maxY: this.bounds[3] },
+                         this.handleHeader.bind(this)
+                    )) {
+                        // Skip features with null/invalid geometry
+                        if (!re || !re.geometry) {
+                            continue;
                         }
-                    });
+                        this.__filteredWithMetadata__.push({
+                            // Needs corrected to the hash
+                            id: re.id,
+                            excerpt: re.properties.content,
+                            filters: re.properties?.filters,
+                            data: async () => {
+                                const data = {};
+                                Object.assign(data, re.properties);
+                                data.excerpt = re.properties.content || '';
+                                return data;
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Error deserializing FGB features:', e);
                 }
             }
             return this.__filteredWithMetadata__;
