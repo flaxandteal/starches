@@ -53,7 +53,7 @@ export class FlatbushManager {
                 this.__filteredWithMetadata__ = [];
                 try {
                     for await (const re of fgbDeserialize(
-                        '/fgb/nihed-assets.fgb',
+                        '/fgb/global-assets.fgb',
                          { minX: this.bounds[0], minY: this.bounds[1], maxX: this.bounds[2], maxY: this.bounds[3] },
                          this.handleHeader.bind(this)
                     )) {
@@ -96,7 +96,7 @@ export class FlatbushManager {
             'features': []
         };
         for await (const re of fgbDeserialize(
-            '/fgb/nihed-assets.fgb',
+            '/fgb/global-assets.fgb',
              { minX: loc[0] - NEAREST_RADIUS, minY: loc[1] - NEAREST_RADIUS, maxX: loc[0] + NEAREST_RADIUS, maxY: loc[1] + NEAREST_RADIUS }
         )) {
             if (!regcode || re.properties.regcode === regcode) {
