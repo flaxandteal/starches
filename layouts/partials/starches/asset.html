@@ -9,7 +9,7 @@
 {{- $js := resources.Get . -}}
 {{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction ) }}
 {{ $sourceMap := cond hugo.IsProduction "" "inline" }}
-{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" "params" $params }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2022" "params" $params }}
 {{ $js = $js | js.Build $opts }}
 {{ if hugo.IsProduction }}
   {{ $js = $js | fingerprint }}
@@ -51,7 +51,7 @@
   </div>
 </div>
 
-<!-- RMV <div id="map"></div> -->
+<div id="map" class="maplibregl-map"></div>
 <h1 id="asset-title"></h1>
 
 <div class="modern-navigation" id="bottom-nav-container">

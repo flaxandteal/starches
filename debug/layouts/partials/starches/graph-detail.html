@@ -9,7 +9,7 @@
 
 {{ $js := resources.Get "graph-detail.ts" -}}
 {{ $sourceMap := cond hugo.IsProduction "" "inline" }}
-{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2022" }}
 {{ $js = $js | js.Build $opts }}
 {{ if hugo.IsProduction }}
   {{ $js = $js | fingerprint }}

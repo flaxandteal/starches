@@ -13,7 +13,7 @@ import {
 } from './managers';
 import { debug, debugError } from './debug';
 
-// LocalStorage key for search context
+// SessionStorage key for search context
 const STORAGE_KEY = 'starches_search_context';
 
 export interface SearchParamsKV {
@@ -105,24 +105,42 @@ class UrlOnlySearchContextManager implements ISearchContextManager {
     // Nothing to do, as we do not keep context
   }
 }
-class LocalStorageSearchContextManager implements ISearchContextManager {
+class SessionStorageSearchContextManager implements ISearchContextManager {
   /**
-   * Load search context from localStorage
+   * Check if URL has search context params (indicates return from asset page)
+   */
+  private hasUrlSearchParams(): boolean {
+    const urlParams = new URLSearchParams(window.location.search);
+    return !!(urlParams.get('searchTerm') || urlParams.get('searchFilters') || urlParams.get('geoBounds') || urlParams.get('selectionPolygon') || urlParams.get('focusResult'));
+  }
+
+  /**
+   * Load search context from sessionStorage
    */
   async loadContext(): Promise<SearchContext> {
     let context;
-    try {
-      const storedContext = localStorage.getItem(STORAGE_KEY);
-      if (storedContext) {
-        context = JSON.parse(storedContext);
-        debug('Loaded search context from storage:', context);
-      } else {
-        debug('No search context found in storage, using empty context');
+
+    // Only restore from sessionStorage if URL has search params (returning from asset page)
+    // Fresh navigation without params should start with empty context
+    const hasParams = this.hasUrlSearchParams();
+    debug('URL has search params:', hasParams);
+
+    if (hasParams) {
+      try {
+        const storedContext = sessionStorage.getItem(STORAGE_KEY);
+        if (storedContext) {
+          context = JSON.parse(storedContext);
+          debug('Loaded search context from storage:', context);
+        } else {
+          debug('No search context found in storage, using empty context');
+        }
+      } catch (error) {
+        debug('Error loading search context from sessionStorage:', error);
       }
-    } catch (error) {
-      debug('Error loading search context from localStorage:', error);
+    } else {
+      debug('Fresh navigation, starting with empty context');
     }
-    
+
     let [searchParams, changed] = updateParamsFromURL(context && context.searchParams);
     if (changed || !context) {
       context = { ...emptyContext };
@@ -132,13 +150,13 @@ class LocalStorageSearchContextManager implements ISearchContextManager {
   }
 
   /**
-   * Save context to localStorage
+   * Save context to sessionStorage
    */
   saveContext(context: SearchContext): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(context));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(context));
     } catch (error) {
-      debugError('Error saving search context to localStorage:', error);
+      debugError('Error saving search context to sessionStorage:', error);
     }
   }
 
@@ -164,7 +182,7 @@ class LocalStorageSearchContextManager implements ISearchContextManager {
 
     // Verify storage immediately
     try {
-      const storedContext = localStorage.getItem(STORAGE_KEY);
+      const storedContext = sessionStorage.getItem(STORAGE_KEY);
       if (storedContext) {
         const parsed = JSON.parse(storedContext);
         debug('Verified stored context:', { 
@@ -180,7 +198,7 @@ class LocalStorageSearchContextManager implements ISearchContextManager {
 }
 
 /**
- * Save search results to context
+ * Save search results to contexty
  * @param ids Array of asset IDs from search results
  * @param params Search parameters used to obtain results
  */
@@ -400,7 +418,7 @@ export async function makeSearchQuery(url: string, searchParams?: SearchParams) 
   if (url.includes("?")) {
     fullUrl += "&";
   } else {
-    fullUrl += "?";
+    fullUrl += "/?";
   }
 
   const params = new URLSearchParams();
@@ -429,7 +447,7 @@ window.addEventListener('DOMContentLoaded', async (event) => {
 
   let contextManager: ISearchContextManager;
   if (config.allowSearchContext) {
-    contextManager = new LocalStorageSearchContextManager();
+    contextManager = new SessionStorageSearchContextManager();
   } else {
     contextManager = new UrlOnlySearchContextManager();
   }
