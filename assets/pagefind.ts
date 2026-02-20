@@ -45,7 +45,8 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
             termSimilarity: 2.5
         }
     });
-    const input = params.pagefind?.useCustomInput
+
+    const input = params.search_config?.usecustominput
         ? new PagefindModularUI.Input({ inputElement: "#search" })
         : new PagefindModularUI.Input({ containerElement: "#search" });
     
