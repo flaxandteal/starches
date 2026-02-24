@@ -1,11 +1,14 @@
-import { utils } from 'alizarin';
+import { utils } from 'alizarin/inline';
+// import { utils, setWasmURL } from 'alizarin';
+// setWasmURL('/wasm/alizarin_bg.wasm');
 const { slugify } = utils;
 import { getConfig } from './managers';
-import { getFilters, getTerm, updateSearchParams } from './searchContext';
+import { getFilters, getTerm, updateSearchParams, getSelectionPolygon } from './searchContext';
 import { debug, debugWarn, debugError } from './debug';
 import { buildPagefind } from './pagefind';
 import { saveSearchResults, makeSearchQuery } from "./searchContext";
 import { resolveSearchManagerWith, getMap, getMapManager, getFlatbushManager } from './managers';
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 
 let resolveSearchManager;
 const searchManager: Promise<SearchManager> = new Promise((resolve) => { resolveSearchManager = resolve });
@@ -46,12 +49,13 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
   return Promise.all(results.results.slice(0, config.maxMapPoints).map(r => {
       let data = null;
       try {
-          data = r.data().then(re => {
+          data = r.data().then(async re => {
             if (re.meta.location) {
               const loc = JSON.parse(re.meta.location);
               const slug = re.meta.slug;
               if (loc && !visibleIds.has(slug)) {
-                const url = makeSearchQuery(re.url);
+                console.log("URL", re.url);
+                const url = await makeSearchQuery(re.url);
                 let [indexOnly, description] = re.content.split('$$$');
                 if (!(description && description.trim().length > 0)) {
                     description = indexOnly;
@@ -62,10 +66,7 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
                     text += `<p class='registry'>${registries.join(', ')}</p>`;
                 }
                 text += `<p class='description'>${description}</p>`;
-                text += `<a href='${url}' role="button" draggable="false" class="govuk-button" data-module="govuk-button">View</a>`
-                text += `<a href='${url}' role="button" draggable="false" class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="window.open('${url}', '_blank'); return false;">Open tab</a></li>`;
-                const call = `window.__starchesManagers.primaryMap.then(map => map.flyTo({center: [${loc[0]}, ${loc[1]}], zoom: ${config.minSearchZoom + 1}}))`;
-                text += `<button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button" onClick='${call}'>Zoom</button>`;
+
                 let marker = {
                     'type': 'Feature',
                     'geometry': {
@@ -75,7 +76,9 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
                     'properties': {
                         'slug': slug,
                         'title': re.meta.title,
-                        'description': text,
+                        'description': re.meta.rawContent,
+                        'url': url,
+                        'category': JSON.parse(re.meta.Category || "[]")[0] || null
                     },
                 };
                 fg.features.push(marker);
@@ -123,7 +126,6 @@ class SearchManager {
           'type': 'FeatureCollection',
           'features': []
       };
-
       try {
           instance = await buildPagefind((pagefind, term, settings) => this.searchAction(pagefind, term, settings), term);
       } catch (e) {
@@ -168,25 +170,28 @@ class SearchManager {
                   
                   this.fb = await getFlatbushManager();
                   const geoBounds = this.fb && this.fb.bounds;
+                  const selectionPolygon = await getSelectionPolygon();
 
                   collectSlugs().then(slugs => {
                     debug("Extracted slugs for navigation:", slugs);
-                    
+
                     const searchContextParams: SearchParams = {
                       searchTerm: this.lastTerm,
                       geoBounds: geoBounds,
-                      searchFilters: this.lastFilters
+                      searchFilters: this.lastFilters,
+                      selectionPolygon
                     };
-                    
+
                     saveSearchResults(slugs, searchContextParams);
                     debug("Saved search context with " + slugs.length + " slugs", slugs);
                   });
 
                   console.log('UPDATING', this.lastTerm, this.lastFilters, geoBounds);
                   await updateSearchParams({
-                    searchTerm: this.lastTerm, 
+                    searchTerm: this.lastTerm,
                     searchFilters: this.lastFilters,
-                    geoBounds
+                    geoBounds,
+                    selectionPolygon
                   });
               })
           });
@@ -194,10 +199,13 @@ class SearchManager {
 
       this.fb = await getFlatbushManager();
       const geoBounds = this.fb && this.fb.bounds;
+      const selectionPolygon = await getSelectionPolygon();
 
       if (term) {
-          const input = document.getElementById("pfmod-input-0");
-          input.value = term;
+          const input = document.getElementById("search") as HTMLInputElement;
+          if (input) {
+              input.value = term;
+          }
           if (instance) {
               instance.searchTerm = term;
           }
@@ -211,7 +219,8 @@ class SearchManager {
       updateSearchParams({
           searchTerm: term,
           searchFilters,
-          geoBounds
+          geoBounds,
+          selectionPolygon
       });
 
       if ((term || searchFilters) && instance) {
@@ -219,7 +228,7 @@ class SearchManager {
       }
 
       var target = document.querySelector('div#results')
-      var instructions = document.querySelector('div#instructions')
+      var instructions = document.querySelector('div#map-instructions')
       var observer = new MutationObserver(() => {
           if (target.childNodes.length === 0) {
               instructions.classList = "";
@@ -246,10 +255,12 @@ class SearchManager {
   async searchAction(pagefind, term: string, settings: SearchFilters) {
     const mapManager = await getMapManager();
     if (settings && settings.filters) {
+        const selectionPolygon = await getSelectionPolygon();
         updateSearchParams({
             searchTerm: term,
             searchFilters: settings.filters,
-            geoBounds: this.fb && this.fb.bounds
+            geoBounds: this.fb && this.fb.bounds,
+            selectionPolygon
         });
         if (settings.filters.tags) {
             const registers = settings.filters.tags.map(t => slugify(t));
@@ -262,8 +273,10 @@ class SearchManager {
     const map = await getMap();
     const zoom = map && map.getZoom();
     const config = await getConfig();
+    const shortTerm = (!term || term.trim().length < config.minSearchLength);
 
     // if (!(settings && settings.filters && Object.keys(settings.filters).length) && term && term.length < MIN_SEARCH_LENGTH) {
+    console.log("TERM LENGTH", term.trim().length, config.minSearchLength)
     if (
         (!zoom || zoom < config.minSearchZoom) &&
         (!term || term.trim().length < config.minSearchLength)
@@ -272,9 +285,6 @@ class SearchManager {
         return {results: []};
     }
     mapManager.setMapCover(false);
-    if (!term) {
-        term = null;
-    }
     let results;
     let filtersChanged = true;
     let hasFilters = settings && settings.filters && Object.values(settings.filters).reduce((acc, flt) => acc || flt.length > 0, false);
@@ -322,6 +332,28 @@ class SearchManager {
           results.results = results.results.filter(r => filtered.has(r.id));
       }
     }
+
+    // Filter by selection polygon if set
+    const selectionPolygon = await getSelectionPolygon();
+    if (selectionPolygon && results.results) {
+      const polygonFiltered = await Promise.all(
+        results.results.map(async (r) => {
+          try {
+            const data = await r.data();
+            if (data.meta?.location) {
+              const loc = JSON.parse(data.meta.location);
+              const point: GeoJSON.Point = { type: 'Point', coordinates: [loc[0], loc[1]] };
+              return booleanPointInPolygon(point, selectionPolygon) ? r : null;
+            }
+          } catch (e) {
+            debugWarn('Error checking point in polygon:', e);
+          }
+          return null;
+        })
+      );
+      results.results = polygonFiltered.filter((r): r is NonNullable<typeof r> => r !== null);
+    }
+
     this.lastTerm = term;
     // Ensure we have an independent copy
     this.lastFilters = JSON.parse(JSON.stringify(settings && settings.filters));

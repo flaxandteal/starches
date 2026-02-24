@@ -25,11 +25,11 @@
     "mapbox-gl-arcgis-featureserver": "^0.0.8",
     "marked": "^15.0.7",
     "marked-plaintify": "^1.1.1",
-    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.31/starches-builder-v2.0.0-alpha.31.tar.gz",
+    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.32/starches-builder-v2.0.0-alpha.32.tar.gz",
     "toml": "^3.0.0"
   },
   "name": "starches",
-  "version": "0.2.1-alpha.31",
+  "version": "0.2.1-alpha.32",
   "description": "Static Arches export for Coral",
   "main": "reindex.js",
   "directories": {
