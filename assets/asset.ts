@@ -578,7 +578,6 @@ async function renderPDFAsset(markdown: string, nodes: Map<string, any>, title: 
 
 async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
   const images: ImageInput[] = [];
-  console.log("IMAGELIST", imageList, !imageList || imageList.length === 0);
   if (!imageList || imageList.length === 0) return [];
 
   await Promise.all(imageList.map(async (imageList) => {
@@ -663,11 +662,8 @@ async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): 
       });
     });
   }
-  console.log("!!!")
   addAssetToMap(asset);
-  console.log("!!!2")
   setupDialogLinks();
-  console.log("!!!3")
   
   return buildImageDialogs(images, asset.meta.title);
 }
@@ -1066,8 +1062,6 @@ function formatTimeElements(): void {
 
 // Main entry point
 window.addEventListener('DOMContentLoaded', async () => {
-  console.log("ASSET PAGE LOADING");
-  
   const assetManagerInstance = new AssetManager();
 
   await assetManagerInstance.initialize();
@@ -1083,7 +1077,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // setupRegistryInfo(asset),
     // setupBackLinks(slug)
   ]);
-  console.log("HERE 2")
+
   //TO REMOVE Hardcoded check for Fort Lytton to display 3D asset
   if (asset.meta.title === "Fort Lytton") {
     document.getElementById('sketchfab-viewer')?.classList.remove('hidden');
