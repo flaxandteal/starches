@@ -21,6 +21,7 @@ import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './manager
 import { loadTemplate, getPrecompiledTemplate } from 'handlebar-utils';
 import { initSwiper, ImageInput, ImageSet } from 'swiper';
 import { markdownToPdf, PdfImage } from 'pdf-make';
+import { loadTreegrid } from './w3c-treegrid';
 
 // Types and interfaces
 interface AssetUrlParams {
@@ -47,6 +48,10 @@ interface ModelFileConfig {
 const MODEL_FILES: Record<string, ModelFileConfig> = {
   "076f9381-7b00-11e9-8d6b-80000b44d1d9": {
     graph: "Heritage Asset.json",
+    template: '/templates/heritage-asset-public-hb.md'
+  },
+  "8d41e49e-a250-11e9-9eab-00224800b26d": {
+    graph: "Consultation.json",
     template: '/templates/heritage-asset-public-hb.md'
   },
   "b9e0701e-5463-11e9-b5f5-000d3ab1e588": {
@@ -89,7 +94,7 @@ function parseAssetUrlParams(): AssetUrlParams {
 
   return {
     slug: slug || '',
-    publicView: urlParams.get("full") !== "true"
+    publicView: urlParams.get("full") === "false"
   };
 }
 
@@ -205,7 +210,7 @@ function extractCentrePoint(geometry: any): [number, number] | null {
 const RENDERER_OPTIONS = {
   conceptValueToUrl: async () => null,
   domainValueToUrl: async () => null,
-  resourceReferenceToUrl: async () => null
+  resourceReferenceToUrl: async (rr) => await rr.getSlug().then(s => s && `?slug=${s}`)
 };
 
 // Create GOV.UK-styled marked renderer
@@ -501,22 +506,31 @@ function injectSections(sections: SectionedHtml): void {
 
 // Rendering functions
 async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>> {
-  const alizarinRenderer = new renderers.FlatMarkdownRenderer({
+  const alizarinRenderer = new renderers.MarkdownRenderer({
     ...RENDERER_OPTIONS,
     nodeToUrl: (node: staticTypes.StaticNode) => `@${node.alias}`
   });
 
   let markdown = await alizarinRenderer.render(asset.asset);
+
   if (Array.isArray(markdown)) {
     markdown = markdown.join("\n\n");
   }
 
+  const returnElt = document.createElement('a');
+  returnElt.href = "../asset-list/?model=" + asset.asset.__.wkrm.graphId;
+  returnElt.innerText = "List all resources for this model";
+  document.getElementById('asset-overview').appendChild(returnElt);
+  const treegridElt = document.createElement('tree-grid');
+  document.getElementById('asset-overview').appendChild(treegridElt);
   const nodes = asset.asset.__.getNodeObjectsByAlias();
-  const sections = await renderToHtml(markdown, nodes, true);
 
-  injectSections(sections);
+  setupDialogLinks();
 
-  return {};
+  const nodeObjectsByAlias = asset.asset.__.getNodeObjectsByAlias();
+  await loadTreegrid(markdown, treegridElt, nodeObjectsByAlias);
+
+  return buildImageDialogs([], asset.meta.title);
 }
 
 interface ImageRef {
@@ -987,18 +1001,21 @@ async function setupRegistryInfo(asset: Asset): Promise<void> {
   const dfcRegistryElement = document.getElementById('dfc-registry');
   if (!dfcRegistryElement) return;
 
+  const name = asset.asset.__.wkrm.modelName;
   if (await asset.asset.__has('record_and_registry_membership')) {
     const memberships = await asset.asset.record_and_registry_membership;
-    const items = await Promise.all(
-      memberships.map(async (membership: any) => {
-        const registry = await membership.record_or_registry;
-        const json = await registry.forJson();
-        return `<li>${json.meta.title}</li>`;
-      })
-    );
-    dfcRegistryElement.innerHTML = `<ul>${items.join("\n")}</ul>`;
+    if (memberships) {
+      const items = await Promise.all(
+        memberships.map(async (membership: any) => {
+          const registry = await membership.record_or_registry;
+          const json = await registry.forJson();
+          return `<li>${"Heritage Place"}</li>`;
+        })
+      );
+    }
+    dfcRegistryElement.innerHTML = `<ul><li>${name}</li></ul>`;
   } else {
-    dfcRegistryElement.innerHTML = `<ul><li>${asset.asset.__.wkrm.modelClassName}</li></ul>`;
+    dfcRegistryElement.innerHTML = `<ul><li>${name}</li></ul>`;
   }
 }
 
