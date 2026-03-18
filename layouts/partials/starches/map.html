@@ -7,9 +7,9 @@
 {{ $baseAssets := (slice "map.ts" "search.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
-{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction ) }}
+{{ $params := (dict "search_config" $.Params.search_config "map_config" $.Params.map_config "is_production" hugo.IsProduction ) }}
 {{ $sourceMap := cond hugo.IsProduction "" "inline" }}
-{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" "params" $params }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2022" "params" $params }}
 {{ $js = $js | js.Build $opts }}
 {{ if hugo.IsProduction }}
   {{ $js = $js | fingerprint }}
@@ -23,7 +23,7 @@
 {{- .Page.Store.Set "notice-style-loaded-flag" true -}}
 {{- end -}}
 <div id="map-row">
-{{ if .includeSearch }}
+{{ if .Params.includeSearch }}
     <script>window.STARCHES_HAS_SEARCH = true;</script>
     <div id="search-column">
         <div id="search"></div>
@@ -42,7 +42,7 @@
     <div id="map-column">
         <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
         <div id="map-container">
-{{ if .includeSearch }}
+{{ if .Params.includeSearch }}
             <div id="map-cover">
                 <div id="map-instructions">
                     Search by typing 4+ characters into the <strong>searchbox</strong>, or
@@ -51,7 +51,7 @@
                 </div>
             </div>
 {{ end }}
-            <div class="map" data-center="{{ .center }}" data-zoom="{{ .zoom }}" {{ if .mobileZoom }}data-zoom-mobile="{{ .mobileZoom }}"{{ end }}></div>
+            <div class="map" data-center="{{ .Params.center }}" data-zoom="{{ .Params.zoom }}" {{ if .Params.mobileZoom }}data-zoom-mobile="{{ .Params.mobileZoom }}"{{ end }}></div>
         </div>
     </div>
 </div>

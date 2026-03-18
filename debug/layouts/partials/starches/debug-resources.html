@@ -3,7 +3,7 @@
 
 <script>window.STARCHES_IS_PRODUCTION = {{ hugo.IsProduction }};</script>
 
-{{ $debugResources := resources.Get "debug-resources.ts" | js.Build (dict "target" "es2020") }}
+{{ $debugResources := resources.Get "debug-resources.ts" | js.Build (dict "target" "es2022") }}
 <script type="module" src="{{ $debugResources.RelPermalink }}"></script>
 
 <div id="resources-container"></div>
