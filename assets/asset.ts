@@ -1078,11 +1078,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     // setupBackLinks(slug)
   ]);
 
-  //TO REMOVE Hardcoded check for Fort Lytton to display 3D asset
-  if (asset.meta.title === "Fort Lytton") {
-    document.getElementById('sketchfab-viewer')?.classList.remove('hidden');
-  } 
-  
+  // TODO: Make hardcoded check for Sketchfab to display 3D asset more flexible
+  for (const ecr of await asset.asset.external_cross_references || []) {
+    if (await ecr.external_cross_reference_source == "Sketchfab") {
+      document.getElementById('sketchfab-viewer')?.classList.remove('hidden');
+    }
+  }
+
   setupAssetTitle(asset.meta.title);
   setupSwapLink(slug, publicView);
 
