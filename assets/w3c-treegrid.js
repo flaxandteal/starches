@@ -1,742 +1,586 @@
-// ARIA Authoring Practices Guide (APG)
-// https://www.w3.org/WAI/ARIA/apg/patterns/treegrid/examples/treegrid-1/?cell=start
-//
 'use strict';
-import { marked } from 'marked';
+
+// W3C APG Treegrid — https://www.w3.org/WAI/ARIA/apg/patterns/treegrid/
 class TreeGrid extends HTMLElement {
-  constructor() {
-      // establish prototype chain
-      super();
 
-      // attaches shadow tree and returns shadow root reference
-      // https://developer.mozilla.org/en-US/docs/Web/API/Element/attachShadow
-      const shadow = this.attachShadow({ mode: 'open' });
-      shadow.innerHTML = '<link rel="stylesheet" type="text/css" href="/css/w3c-treegrid.css">';
-      // creating a container for the editable-list component
+  // --- State ---
 
-      // creating a container for the editable-list component
-      const editableListContainer = document.createElement('div');
-      editableListContainer.id = 'treegrid';
+  _prevTreeGridFocus = null;
+  _tabbingRow = null;
+  _data = null;
+  _connected = false;
 
-      // get attribute values from getters
-      const title = this.title;
-      const addItemText = this.addItemText;
-      const listItems = this.items;
+  // Focus mode from URL ?cell= parameter
+  _cellParam = new URLSearchParams(window.location.search).get('cell');
+  _doAllowRowFocus = this._cellParam !== 'force';
+  _doStartRowFocus = this._doAllowRowFocus && this._cellParam !== 'start';
 
-      // adding a class to our container for the sake of clarity
-      editableListContainer.classList.add('table-wrap');
+  // Bound event handlers
+  _onKeyDown = (event) => this._handleKeyDown(event);
+  _onClick = (event) => this._handleClick(event);
+  _onDblClick = (event) => this._handleDblClick(event);
+  _onFocusIn = (event) => this._handleFocusIn(event);
 
-      // creating the inner HTML of the editable list element
-      editableListContainer.innerHTML = `
-  <a id="treegrid-expand-all" href="#">Expand All</a>
-  <table id="treegrid-table"
-         role="treegrid"
-         aria-label="Inbox">
-    <colgroup>
-      <col id="treegrid-col1">
-      <col id="treegrid-col2">
-      <col id="treegrid-col3">
-    </colgroup>
-    <thead>
-      <tr>
-        <th scope="col">
-          Node Name
-        </th>
-        <th scope="col">
-          Value
-        </th>
-        <th scope="col">
-          Node Alias
-        </th>
-        <th scope="col">
-          Data Type
-        </th>
-      </tr>
-    </thead>
-    <tbody id="treegrid-body">
-    </tbody>
-  </table>
-      `;
+  // --- Lifecycle ---
 
-      // appending the container to the shadow DOM
-      shadow.appendChild(editableListContainer);
+  connectedCallback() {
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: 'open' });
+    }
+    this._connected = true;
+    this._render();
   }
 
-  async populate(
-    listItems,
-    nodeObjectsByAlias
-  ) {
-    const shadow = this.shadowRoot;
-    const treegridElem = shadow.querySelector('#treegrid-body');
-    var cellParam = getQuery().cell;
-    var doAllowRowFocus = cellParam !== 'force';
-    var doStartRowFocus = doAllowRowFocus && cellParam !== 'start';
-    const rows = [];
-    async function addLevel(listItems, lvl, hide=false) {
-      const listEntries = Object.entries(listItems).sort((a, b) => a && a[0] && a[0].localeCompare(b[0]));
-      for (const [n, item] of Object.entries(listEntries)) {
-        if (item[0].startsWith("__")) {
-          continue; // e.g. __clean
-        }
-        const node = nodeObjectsByAlias.get(item[0]);
-        console.log(node, item, item[1], typeof item[1], listItems);
-        if (item[1] instanceof String || typeof item[1] !== 'object') {
-          const parsed = await marked.parse(`${item[1]}`);
-          rows.push(`
-        <tr role="row"
-            aria-level="${lvl}"
-            aria-posinset="${parseInt(n) + 1}"
-            aria-setsize="${listEntries.length}" ${hide ? 'class="hidden"' : ''}>
-          <td role="gridcell">
-            ${node.name}
-          </td>
-          <td role="gridcell">
-            ${parsed}
-          </td>
-          <td role="gridcell">
-            ${node.alias}
-          </td>
-          <td role="gridcell">
-            ${node.datatype}
-          </td>
-        </tr>
-        `);
-        } else {
-          const empty = Object.keys(item[1]).length === 0;
-          const expand = !(item[1] instanceof Array && Object.keys(item[1]).length > 5) && !empty;
-          const hideBelow = hide || !expand;
-          rows.push(`
-        <tr role="row"
-            aria-level="${lvl}"
-            aria-posinset="${parseInt(n) + 1}"
-            aria-setsize="${listEntries.length}" ${hide ? 'class="hidden"' : ''}
-            aria-expanded="${!hideBelow}">
-          <td role="gridcell">
-            ${node.name}
-          </td>
-          <td role="gridcell">
-            ${empty ? "<em>(empty)</em>" : ""}
-          </td>
-          <td role="gridcell">
-            ${node.alias}
-          </td>
-          <td role="gridcell">
-            ${node.datatype}
-          </td>
-        </tr>
-        `);
-          if (item[1] instanceof Array) {
-            for (const [m, itemRow] of Object.entries(item[1])) {
-               const nested = !(itemRow instanceof String || typeof itemRow !== 'object');
-               rows.push(`
+  disconnectedCallback() {
+    this._connected = false;
+    this._removeEventListeners();
+  }
+
+  // --- Public API ---
+
+  get data() {
+    return this._data;
+  }
+
+  set data(value) {
+    this._data = value;
+    if (this._connected) {
+      this._render();
+    }
+  }
+
+  // --- Rendering ---
+
+  _render() {
+    const label = this.getAttribute('aria-label') || 'Tree Grid';
+    const rows = this._data
+      ? this._buildRows(this._data.listItems, this._data.nodeObjectsByAlias, 1, false)
+      : '';
+
+    this.shadowRoot.innerHTML = `
+      <link rel="stylesheet" type="text/css" href="/css/w3c-treegrid.css">
+      <div id="treegrid" class="table-wrap">
+        <table id="treegrid-table"
+               role="treegrid"
+               aria-label="${this._esc(label)}">
+          <colgroup>
+            <col id="treegrid-col1">
+            <col id="treegrid-col2">
+            <col id="treegrid-col3">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Node Name</th>
+              <th scope="col">Value</th>
+              <th scope="col">Node Alias</th>
+              <th scope="col">Data Type</th>
+            </tr>
+          </thead>
+          <tbody id="treegrid-body">
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    if (this._data) {
+      this._initAttributes();
+      this._addEventListeners();
+    }
+  }
+
+  _buildRows(items, nodeObjectsByAlias, level, hidden) {
+    if (!items || typeof items !== 'object') return '';
+
+    const entries = Object.entries(items).sort(
+      (a, b) => a[0].localeCompare(b[0])
+    );
+    let html = '';
+
+    for (let i = 0; i < entries.length; i++) {
+      const [key, value] = entries[i];
+
+      // Skip internal keys (e.g. __clean from alizarin Cleanable)
+      if (key.startsWith('__')) continue;
+
+      const node = nodeObjectsByAlias.get(key);
+      if (!node) continue;
+
+      const posInSet = i + 1;
+      const setSize = entries.length;
+
+      // Leaf node (primitives, null, or String objects like Cleanable)
+      if (value == null || value instanceof String || typeof value !== 'object') {
+        html += `
+          <tr role="row"
+              aria-level="${level}"
+              aria-posinset="${posInSet}"
+              aria-setsize="${setSize}"${hidden ? ' class="hidden"' : ''}>
+            <td role="gridcell">${this._esc(node.name)}</td>
+            <td role="gridcell">${value != null ? this._esc(String(value)) : '<em>(empty)</em>'}</td>
+            <td role="gridcell">${this._esc(node.alias)}</td>
+            <td role="gridcell">${this._esc(node.datatype)}</td>
+          </tr>`;
+
+      // Branch node
+      } else {
+        const empty = Object.keys(value).length === 0;
+        const expanded = !(Array.isArray(value) && value.length > 5) && !empty;
+        const hideChildren = hidden || !expanded;
+
+        html += `
+          <tr role="row"
+              aria-level="${level}"
+              aria-posinset="${posInSet}"
+              aria-setsize="${setSize}"${hidden ? ' class="hidden"' : ''}
+              aria-expanded="${expanded}">
+            <td role="gridcell">${this._esc(node.name)}</td>
+            <td role="gridcell">${empty ? '<em>(empty)</em>' : ''}</td>
+            <td role="gridcell">${this._esc(node.alias)}</td>
+            <td role="gridcell">${this._esc(node.datatype)}</td>
+          </tr>`;
+
+        if (Array.isArray(value)) {
+          for (let m = 0; m < value.length; m++) {
+            const nested = value[m] != null && typeof value[m] === 'object' && !(value[m] instanceof String);
+            html += `
               <tr role="row"
-                  aria-level="${lvl + 1}"
-                  aria-posinset="${parseInt(m) + 1}"
-                  aria-setsize="${item[1].length}" ${hideBelow ? 'class="hidden"' : ''}
-                  ${ nested ? `aria-expanded="${!hideBelow}"` : "" }>
-                <td role="gridcell">
-                  [ ${parseInt(m) + 1} / ${item[1].length} ]
-                </td>
-                <td role="gridcell">
-                  ${ nested ? "" : await marked.parse(`${itemRow}`) }
-                </td>
-                <td role="gridcell">
-                  ${node.alias}
-                </td>
-                <td role="gridcell">
-                  ${node.datatype}
-                </td>
-              </tr>
-              `);
-              console.log('adding level', itemRow);
-              if (nested) {
-                await addLevel(itemRow, lvl + 2, hideBelow);
-              }
+                  aria-level="${level + 1}"
+                  aria-posinset="${m + 1}"
+                  aria-setsize="${value.length}"${hideChildren ? ' class="hidden"' : ''}
+                  ${nested ? `aria-expanded="${!hideChildren}"` : ''}>
+                <td role="gridcell">[ ${m + 1} / ${value.length} ]</td>
+                <td role="gridcell">${nested ? '' : this._esc(String(value[m]))}</td>
+                <td role="gridcell">${this._esc(node.alias)}</td>
+                <td role="gridcell">${this._esc(node.datatype)}</td>
+              </tr>`;
+            if (nested) {
+              html += this._buildRows(value[m], nodeObjectsByAlias, level + 2, hideChildren);
             }
-          } else {
-            await addLevel(item[1], lvl + 1, hideBelow);
           }
-        }
-      };
-    }
-    await addLevel(listItems, 1);
-    treegridElem.innerHTML = rows.join("\n");
-    function initAttributes() {
-      // Make sure focusable elements are not in the tab order
-      // They will be added back in for the active row
-      setTabIndexOfFocusableElements(treegridElem, -1);
-
-      // Add tabindex="0" to first row, "-1" to other rows
-      // We will use the roving tabindex method since aria-activedescendant
-      var rows = getAllRows();
-      var index = rows.length;
-      var startRowIndex = doStartRowFocus ? 0 : -1;
-
-      while (index--) {
-        if (doAllowRowFocus) {
-          rows[index].tabIndex = index === startRowIndex ? 0 : -1;
         } else {
-          setTabIndexForCellsInRow(rows[index], -1);
-          moveAriaExpandedToFirstCell(rows[index]);
-        }
-      }
-
-      if (doStartRowFocus) {
-        return;
-      }
-
-      // Start with cell focus
-      var firstCell = getNavigableCols(rows[0])[0];
-      setTabIndexForCell(firstCell);
-    }
-
-    function setTabIndexForCell(cell, tabIndex) {
-      var focusable = getFocusableElements(cell)[0] || cell;
-      focusable.tabIndex = tabIndex;
-    }
-
-    function setTabIndexForCellsInRow(row, tabIndex) {
-      var cells = getNavigableCols(row);
-      var cellIndex = cells.length;
-      while (cellIndex--) {
-        setTabIndexForCell(cells[cellIndex], tabIndex);
-      }
-    }
-
-    function getAllRows() {
-      var nodeList = treegridElem.querySelectorAll('tbody > tr');
-      return Array.prototype.slice.call(nodeList);
-    }
-
-    function getFocusableElements(root) {
-      // textarea not supported as a cell widget as it's multiple lines
-      // and needs up/down keys
-      // These should all be descendants of a cell
-      var nodeList = root.querySelectorAll('a,button,input,td>[tabindex]');
-      return Array.prototype.slice.call(nodeList);
-    }
-
-    function setTabIndexOfFocusableElements(root, tabIndex) {
-      var focusableElements = getFocusableElements(root);
-      var index = focusableElements.length;
-      while (index--) {
-        focusableElements[index].tabIndex = tabIndex;
-      }
-    }
-
-    function getAllNavigableRows() {
-      var nodeList = treegridElem.querySelectorAll(
-        'tbody > tr:not([class~="hidden"])'
-      );
-      // Convert to array so that we can use array methods on it
-      return Array.prototype.slice.call(nodeList);
-    }
-
-    function getNavigableCols(currentRow) {
-      var nodeList = currentRow.getElementsByTagName('td');
-      return Array.prototype.slice.call(nodeList);
-    }
-
-    function restrictIndex(index, numItems) {
-      if (index < 0) {
-        return 0;
-      }
-      return index >= numItems ? index - 1 : index;
-    }
-
-    function focus(elem) {
-      elem.tabIndex = 0; // Ensure focusable
-      elem.focus();
-    }
-
-    function focusCell(cell) {
-      // Check for focusable child such as link or textbox
-      // and use that if available
-      var focusableChildren = getFocusableElements(cell);
-      focus(focusableChildren[0] || cell);
-    }
-
-    // Restore tabIndex to what it should be when focus switches from
-    // one treegrid item to another
-    function onFocusIn(event) {
-      var newTreeGridFocus =
-        event.target !== window &&
-        treegridElem.contains(event.target) &&
-        event.target;
-
-      // The last row we considered focused
-      var oldCurrentRow = enableTabbingInActiveRowDescendants.tabbingRow;
-      if (oldCurrentRow) {
-        enableTabbingInActiveRowDescendants(false, oldCurrentRow);
-      }
-      if (
-        doAllowRowFocus &&
-        onFocusIn.prevTreeGridFocus &&
-        onFocusIn.prevTreeGridFocus.localName === 'td'
-      ) {
-        // Was focused on td, remove tabIndex so that it's not focused on click
-        onFocusIn.prevTreeGridFocus.removeAttribute('tabindex');
-      }
-
-      if (newTreeGridFocus) {
-        // Stayed in treegrid
-        if (oldCurrentRow) {
-          // There will be a different current row that will be
-          // the tabbable one
-          oldCurrentRow.tabIndex = -1;
-        }
-
-        // The new row
-        var currentRow = getRowWithFocus();
-        if (currentRow) {
-          currentRow.tabIndex = 0;
-          // Items within current row are also tabbable
-          enableTabbingInActiveRowDescendants(true, currentRow);
-        }
-      }
-
-      onFocusIn.prevTreeGridFocus = newTreeGridFocus;
-    }
-
-    // Set whether interactive elements within a row are tabbable
-    function enableTabbingInActiveRowDescendants(isTabbingOn, row) {
-      if (row) {
-        setTabIndexOfFocusableElements(row, isTabbingOn ? 0 : -1);
-        if (isTabbingOn) {
-          enableTabbingInActiveRowDescendants.tabbingRow = row;
-        } else {
-          if (enableTabbingInActiveRowDescendants.tabbingRow === row) {
-            enableTabbingInActiveRowDescendants.tabbingRow = null;
-          }
+          html += this._buildRows(value, nodeObjectsByAlias, level + 1, hideChildren);
         }
       }
     }
+    return html;
+  }
 
-    // The row with focus is the row that either has focus or an element
-    // inside of it has focus
-    function getRowWithFocus() {
-      return getContainingRow(shadow.activeElement);
-    }
+  _esc(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
-    function getContainingRow(start) {
-      var possibleRow = start;
-      if (treegridElem.contains(possibleRow)) {
-        while (possibleRow !== treegridElem) {
-          if (possibleRow.localName === 'tr') {
-            return possibleRow;
-          }
-          possibleRow = possibleRow.parentElement;
-        }
+  // --- Event listeners ---
+
+  _addEventListeners() {
+    this._removeEventListeners();
+    const tbody = this.shadowRoot.querySelector('#treegrid-body');
+    tbody.addEventListener('keydown', this._onKeyDown);
+    tbody.addEventListener('click', this._onClick);
+    tbody.addEventListener('dblclick', this._onDblClick);
+    tbody.addEventListener('focusin', this._onFocusIn);
+  }
+
+  _removeEventListeners() {
+    const tbody = this.shadowRoot?.querySelector('#treegrid-body');
+    if (!tbody) return;
+    tbody.removeEventListener('keydown', this._onKeyDown);
+    tbody.removeEventListener('click', this._onClick);
+    tbody.removeEventListener('dblclick', this._onDblClick);
+    tbody.removeEventListener('focusin', this._onFocusIn);
+  }
+
+  // --- DOM queries ---
+
+  _getTbody() {
+    return this.shadowRoot.querySelector('#treegrid-body');
+  }
+
+  _getAllRows() {
+    return Array.from(this._getTbody().querySelectorAll('tr'));
+  }
+
+  _getAllNavigableRows() {
+    return Array.from(this._getTbody().querySelectorAll('tr:not(.hidden)'));
+  }
+
+  _getNavigableCols(row) {
+    return Array.from(row.getElementsByTagName('td'));
+  }
+
+  _getFocusableElements(root) {
+    return Array.from(root.querySelectorAll('a,button,input,td>[tabindex]'));
+  }
+
+  // --- Focus management (roving tabindex) ---
+
+  _initAttributes() {
+    const tbody = this._getTbody();
+    this._setTabIndexOfFocusableElements(tbody, -1);
+
+    const rows = this._getAllRows();
+    const startRowIndex = this._doStartRowFocus ? 0 : -1;
+
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (this._doAllowRowFocus) {
+        rows[i].tabIndex = i === startRowIndex ? 0 : -1;
+      } else {
+        this._setTabIndexForCellsInRow(rows[i], -1);
+        this._moveAriaExpandedToFirstCell(rows[i]);
       }
     }
 
-    function isRowFocused() {
-      return getRowWithFocus() === shadow.activeElement;
-    }
+    if (this._doStartRowFocus) return;
+    const firstCell = this._getNavigableCols(rows[0])[0];
+    this._setTabIndexForCell(firstCell, 0);
+  }
 
-    // Note: contenteditable not currently supported
-    function isEditableFocused() {
-      var focusedElem = shadow.activeElement;
-      return focusedElem.localName === 'input';
-    }
+  _setTabIndexForCell(cell, tabIndex) {
+    const focusable = this._getFocusableElements(cell)[0] || cell;
+    focusable.tabIndex = tabIndex;
+  }
 
-    function getColWithFocus(currentRow) {
-      if (currentRow) {
-        var possibleCol = shadow.activeElement;
-        if (currentRow.contains(possibleCol)) {
-          while (possibleCol !== currentRow) {
-            if (possibleCol.localName === 'td') {
-              return possibleCol;
-            }
-            possibleCol = possibleCol.parentElement;
-          }
-        }
+  _setTabIndexForCellsInRow(row, tabIndex) {
+    for (const cell of this._getNavigableCols(row)) {
+      this._setTabIndexForCell(cell, tabIndex);
+    }
+  }
+
+  _setTabIndexOfFocusableElements(root, tabIndex) {
+    for (const el of this._getFocusableElements(root)) {
+      el.tabIndex = tabIndex;
+    }
+  }
+
+  _focus(elem) {
+    elem.tabIndex = 0;
+    elem.focus();
+  }
+
+  _focusCell(cell) {
+    const focusableChildren = this._getFocusableElements(cell);
+    this._focus(focusableChildren[0] || cell);
+  }
+
+  _getRowWithFocus() {
+    return this._getContainingRow(this.shadowRoot.activeElement);
+  }
+
+  _getContainingRow(start) {
+    const tbody = this._getTbody();
+    let el = start;
+    if (tbody.contains(el)) {
+      while (el !== tbody) {
+        if (el.localName === 'tr') return el;
+        el = el.parentElement;
+      }
+    }
+    return null;
+  }
+
+  _isRowFocused() {
+    return this._getRowWithFocus() === this.shadowRoot.activeElement;
+  }
+
+  _isEditableFocused() {
+    return this.shadowRoot.activeElement?.localName === 'input';
+  }
+
+  _getColWithFocus(currentRow) {
+    if (!currentRow) return null;
+    let el = this.shadowRoot.activeElement;
+    if (currentRow.contains(el)) {
+      while (el !== currentRow) {
+        if (el.localName === 'td') return el;
+        el = el.parentElement;
+      }
+    }
+    return null;
+  }
+
+  _enableTabbingInActiveRowDescendants(isTabbingOn, row) {
+    if (!row) return;
+    this._setTabIndexOfFocusableElements(row, isTabbingOn ? 0 : -1);
+    if (isTabbingOn) {
+      this._tabbingRow = row;
+    } else if (this._tabbingRow === row) {
+      this._tabbingRow = null;
+    }
+  }
+
+  // --- Navigation ---
+
+  _restrictIndex(index, numItems) {
+    if (index < 0) return 0;
+    return index >= numItems ? index - 1 : index;
+  }
+
+  _getLevel(row) {
+    return row && parseInt(row.getAttribute('aria-level'));
+  }
+
+  _moveByRow(direction, requireLevelChange) {
+    const currentRow = this._getRowWithFocus();
+    const requiredLevel = requireLevelChange && currentRow
+      && this._getLevel(currentRow) + direction;
+    const rows = this._getAllNavigableRows();
+    const numRows = rows.length;
+    let rowIndex = currentRow ? rows.indexOf(currentRow) : -1;
+    let maxDistance = requireLevelChange && direction === 1 ? 1 : NaN;
+
+    do {
+      if (maxDistance-- === 0) return;
+      rowIndex = this._restrictIndex(rowIndex + direction, numRows);
+    } while (requiredLevel && requiredLevel !== this._getLevel(rows[rowIndex]));
+
+    if (!this._focusSameColInDifferentRow(currentRow, rows[rowIndex])) {
+      this._focus(rows[rowIndex]);
+    }
+  }
+
+  _focusSameColInDifferentRow(fromRow, toRow) {
+    const currentCol = this._getColWithFocus(fromRow);
+    if (!currentCol) return false;
+
+    const fromCols = this._getNavigableCols(fromRow);
+    const currentColIndex = fromCols.indexOf(currentCol);
+    if (currentColIndex < 0) return false;
+
+    const toCols = this._getNavigableCols(toRow);
+    this._focusCell(toCols[currentColIndex]);
+    return true;
+  }
+
+  _moveByCol(direction) {
+    const currentRow = this._getRowWithFocus();
+    if (!currentRow) return;
+
+    const cols = this._getNavigableCols(currentRow);
+    const numCols = cols.length;
+    const currentCol = this._getColWithFocus(currentRow);
+    const currentColIndex = cols.indexOf(currentCol);
+
+    let newColIndex = currentCol || direction < 0
+      ? currentColIndex + direction
+      : 0;
+
+    if (this._doAllowRowFocus && newColIndex < 0) {
+      this._focus(currentRow);
+      return;
+    }
+    newColIndex = this._restrictIndex(newColIndex, numCols);
+    this._focusCell(cols[newColIndex]);
+  }
+
+  _moveToExtreme(direction) {
+    const currentRow = this._getRowWithFocus();
+    if (!currentRow) return;
+
+    const currentCol = this._getColWithFocus(currentRow);
+    if (currentCol) {
+      this._moveToExtremeCol(direction, currentRow);
+    } else {
+      this._moveToExtremeRow(direction);
+    }
+  }
+
+  _moveToExtremeCol(direction, currentRow) {
+    const cols = this._getNavigableCols(currentRow);
+    const desiredColIndex = direction < 0 ? 0 : cols.length - 1;
+    this._focusCell(cols[desiredColIndex]);
+  }
+
+  _moveToExtremeRow(direction) {
+    const rows = this._getAllNavigableRows();
+    const newRow = rows[direction > 0 ? rows.length - 1 : 0];
+    if (!this._focusSameColInDifferentRow(this._getRowWithFocus(), newRow)) {
+      this._focus(newRow);
+    }
+  }
+
+  // --- Expand / collapse ---
+
+  _getAriaExpandedElem(row) {
+    return this._doAllowRowFocus ? row : this._getNavigableCols(row)[0];
+  }
+
+  _setAriaExpanded(row, doExpand) {
+    this._getAriaExpandedElem(row).setAttribute('aria-expanded', doExpand);
+  }
+
+  _isExpandable(row) {
+    return this._getAriaExpandedElem(row).hasAttribute('aria-expanded');
+  }
+
+  _isExpanded(row) {
+    return this._getAriaExpandedElem(row).getAttribute('aria-expanded') === 'true';
+  }
+
+  _moveAriaExpandedToFirstCell(row) {
+    const expandedValue = row.getAttribute('aria-expanded');
+    const firstCell = this._getNavigableCols(row)[0];
+    if (expandedValue) {
+      firstCell.setAttribute('aria-expanded', expandedValue);
+      row.removeAttribute('aria-expanded');
+    }
+  }
+
+  _toggleExpanded(row) {
+    const cols = this._getNavigableCols(row);
+    const currentCol = this._getColWithFocus(row);
+    if (currentCol === cols[0] && this._isExpandable(row)) {
+      this._changeExpanded(!this._isExpanded(row), row);
+    }
+  }
+
+  _changeExpanded(doExpand, row) {
+    const currentRow = row || this._getRowWithFocus();
+    if (!currentRow) return false;
+
+    const currentLevel = this._getLevel(currentRow);
+    const rows = this._getAllRows();
+    let rowIndex = rows.indexOf(currentRow);
+    let didChange = false;
+    const doExpandLevel = [];
+    doExpandLevel[currentLevel + 1] = doExpand;
+
+    while (++rowIndex < rows.length) {
+      const nextRow = rows[rowIndex];
+      const rowLevel = this._getLevel(nextRow);
+      if (rowLevel <= currentLevel) break;
+
+      doExpandLevel[rowLevel + 1] =
+        doExpandLevel[rowLevel] && this._isExpanded(nextRow);
+      const willHideRow = !doExpandLevel[rowLevel];
+      const isRowHidden = nextRow.classList.contains('hidden');
+
+      if (willHideRow !== isRowHidden) {
+        nextRow.classList.toggle('hidden', willHideRow);
+        didChange = true;
       }
     }
 
-    function getLevel(row) {
-      return row && parseInt(row.getAttribute('aria-level'));
-    }
-
-    // Move backwards (direction = -1) or forwards (direction = 1)
-    // If we also need to move down/up a level, requireLevelChange = true
-    // When
-    function moveByRow(direction, requireLevelChange) {
-      var currentRow = getRowWithFocus();
-      var requiredLevel =
-        requireLevelChange && currentRow && getLevel(currentRow) + direction;
-      var rows = getAllNavigableRows();
-      var numRows = rows.length;
-      var rowIndex = currentRow ? rows.indexOf(currentRow) : -1;
-      // When moving down a level, only allow moving to next row as the
-      // first child will never be farther than that
-      var maxDistance = requireLevelChange && direction === 1 ? 1 : NaN;
-
-      // Move in direction until required level is found
-      do {
-        if (maxDistance-- === 0) {
-          return; // Failed to find required level, return without focus change
-        }
-        rowIndex = restrictIndex(rowIndex + direction, numRows);
-      } while (requiredLevel && requiredLevel !== getLevel(rows[rowIndex]));
-
-      if (!focusSameColInDifferentRow(currentRow, rows[rowIndex])) {
-        focus(rows[rowIndex]);
-      }
-    }
-
-    function focusSameColInDifferentRow(fromRow, toRow) {
-      var currentCol = getColWithFocus(fromRow);
-      if (!currentCol) {
-        return;
-      }
-
-      var fromCols = getNavigableCols(fromRow);
-      var currentColIndex = fromCols.indexOf(currentCol);
-
-      if (currentColIndex < 0) {
-        return;
-      }
-
-      var toCols = getNavigableCols(toRow);
-      // Focus the first focusable element inside the <td>
-      focusCell(toCols[currentColIndex]);
+    if (didChange) {
+      this._setAriaExpanded(currentRow, doExpand);
       return true;
     }
-
-    function moveToExtreme(direction) {
-      var currentRow = getRowWithFocus();
-      if (!currentRow) {
-        return;
-      }
-      var currentCol = getColWithFocus(currentRow);
-      if (currentCol) {
-        moveToExtremeCol(direction, currentRow);
-      } else {
-        // Move to first/last row
-        moveToExtremeRow(direction);
-      }
-    }
-
-    function moveByCol(direction) {
-      var currentRow = getRowWithFocus();
-      if (!currentRow) {
-        return;
-      }
-      var cols = getNavigableCols(currentRow);
-      var numCols = cols.length;
-      var currentCol = getColWithFocus(currentRow);
-      var currentColIndex = cols.indexOf(currentCol);
-      // First right arrow moves to first column
-      var newColIndex =
-        currentCol || direction < 0 ? currentColIndex + direction : 0;
-      // Moving past beginning focuses row
-      if (doAllowRowFocus && newColIndex < 0) {
-        focus(currentRow);
-        return;
-      }
-      newColIndex = restrictIndex(newColIndex, numCols);
-      focusCell(cols[newColIndex]);
-    }
-
-    function moveToExtremeCol(direction, currentRow) {
-      // Move to first/last col
-      var cols = getNavigableCols(currentRow);
-      var desiredColIndex = direction < 0 ? 0 : cols.length - 1;
-      focusCell(cols[desiredColIndex]);
-    }
-
-    function moveToExtremeRow(direction) {
-      var rows = getAllNavigableRows();
-      var newRow = rows[direction > 0 ? rows.length - 1 : 0];
-      if (!focusSameColInDifferentRow(getRowWithFocus(), newRow)) {
-        focus(newRow);
-      }
-    }
-
-    function doPrimaryAction() {
-      var currentRow = getRowWithFocus();
-      if (!currentRow) {
-        return;
-      }
-
-      // If row has focus, open message
-      if (currentRow === shadow.activeElement) {
-        console.log(currentRow);
-        return;
-      }
-
-      // If first col has focused, toggle expand/collapse
-      toggleExpanded(currentRow);
-    }
-
-    function toggleExpanded(row) {
-      var cols = getNavigableCols(row);
-      var currentCol = getColWithFocus(row);
-      if (currentCol === cols[0] && isExpandable(row)) {
-        changeExpanded(!isExpanded(row), row);
-      }
-    }
-
-    function changeExpanded(doExpand, row) {
-      var currentRow = row || getRowWithFocus();
-      if (!currentRow) {
-        return;
-      }
-      var currentLevel = getLevel(currentRow);
-      var rows = getAllRows();
-      var currentRowIndex = rows.indexOf(currentRow);
-      var didChange;
-      var doExpandLevel = [];
-      doExpandLevel[currentLevel + 1] = doExpand;
-
-      while (++currentRowIndex < rows.length) {
-        var nextRow = rows[currentRowIndex];
-        var rowLevel = getLevel(nextRow);
-        if (rowLevel <= currentLevel) {
-          break; // Next row is not a level down from current row
-        }
-        // Only expand the next level if this level is expanded
-        // and previous level is expanded
-        doExpandLevel[rowLevel + 1] =
-          doExpandLevel[rowLevel] && isExpanded(nextRow);
-        var willHideRow = !doExpandLevel[rowLevel];
-        var isRowHidden = nextRow.classList.contains('hidden');
-
-        if (willHideRow !== isRowHidden) {
-          if (willHideRow) {
-            nextRow.classList.add('hidden');
-          } else {
-            nextRow.classList.remove('hidden');
-          }
-          didChange = true;
-        }
-      }
-      if (didChange) {
-        setAriaExpanded(currentRow, doExpand);
-        return true;
-      }
-    }
-
-    function expandAll(doExpand) {
-      var rows = getAllRows();
-      var didChange;
-
-      for (var i = 0; i < rows.length; i++) {
-        var row = rows[i];
-        var rowLevel = getLevel(row);
-
-        if (isExpandable(row)) {
-          setAriaExpanded(row, doExpand);
-        }
-
-        if (rowLevel > 1) {
-          var willHideRow = !doExpand;
-          var isRowHidden = row.classList.contains('hidden');
-
-          if (willHideRow !== isRowHidden) {
-            if (willHideRow) {
-              row.classList.add('hidden');
-            } else {
-              row.classList.remove('hidden');
-            }
-            didChange = true;
-          }
-        }
-      }
-
-      return didChange;
-    }
-
-    // Mirror aria-expanded from the row to the first cell in that row
-    // (TBD is this a good idea? How else will screen reader user hear
-    // that the cell represents the opportunity to collapse/expand rows?)
-    function moveAriaExpandedToFirstCell(row) {
-      var expandedValue = row.getAttribute('aria-expanded');
-      var firstCell = getNavigableCols(row)[0];
-      if (expandedValue) {
-        firstCell.setAttribute('aria-expanded', expandedValue);
-        row.removeAttribute('aria-expanded');
-      }
-    }
-
-    function getAriaExpandedElem(row) {
-      return doAllowRowFocus ? row : getNavigableCols(row)[0];
-    }
-
-    function setAriaExpanded(row, doExpand) {
-      var elem = getAriaExpandedElem(row);
-      elem.setAttribute('aria-expanded', doExpand);
-    }
-
-    function isExpandable(row) {
-      var elem = getAriaExpandedElem(row);
-      return elem.hasAttribute('aria-expanded');
-    }
-
-    function isExpanded(row) {
-      var elem = getAriaExpandedElem(row);
-      return elem.getAttribute('aria-expanded') === 'true';
-    }
-
-    function onKeyDown(event) {
-      var ENTER = 13;
-      var UP = 38;
-      var DOWN = 40;
-      var LEFT = 37;
-      var RIGHT = 39;
-      var HOME = 36;
-      var END = 35;
-      var CTRL_HOME = -HOME;
-      var CTRL_END = -END;
-
-      var numModifiersPressed =
-        event.ctrlKey + event.altKey + event.shiftKey + event.metaKey;
-
-      var key = event.keyCode;
-
-      if (numModifiersPressed === 1 && event.ctrlKey) {
-        key = -key; // Treat as negative key value when ctrl pressed
-      } else if (numModifiersPressed) {
-        return;
-      }
-
-      switch (key) {
-        case DOWN:
-          moveByRow(1);
-          break;
-        case UP:
-          moveByRow(-1);
-          break;
-        case LEFT:
-          if (isEditableFocused()) {
-            return; // Leave key for editable area
-          }
-          if (isRowFocused()) {
-            changeExpanded(false) || moveByRow(-1, true);
-          } else {
-            moveByCol(-1);
-          }
-          break;
-        case RIGHT:
-          if (isEditableFocused()) {
-            return; // Leave key for editable area
-          }
-
-          // If row: try to expand
-          // If col or can't expand, move column to right
-          if (!isRowFocused() || !changeExpanded(true)) {
-            moveByCol(1);
-          }
-          break;
-        case CTRL_HOME:
-          moveToExtremeRow(-1);
-          break;
-        case HOME:
-          if (isEditableFocused()) {
-            return; // Leave key for editable area
-          }
-          moveToExtreme(-1);
-          break;
-        case CTRL_END:
-          moveToExtremeRow(1);
-          break;
-        case END:
-          if (isEditableFocused()) {
-            return; // Leave key for editable area
-          }
-          moveToExtreme(1);
-          break;
-        case ENTER:
-          doPrimaryAction();
-          break;
-        default:
-          return;
-      }
-
-      // Important: don't use key for anything else, such as scrolling
-      event.preventDefault();
-    }
-
-    // Toggle row expansion if the click is over the expando triangle
-    // Since the triangle is a pseudo element we can't bind an event listener
-    // to it. Another option is to have an actual element with role="presentation"
-    function onClick(event) {
-      var target = event.target;
-      if (target.localName !== 'td') {
-        return;
-      }
-
-      var row = getContainingRow(event.target);
-      if (!isExpandable(row)) {
-        return;
-      }
-
-      // Determine if mouse coordinate is just to the left of the start of text
-      var range = document.createRange();
-      range.selectNodeContents(target.firstChild);
-      var left = range.getBoundingClientRect().left;
-      var EXPANDO_WIDTH = 20;
-
-      if (event.clientX < left && event.clientX > left - EXPANDO_WIDTH) {
-        changeExpanded(!isExpanded(row), row);
-      }
-    }
-
-    // Double click on row toggles expansion
-    function onDoubleClick(event) {
-      var row = getContainingRow(event.target);
-      if (row) {
-        if (isExpandable(row)) {
-          changeExpanded(!isExpanded(row), row);
-        }
-        event.preventDefault();
-      }
-    }
-
-    initAttributes();
-    treegridElem.addEventListener('keydown', onKeyDown);
-    treegridElem.addEventListener('click', onClick);
-    treegridElem.addEventListener('dblclick', onDoubleClick);
-
-    var expandAllLink = shadow.querySelector('#treegrid-expand-all');
-    expandAllLink.addEventListener('click', function (event) {
-      event.preventDefault();
-      var allExpanded = expandAllLink.textContent === 'Collapse All';
-      expandAll(!allExpanded);
-      expandAllLink.textContent = allExpanded ? 'Expand All' : 'Collapse All';
-    });
-    // Polyfill for focusin necessary for Firefox < 52
-    window.addEventListener(
-      window.onfocusin ? 'focusin' : 'focus',
-      onFocusIn,
-      true
-    );
+    return false;
   }
-}
 
-/* Init Script for TreeGrid */
-/* Get an object where each field represents a URL parameter */
-function getQuery() {
-  if (!getQuery.cached) {
-    getQuery.cached = {};
-    const queryStr = window.location.search.substring(1);
-    const vars = queryStr.split('&');
-    for (let i = 0; i < vars.length; i++) {
-      const pair = vars[i].split('=');
-      // If first entry with this name
-      getQuery.cached[pair[0]] = pair[1] && decodeURIComponent(pair[1]);
+  // --- Event handlers ---
+
+  _handleKeyDown(event) {
+    const numModifiers = event.ctrlKey + event.altKey + event.shiftKey + event.metaKey;
+    const ctrlOnly = numModifiers === 1 && event.ctrlKey;
+    if (numModifiers > 0 && !ctrlOnly) return;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        this._moveByRow(1);
+        break;
+      case 'ArrowUp':
+        this._moveByRow(-1);
+        break;
+      case 'ArrowLeft':
+        if (this._isEditableFocused()) return;
+        if (this._isRowFocused()) {
+          this._changeExpanded(false) || this._moveByRow(-1, true);
+        } else {
+          this._moveByCol(-1);
+        }
+        break;
+      case 'ArrowRight':
+        if (this._isEditableFocused()) return;
+        if (!this._isRowFocused() || !this._changeExpanded(true)) {
+          this._moveByCol(1);
+        }
+        break;
+      case 'Home':
+        if (this._isEditableFocused()) return;
+        ctrlOnly ? this._moveToExtremeRow(-1) : this._moveToExtreme(-1);
+        break;
+      case 'End':
+        if (this._isEditableFocused()) return;
+        ctrlOnly ? this._moveToExtremeRow(1) : this._moveToExtreme(1);
+        break;
+      case 'Enter':
+        this._handlePrimaryAction();
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+  }
+
+  _handlePrimaryAction() {
+    const currentRow = this._getRowWithFocus();
+    if (!currentRow) return;
+    if (currentRow === this.shadowRoot.activeElement) return;
+    this._toggleExpanded(currentRow);
+  }
+
+  _handleClick(event) {
+    if (event.target.localName !== 'td') return;
+
+    const row = this._getContainingRow(event.target);
+    if (!this._isExpandable(row)) return;
+    if (!event.target.firstChild) return;
+
+    const range = document.createRange();
+    range.selectNodeContents(event.target.firstChild);
+    const left = range.getBoundingClientRect().left;
+    const EXPANDO_WIDTH = 20;
+
+    if (event.clientX < left && event.clientX > left - EXPANDO_WIDTH) {
+      this._changeExpanded(!this._isExpanded(row), row);
     }
   }
-  return getQuery.cached;
+
+  _handleDblClick(event) {
+    const row = this._getContainingRow(event.target);
+    if (row && this._isExpandable(row)) {
+      this._changeExpanded(!this._isExpanded(row), row);
+      event.preventDefault();
+    }
+  }
+
+  _handleFocusIn(event) {
+    const tbody = this._getTbody();
+    const newTreeGridFocus =
+      event.target !== window && tbody.contains(event.target) && event.target;
+
+    const oldCurrentRow = this._tabbingRow;
+    if (oldCurrentRow) {
+      this._enableTabbingInActiveRowDescendants(false, oldCurrentRow);
+    }
+    if (
+      this._doAllowRowFocus &&
+      this._prevTreeGridFocus &&
+      this._prevTreeGridFocus.localName === 'td'
+    ) {
+      this._prevTreeGridFocus.removeAttribute('tabindex');
+    }
+
+    if (newTreeGridFocus) {
+      if (oldCurrentRow) {
+        oldCurrentRow.tabIndex = -1;
+      }
+      const currentRow = this._getRowWithFocus();
+      if (currentRow) {
+        currentRow.tabIndex = 0;
+        this._enableTabbingInActiveRowDescendants(true, currentRow);
+      }
+    }
+
+    this._prevTreeGridFocus = newTreeGridFocus;
+  }
+
 }
 
-export async function loadTreegrid(listItems, tg, nodeObjectsByAlias) {
-  // Supports url parameter ?cell=force or ?cell=start (or leave out parameter)
-  console.log(tg, listItems);
-  await tg.populate(
-    listItems,
-    nodeObjectsByAlias
-  );
-}
 customElements.define('tree-grid', TreeGrid);

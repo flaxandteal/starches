@@ -1,0 +1,50 @@
+{{- if not (.Page.Store.Get "asset-style-loaded-flag") -}}
+<link href="https://unpkg.com/maplibre-gl@^5.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+<link rel="stylesheet" href="{{ "css/map.css" | absURL }}">
+<link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
+<link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
+
+{{ $baseAssets := (slice "asset-list.ts" "search.ts") }}
+{{ range $baseAssets }}
+{{- $js := resources.Get . -}}
+{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction "node_config" site.Params.node_config ) }}
+{{ $sourceMap := cond hugo.IsProduction "" "inline" }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2020" "params" $params }}
+{{ $js = $js | js.Build $opts }}
+{{ if hugo.IsProduction }}
+  {{ $js = $js | fingerprint }}
+{{ end }}
+<script
+  src="{{ $js.RelPermalink }}"
+  {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end }}
+  type="module">
+</script>
+{{ end }}
+{{- .Page.Store.Set "asset-style-loaded-flag" true -}}
+{{- end -}}
+
+<div id="demo-warning" class="js-hidden">
+  This is a front-end demo with full datasets - if you see this banner, potentially-sensitive data will be loaded, even it is not displayed (<a href="#" id="swap-link"></a>)
+</div>
+
+<h1 id="asset-title"></h1>
+
+<div id="resource-models"></div>
+
+<div id="dfc-registry"></div>
+
+<div id="asset-overview"></div>
+
+<div id="asset-location"></div>
+
+<div id="asset-further-information"></div>
+
+<article id="asset-list">
+</article>
+
+<dialog id="map-dialog" aria-labelledby="map-dialog__heading">
+  <div id="map-dialog__heading"></div>
+  <div id="map-dialog__content"></div>
+  <button class="govuk-button dialog-cancel" type="button" id="map-dialog__cancel"
+      onclick="document.getElementById('map-dialog').close()">Cancel</button>
+</dialog>

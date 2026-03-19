@@ -21,7 +21,7 @@ import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './manager
 import { loadTemplate, getPrecompiledTemplate } from 'handlebar-utils';
 import { initSwiper, ImageInput, ImageSet } from 'swiper';
 import { markdownToPdf, PdfImage } from 'pdf-make';
-import { loadTreegrid } from './w3c-treegrid';
+import './w3c-treegrid.js';
 
 // Types and interfaces
 interface AssetUrlParams {
@@ -70,7 +70,14 @@ const MODEL_FILES: Record<string, ModelFileConfig> = {
   }
 };
 
+interface TreeGridElement extends HTMLElement {
+  data: { listItems: string | string[]; nodeObjectsByAlias: Map<string, any> };
+}
+
 declare global {
+  interface HTMLElementTagNameMap {
+    'tree-grid': TreeGridElement;
+  }
   interface Window {
     archesUrl?: string;
     alizarinAsset?: Asset;
@@ -91,10 +98,10 @@ function parseAssetUrlParams(): AssetUrlParams {
   if (!slug || slug !== slugify(slug)) {
     console.error("Bad slug");
   }
-
+  console.log("params", params)
   return {
     slug: slug || '',
-    publicView: urlParams.get("full") === "false"
+    publicView: params.show_full_asset === "false"
   };
 }
 
@@ -520,15 +527,15 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
   const returnElt = document.createElement('a');
   returnElt.href = "../asset-list/?model=" + asset.asset.__.wkrm.graphId;
   returnElt.innerText = "List all resources for this model";
-  document.getElementById('asset-overview').appendChild(returnElt);
+  document.getElementById('asset').appendChild(returnElt);
   const treegridElt = document.createElement('tree-grid');
-  document.getElementById('asset-overview').appendChild(treegridElt);
+  document.getElementById('asset').appendChild(treegridElt);
   const nodes = asset.asset.__.getNodeObjectsByAlias();
 
   setupDialogLinks();
 
   const nodeObjectsByAlias = asset.asset.__.getNodeObjectsByAlias();
-  await loadTreegrid(markdown, treegridElt, nodeObjectsByAlias);
+  treegridElt.data = { listItems: markdown, nodeObjectsByAlias };
 
   return buildImageDialogs([], asset.meta.title);
 }
