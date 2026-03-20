@@ -18,7 +18,7 @@ import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './manager
 import { loadTemplate, getPrecompiledTemplate } from 'handlebar-utils';
 import { initSwiper } from 'swiper';
 import { renderPDFAsset } from './pdf-export';
-import { Dialog, extractImageList, categorizeExternalReferences, buildImageDialogs } from './image-manager';
+import { extractImageList } from './image-manager';
 import './w3c-treegrid.js';
 
 // Types and interfaces
@@ -30,6 +30,16 @@ interface AssetUrlParams {
 interface Asset {
   asset: AlizarinModel<any>;
   meta: AssetMetadata;
+}
+
+interface Dialog {
+  title: string;
+  body: string;
+}
+
+interface ImageRef {
+  image: any;
+  index: number;
 }
 
 interface ModelFileConfig {
@@ -601,6 +611,48 @@ async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): 
   setupDialogLinks();
   
   return buildImageDialogs(images, asset.meta.title);
+}
+
+function categorizeExternalReferences(nonstaticAsset: any): {
+  images: ImageRef[];
+  files: any[];
+  otherEcrs: any[];
+} {
+  const images: ImageRef[] = [];
+  const files: any[] = [];
+  const otherEcrs: any[] = [];
+
+  const ecrs = nonstaticAsset.external_cross_references;
+  if (!ecrs?.length) {
+    return { images, files, otherEcrs };
+  }
+
+  ecrs.forEach((ecr: any, index: number) => {
+    const type = ecr.external_cross_reference_notes?.external_cross_reference_description?.toLowerCase();
+
+    if (ecr.url && type === 'image') {
+      images.push({ image: ecr, index });
+    } else if (ecr.url && ['pdf', 'doc', 'docx'].includes(type)) {
+      files.push(ecr);
+    } else {
+      otherEcrs.push(ecr);
+    }
+  });
+
+  return { images, files, otherEcrs };
+}
+
+async function buildImageDialogs(images: ImageRef[], assetTitle: string): Promise<Record<string, Dialog>> {
+  const dialogs: Record<string, Dialog> = {};
+
+  for (const { image, index } of images) {
+    dialogs[`image_${index}`] = {
+      title: `<h3>Image for ${assetTitle}</h3>\n<h4>${await image.external_cross_reference}</h4>`,
+      body: `<img src='${image.url.__clean}' />`
+    };
+  }
+
+  return dialogs;
 }
 
 function setupDialogLinks(): void {
