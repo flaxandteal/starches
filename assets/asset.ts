@@ -843,7 +843,7 @@ function addAssetToMap(asset: Asset) {
       });
     });
   } else {
-    document.getElementById('map').classList = 'map-hidden';
+    document.getElementById('map')?.classList.add('map-hidden');
   }
 }
 

@@ -13,7 +13,14 @@ function makeDefaultConfiguration(): Partial<StarchesConfiguration> {
 }
 
 function buildConfig() {
-  const base: Partial<StarchesConfiguration> = window.STARCHES_BASE_CONFIGURATION ? JSON.parse(window.STARCHES_BASE_CONFIGURATION) : {};
+  let base: Partial<StarchesConfiguration> = {};
+  if (window.STARCHES_BASE_CONFIGURATION) {
+    try {
+      base = JSON.parse(window.STARCHES_BASE_CONFIGURATION);
+    } catch (e) {
+      console.error("Starches: failed to parse STARCHES_BASE_CONFIGURATION", e);
+    }
+  }
   const loadedConfiguration: StarchesConfiguration = {
     hasSearch: !!window.STARCHES_HAS_SEARCH,
     ...makeDefaultConfiguration(),
