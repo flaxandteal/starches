@@ -1,4 +1,5 @@
 'use strict';
+import { marked } from 'marked';
 
 // W3C APG Treegrid — https://www.w3.org/WAI/ARIA/apg/patterns/treegrid/
 class TreeGrid extends HTMLElement {
@@ -51,10 +52,10 @@ class TreeGrid extends HTMLElement {
 
   // --- Rendering ---
 
-  _render() {
+  async _render() {
     const label = this.getAttribute('aria-label') || 'Tree Grid';
     const rows = this._data
-      ? this._buildRows(this._data.listItems, this._data.nodeObjectsByAlias, 1, false)
+      ? await this._buildRows(this._data.listItems, this._data.nodeObjectsByAlias, 1, false)
       : '';
 
     this.shadowRoot.innerHTML = `
@@ -89,7 +90,7 @@ class TreeGrid extends HTMLElement {
     }
   }
 
-  _buildRows(items, nodeObjectsByAlias, level, hidden) {
+  async _buildRows(items, nodeObjectsByAlias, level, hidden) {
     if (!items || typeof items !== 'object') return '';
 
     const entries = Object.entries(items).sort(
@@ -117,7 +118,7 @@ class TreeGrid extends HTMLElement {
               aria-posinset="${posInSet}"
               aria-setsize="${setSize}"${hidden ? ' class="hidden"' : ''}>
             <td role="gridcell">${this._esc(node.name)}</td>
-            <td role="gridcell">${value != null ? this._esc(String(value)) : '<em>(empty)</em>'}</td>
+            <td role="gridcell">${value != null ? await marked.parse(`${value}`) : '<em>(empty)</em>'}</td>
             <td role="gridcell">${this._esc(node.alias)}</td>
             <td role="gridcell">${this._esc(node.datatype)}</td>
           </tr>`;
@@ -150,16 +151,16 @@ class TreeGrid extends HTMLElement {
                   aria-setsize="${value.length}"${hideChildren ? ' class="hidden"' : ''}
                   ${nested ? `aria-expanded="${!hideChildren}"` : ''}>
                 <td role="gridcell">[ ${m + 1} / ${value.length} ]</td>
-                <td role="gridcell">${nested ? '' : this._esc(String(value[m]))}</td>
+                <td role="gridcell">${nested ? '' : String(value[m])}</td>
                 <td role="gridcell">${this._esc(node.alias)}</td>
                 <td role="gridcell">${this._esc(node.datatype)}</td>
               </tr>`;
             if (nested) {
-              html += this._buildRows(value[m], nodeObjectsByAlias, level + 2, hideChildren);
+              html += await this._buildRows(value[m], nodeObjectsByAlias, level + 2, hideChildren);
             }
           }
         } else {
-          html += this._buildRows(value, nodeObjectsByAlias, level + 1, hideChildren);
+          html += await this._buildRows(value, nodeObjectsByAlias, level + 1, hideChildren);
         }
       }
     }
