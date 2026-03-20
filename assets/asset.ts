@@ -94,6 +94,7 @@ function initializeAlizarinConfig(): void {
 function parseAssetUrlParams(): AssetUrlParams {
   const urlParams = new URLSearchParams(window.location.search);
   const slug = urlParams.get("slug");
+  const fullParam = urlParams.get("full");
 
   if (!slug || slug !== slugify(slug)) {
     console.error("Bad slug");
@@ -101,7 +102,7 @@ function parseAssetUrlParams(): AssetUrlParams {
   console.log("params", params)
   return {
     slug: slug || '',
-    publicView: params.show_full_asset === "false"
+    publicView: fullParam ? fullParam === "false" : params.default_show_full_asset ? params.default_show_full_asset === "false" : true
   };
 }
 
@@ -646,7 +647,8 @@ async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): 
 
   const sections = await renderToHtml(markdown, nodes, false);
 
-  let imageArray = (await Promise.all(((await asset.asset.images) || []).map(async (i) => {
+  const hasImages = await asset.asset.__has('images');
+  let imageArray = (await Promise.all(((hasImages ? await asset.asset.images : null) || []).map(async (i) => {
     if (!i || !i[0] || !(await i[0])) {
       return null;
     }
