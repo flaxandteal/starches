@@ -1,13 +1,10 @@
 import { marked, Token, Tokens } from 'marked';
 import * as params from '@params';
 import * as Handlebars from 'handlebars';
-import { Map as MLMap } from 'maplibre-gl';
 import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, renderers, wasmReady, slugify } from 'alizarin/inline';
-// import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, renderers, wasmReady, slugify, setWasmURL } from 'alizarin';
-// setWasmURL('/wasm/alizarin_bg.wasm');
 import '@alizarin/filelist'; // Registers file-list type (images)
 import '@alizarin/clm'; // Registers reference type
-import { addMarkerImage } from 'map-tools';
+import { addAssetToMap } from './asset-map';
 import {
   getNavigation,
   hasSearchContext,
@@ -691,108 +688,6 @@ async function buildImageDialogs(images: ImageRef[], assetTitle: string): Promis
   }
 
   return dialogs;
-}
-
-function addAssetToMap(asset: Asset) {
-  const location = asset.meta.location;
-  if (location) {
-    const centre = location;
-    const zoom = 16;
-    const map = new MLMap({
-      style: 'https://tiles.openfreemap.org/styles/bright',
-      pitch: 20,
-      bearing: 0,
-      container: 'map',
-      center: centre,
-      zoom: zoom
-    });
-    map.on('load', async () => {
-      await addMarkerImage(map as any);
-      const source = map.addSource('assets', {
-        type: 'geojson',
-        data: asset.meta.geometry,
-      });
-      const sourceMarker = map.addSource('assets-marker', {
-        type: 'geojson',
-        data: {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            "type": "Point",
-            "coordinates": asset.meta.location,
-          }
-        }
-      });
-      let paint: {
-        'fill-color': string,
-        'fill-opacity': number,
-        'fill-outline-color'?: string | null
-      } = {
-        'fill-color': '#a88',
-        'fill-opacity': 0.8,
-      };
-      if (asset.meta.geometry.type === "FeatureCollection" && asset.meta.geometry.features.length == 1) {
-        const feature = asset.meta.geometry.features[0];
-        if (feature.properties && feature.properties.type === 'Grid Square') {
-          paint = {
-            'fill-color': 'rgba(255, 255, 255, 0.1)',
-            'fill-outline-color': '#aa4444',
-            'fill-opacity': 0.4
-          }
-        }
-      }
-      map.addLayer({
-        'id': '3d-buildings',
-        'source': 'openmaptiles',
-        'source-layer': 'building',
-        'filter': [
-          "!",
-          ["to-boolean",
-            ["get", "hide_3d"]
-          ]
-        ],
-        'type': 'fill-extrusion',
-        'minzoom': 13,
-        'paint': {
-          'fill-extrusion-color': 'lightgray',
-          'fill-extrusion-opacity': 0.5,
-          'fill-extrusion-height': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            13,
-            0,
-            16,
-            ['get', 'render_height']
-          ],
-          'fill-extrusion-base': ['case',
-            ['>=', ['get', 'zoom'], 16],
-            ['get', 'render_min_height'], 0
-          ]
-        }
-      });
-      map.addLayer({
-        'id': 'asset-boundaries',
-        'type': 'fill',
-        'source': 'assets',
-        'paint': paint,
-        'filter': ['==', '$type', 'Polygon']
-      });
-      map.addLayer({
-        'id': 'assets-marker',
-        'type': 'symbol',
-        'source': 'assets-marker',
-        'layout': {
-          'icon-image': 'marker-new',
-          'text-offset': [0, 1.25],
-          'text-anchor': 'top'
-        },
-        'filter': ['==', '$type', 'Point']
-      });
-    });
-  } else {
-    document.getElementById('map')?.classList.add('map-hidden');
-  }
 }
 
 // Asset page manager
