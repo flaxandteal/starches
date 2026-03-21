@@ -67,6 +67,6 @@
     "./assets/searchContext.ts",
     "./assets/search.ts",
     "./assets/pagefind.ts",
-    "./assets/config.ts"
+    "./assets/shared/config.ts"
   ]
 }

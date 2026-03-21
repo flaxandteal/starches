@@ -4,18 +4,18 @@ import {
   parseAssetUrlParams, loadAsset, loadMaritimeAsset, fetchTemplate,
   graphManager, staticTypes, renderers
 } from './alizarin-init';
-import { debug } from './debug';
+import { debug } from '../shared/debug';
 import {
   setupAssetNavigation, setupSwapLink, setupBackLinks,
   setupAssetTitle, setupRegistryInfo, setupLegacyRecord,
   setupDemoWarning, formatTimeElements
 } from './ui-setup';
-import { IAssetManager, resolveAssetManagerWith } from './managers';
+import { IAssetManager, resolveAssetManagerWith } from '../shared/managers';
 import { initSwiper } from 'swiper';
 import { renderPDFAsset } from './pdf-export';
 import { extractImageList } from './image-manager';
 import { RENDERER_OPTIONS, renderToHtml, injectSections } from './markdown-renderer';
-import './w3c-treegrid.js';
+import '../w3c-treegrid.js';
 
 // Types and interfaces
 

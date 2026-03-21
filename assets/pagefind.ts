@@ -4,7 +4,7 @@ import { customFilterPills } from "filterPills";
 import * as params from '@params';
 
 import { makeSearchQuery, updateSearchParams } from "./searchContext";
-import { getConfig } from './managers';
+import { getConfig } from './shared/managers';
 import { renderFilters, addActiveFilter } from "./map-ui";
 
 /**

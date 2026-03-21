@@ -1,4 +1,4 @@
-import { ImageInput } from 'swiper';
+import { ImageInput } from '../swiper';
 
 export async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
   const images: ImageInput[] = [];

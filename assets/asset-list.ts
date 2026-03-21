@@ -1,6 +1,6 @@
 import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, wasmReady, slugify } from 'alizarin/inline';
-import { debug } from './debug';
-import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './managers';
+import { debug } from './shared/debug';
+import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './shared/managers';
 
 // Types and interfaces
 interface AssetUrlParams {

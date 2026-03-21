@@ -2,12 +2,12 @@ import { utils } from 'alizarin/inline';
 // import { utils, setWasmURL } from 'alizarin';
 // setWasmURL('/wasm/alizarin_bg.wasm');
 const { slugify } = utils;
-import { getConfig } from './managers';
+import { getConfig } from './shared/managers';
 import { getFilters, getTerm, updateSearchParams, getSelectionPolygon } from './searchContext';
-import { debug, debugWarn, debugError } from './debug';
+import { debug, debugWarn, debugError } from './shared/debug';
 import { buildPagefind } from './pagefind';
 import { saveSearchResults, makeSearchQuery } from "./searchContext";
-import { resolveSearchManagerWith, getMap, getMapManager, getFlatbushManager } from './managers';
+import { resolveSearchManagerWith, getMap, getMapManager, getFlatbushManager } from './shared/managers';
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 
 let resolveSearchManager;

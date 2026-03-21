@@ -2,7 +2,7 @@ import { Token } from 'marked';
 import * as params from '@params';
 import * as Handlebars from 'handlebars';
 import { slugify } from 'alizarin/inline';
-import { loadTemplate } from 'handlebar-utils';
+import { loadTemplate } from '../shared/handlebar-utils';
 import { SectionedHtml } from './markdown-renderer';
 
 // Custom token types

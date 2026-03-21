@@ -1,5 +1,5 @@
-import { markdownToPdf, PdfImage } from 'pdf-make';
-import { ImageInput } from 'swiper';
+import { markdownToPdf, PdfImage } from '../pdf-make';
+import { ImageInput } from '../swiper';
 
 async function fetchImageAsDataUrl(url: string): Promise<string> {
   const response = await fetch(url);
