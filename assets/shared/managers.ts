@@ -72,6 +72,7 @@ export class StarchesConfiguration {
   timeToShowLoadingMs?: number;
   hasSearch?: boolean;
   allowSearchContext?: boolean;
+  carousel?: string | false;
 }
 
 // Store managers on window to ensure singleton behavior across module instances

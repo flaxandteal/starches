@@ -58,7 +58,9 @@ function populateSlides(wrapper: Element, images: ImageInput[], config: string):
   });
 }
 
-export const swiperCarouselProvider: CarouselProvider = {
+import { registerCarouselProvider } from './registry';
+
+const swiperCarouselProvider: CarouselProvider = {
   async init(images, container, config) {
     if (!images.length) return;
 
@@ -86,3 +88,5 @@ export const swiperCarouselProvider: CarouselProvider = {
     container.classList.add('loaded');
   }
 };
+
+registerCarouselProvider('swiper', swiperCarouselProvider);
