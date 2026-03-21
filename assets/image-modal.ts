@@ -62,7 +62,7 @@ export function setupModal(imageList: ImageInput[]): void {
     downloadReducedLink.addEventListener('click', (e) => downloadImage(e, modalImg.src));
   }
 
-  document.querySelectorAll('.swiper-slide img').forEach((img, index) => {
+  document.querySelectorAll('.carousel-slide img').forEach((img, index) => {
     img.addEventListener('click', function () {
       currentIndex = index;
       showImage(currentIndex);

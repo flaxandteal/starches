@@ -14,7 +14,7 @@ export function registerCarouselProvider(name: string, provider: CarouselProvide
 export async function initCarousel(images: ImageInput[], options?: { showModal?: boolean }): Promise<void> {
   if (!images.length) return;
 
-  const container = document.querySelector('.swiper') as HTMLElement;
+  const container = document.querySelector('.carousel') as HTMLElement;
   if (!container) return;
 
   const providerName = container.dataset.carouselProvider || defaultProvider;

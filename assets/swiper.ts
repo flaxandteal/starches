@@ -24,7 +24,7 @@ function populateSlides(wrapper: Element, images: ImageInput[], config: string):
   return new Promise((resolve) => {
     images.forEach((imageData, index) => {
       const slide = document.createElement('div');
-      slide.className = `swiper-slide ${config}`;
+      slide.className = `carousel-slide swiper-slide ${config}`;
 
       if ('includeAltText' in carouselConfig && carouselConfig.includeAltText) {
         const slideText = document.createElement('div');
@@ -62,7 +62,7 @@ export const swiperCarouselProvider: CarouselProvider = {
   async init(images, container, config) {
     if (!images.length) return;
 
-    const wrapper = container.querySelector('.swiper-wrapper');
+    const wrapper = container.querySelector('.carousel-wrapper, .swiper-wrapper');
     if (!wrapper) return;
 
     const carouselConfig = config || container.dataset.config;
