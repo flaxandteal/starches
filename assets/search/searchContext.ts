@@ -10,8 +10,8 @@ import {
   SearchParams,
   SearchContext,
   ISearchContextManager
-} from './shared/managers';
-import { debug, debugError } from './shared/debug';
+} from '../shared/managers';
+import { debug, debugError } from '../shared/debug';
 
 // SessionStorage key for search context
 const STORAGE_KEY = 'starches_search_context';

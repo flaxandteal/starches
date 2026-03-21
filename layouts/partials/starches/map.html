@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
 <link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
 
-{{ $baseAssets := (slice "map.ts" "search.ts") }}
+{{ $baseAssets := (slice "map/map.ts" "search/search.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
 {{ $params := (dict "search_config" $.Params.search_config "map_config" $.Params.map_config "is_production" hugo.IsProduction ) }}

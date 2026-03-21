@@ -1,11 +1,11 @@
 import * as PagefindModularUI from "@pagefind/modular-ui";
 import { marked } from 'marked';
-import { customFilterPills } from "filterPills";
+import { customFilterPills } from "./filterPills";
 import * as params from '@params';
 
 import { makeSearchQuery, updateSearchParams } from "./searchContext";
-import { getConfig } from './shared/managers';
-import { renderFilters, addActiveFilter } from "./map-ui";
+import { getConfig } from '../shared/managers';
+import { renderFilters, addActiveFilter } from "./filter-ui";
 
 /**
  * Get a precompiled Handlebars template
@@ -38,7 +38,7 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
     const instance = new PagefindModularUI.Instance({
         showImages: false,
         debounceTimeoutMs: 800,
-        bundlePath: "./pagefind/",
+        bundlePath: "/pagefind/",
         allowEmptySearch: true,
         searchAction,
         ranking: {

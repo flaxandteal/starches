@@ -1,4 +1,4 @@
-import { markdownToPdf, PdfImage } from '../pdf-make';
+import { markdownToPdf, PdfImage } from './pdf-make';
 import { ImageInput } from '../shared/types';
 
 async function fetchImageAsDataUrl(url: string): Promise<string> {

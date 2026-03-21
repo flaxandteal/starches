@@ -7,7 +7,7 @@ import {
   getSearchParams as getSearchContextParams,
   updateBreadcrumbs,
   makeSearchQuery
-} from '../searchContext';
+} from '../search/searchContext';
 
 // Navigation setup
 export async function setupAssetNavigation(currentId: string): Promise<void> {

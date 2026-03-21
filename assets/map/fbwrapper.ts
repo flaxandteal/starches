@@ -1,7 +1,7 @@
 import Flatbush from "flatbush";
 import { deserialize as fgbDeserialize } from 'flatgeobuf/lib/mjs/geojson.js';
 import { nearestPoint } from "@turf/nearest-point";
-import { resolveFlatbushManagerWith } from './shared/managers';
+import { resolveFlatbushManagerWith } from '../shared/managers';
 
 const NEAREST_RADIUS = 0.03;
 
