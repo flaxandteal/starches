@@ -165,14 +165,22 @@ async function getAssetMetadata(asset: AlizarinModel<any>): Promise<AssetMetadat
   if (await asset.__has('location_data') && await asset.location_data) {
     const locationData = await asset.location_data;
 
-    if (await locationData.geometry[0] && await locationData.geometry[0].geospatial_coordinates) {
-      geometry = await (await asset.location_data.geometry[0].geospatial_coordinates).forJson();
-      location = extractCentrePoint(geometry);
-    }
+    const geometryData = await locationData.geometry;
+    if (Array.isArray(geometryData)) {
+      if (await geometryData[0] && await geometryData[0].geospatial_coordinates) {
+        geometry = await (await geometryData[0].geospatial_coordinates).forJson();
+        location = extractCentrePoint(geometry);
+      }
 
-    const lastGeometry = (await locationData.geometry).length - 1; // Will be the polygon, if one.
-    if (await locationData.geometry[lastGeometry] && await locationData.geometry[lastGeometry].geospatial_coordinates) {
-      geometry = await (await asset.location_data.geometry[lastGeometry].geospatial_coordinates).forJson();
+      const lastGeometry = geometryData.length - 1; // Will be the polygon, if one.
+      if (await geometryData[lastGeometry] && await geometryData[lastGeometry].geospatial_coordinates) {
+        geometry = await (await geometryData[lastGeometry].geospatial_coordinates).forJson();
+      }
+    } else {
+      if (geometryData && await geometryData.geospatial_coordinates) {
+        geometry = await (await geometryData.geospatial_coordinates).forJson();
+        location = extractCentrePoint(geometry);
+      }
     }
   }
 
