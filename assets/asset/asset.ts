@@ -11,7 +11,7 @@ import {
   setupDemoWarning, formatTimeElements
 } from './ui-setup';
 import { IAssetManager, resolveAssetManagerWith } from '../shared/managers';
-import { initCarousel } from '../carousel';
+import { initCarousel } from '../carousel/carousel';
 import { renderPDFAsset } from './pdf-export';
 import { extractImageList } from './image-manager';
 import { RENDERER_OPTIONS, renderToHtml, injectSections } from './markdown-renderer';

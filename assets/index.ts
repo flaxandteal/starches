@@ -1,4 +1,4 @@
-import { initCarousel } from './carousel';
+import { initCarousel } from './carousel/carousel';
 import { ImageInput } from './shared/types';
 import * as params from '@params';
 

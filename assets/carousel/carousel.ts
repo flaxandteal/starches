@@ -1,4 +1,4 @@
-import { ImageInput, CarouselProvider } from './shared/types';
+import { ImageInput, CarouselProvider } from '../shared/types';
 import { setupModal } from './image-modal';
 
 const providers: Map<string, CarouselProvider> = new Map();
