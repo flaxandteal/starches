@@ -11,7 +11,7 @@ import {
   setupDemoWarning, formatTimeElements
 } from './ui-setup';
 import { IAssetManager, resolveAssetManagerWith } from '../shared/managers';
-import { initSwiper } from '../swiper';
+import { initCarousel } from '../carousel';
 import { renderPDFAsset } from './pdf-export';
 import { extractImageList } from './image-manager';
 import { RENDERER_OPTIONS, renderToHtml, injectSections } from './markdown-renderer';
@@ -110,7 +110,7 @@ async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): 
 
   const assetImages = await extractImageList(imageArray);
 
-  initSwiper(assetImages, 'media/images')
+  await initCarousel(assetImages)
 
   injectSections(sections);
 

@@ -1,7 +1,7 @@
 export interface ImageInput {
   name: string;
   alt: string;
-  caption: string;
+  caption?: string;
   previewUrl?: string;
   originalUrl?: string;
 }

@@ -1,7 +1,6 @@
 import Swiper from 'swiper/bundle';
 import { ImageInput, CarouselProvider } from './shared/types';
 import { swiperConfigs } from './swiper-config';
-import { setupModal } from './image-modal';
 
 export type { ImageInput } from './shared/types';
 
@@ -59,36 +58,6 @@ function populateSlides(wrapper: Element, images: ImageInput[], config: string):
   });
 }
 
-export async function initSwiper(imageList: ImageInput[], _path?: string): Promise<void> {
-  const container = document.querySelector('.swiper') as HTMLElement;
-  if (!container || !imageList.length) return;
-
-  const wrapper = container.querySelector('.swiper-wrapper');
-  if (!wrapper) return;
-
-  const { config, showModal, count } = container.dataset;
-  if (!config) {
-    console.error('[Swiper] No data-config attribute on container');
-    return;
-  }
-
-  let previewImages = imageList;
-  if (count) {
-    previewImages = getRandomImages(previewImages, parseInt(count));
-  }
-
-  await populateSlides(wrapper, previewImages, config);
-
-  const swiper = createSwiper(config);
-  if (!swiper) return;
-
-  if (showModal === 'true') {
-    setupModal(imageList);
-  }
-
-  container.classList.add('loaded');
-}
-
 export const swiperCarouselProvider: CarouselProvider = {
   async init(images, container, config) {
     if (!images.length) return;
@@ -102,7 +71,7 @@ export const swiperCarouselProvider: CarouselProvider = {
       return;
     }
 
-    const { showModal, count } = container.dataset;
+    const { count } = container.dataset;
 
     let previewImages = images;
     if (count) {
@@ -113,10 +82,6 @@ export const swiperCarouselProvider: CarouselProvider = {
 
     const swiper = createSwiper(carouselConfig);
     if (!swiper) return;
-
-    if (showModal === 'true') {
-      setupModal(images);
-    }
 
     container.classList.add('loaded');
   }

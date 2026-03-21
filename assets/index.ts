@@ -1,23 +1,16 @@
-import { initSwiper } from './swiper';
+import { initCarousel } from './carousel';
+import { ImageInput } from './shared/types';
 import * as params from '@params';
-
-interface BannerImage {
-    name: string;
-    alt: string;
-}
 
 interface BannerImagesConfig {
     path: string;
-    images: BannerImage[];
+    images: ImageInput[];
 }
 
 const bannerConfig: BannerImagesConfig | undefined = params.carousel;
-if (bannerConfig) {
-    bannerConfig.path = bannerConfig.path || 'img';
-}
 
 if (bannerConfig?.images) {
-    initSwiper(bannerConfig.images, bannerConfig.path).then(() =>
+    initCarousel(bannerConfig.images).then(() =>
         document.querySelector('.hero-banner')?.classList.add('loaded')
     );
 }
