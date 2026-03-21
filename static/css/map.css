@@ -1,0 +1,326 @@
+/* Map layer style tokens — override these to retheme map features */
+:root {
+  /* Register (external dataset) layer */
+  --map-register-circle-color: #888888;
+  --map-register-circle-radius: 6;
+  --map-register-stroke-width: 10;
+  --map-register-stroke-color: rgba(0, 0, 0, 0);
+
+  /* Asset boundary polygons */
+  --map-boundary-fill-color: #888888;
+  --map-boundary-fill-opacity: 0.4;
+
+  /* Asset flat circles (low-zoom point layer) */
+  --map-asset-flat-circle-color: #ff8888;
+  --map-asset-flat-circle-radius: 12;
+  --map-asset-flat-stroke-width: 1;
+  --map-asset-flat-stroke-color: #fff;
+
+  /* Asset symbol layout */
+  --map-asset-text-offset-x: 0;
+  --map-asset-text-offset-y: 1.25;
+
+  /* Draw tool polygon styles */
+  --map-draw-color: #09549f;
+  --map-draw-fill-opacity: 0.1;
+  --map-draw-line-width: 2;
+  --map-draw-midpoint-radius: 3;
+  --map-draw-vertex-radius: 3;
+  --map-draw-vertex-stroke-radius: 5;
+  --map-draw-vertex-stroke-color: #fff;
+
+  /* Marker / icon colors */
+  --map-marker-color: #09549f;
+  --map-marker-icon-color: #ffffff;
+}
+
+/* Map container */
+#map-container {
+  position: relative;
+  background-color: rgba(240, 240, 240, 1.0);
+}
+
+#map-column {
+  display: flex;
+  flex-direction: column;
+  flex-basis: 100%;
+  margin-bottom: 1rem;
+}
+
+.map {
+  box-sizing: border-box;
+  height: 70vh;
+  width: 100%;
+  max-width: 100%;
+}
+
+@media screen and (min-width: 991.98px) {
+  .map {
+    height: 90vh;
+    max-width: 75vw;
+  }
+
+  #map-column {
+    flex: 3;
+  }
+
+  #map-row {
+    flex-direction: row;
+  }
+}
+
+/* Map cover overlay */
+#map-cover {
+  height: 100%;
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  left: 0;
+  top: 0;
+}
+
+#map-cover.hidden {
+  display: none;
+}
+
+/* Map instructions */
+#map-instructions {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: block;
+  text-align: center;
+  margin: 0;
+  padding: 1rem;
+  max-width: 85%;
+  max-height: 80%;
+  overflow-y: auto;
+  color: white;
+  font-size: 1.2rem;
+  line-height: 1.4;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 0.3rem;
+}
+
+@media screen and (min-width: 800px) {
+  #map-instructions {
+    max-width: 50%;
+    font-size: 1.4rem;
+    padding: 2rem;
+  }
+}
+
+.instructions-hidden {
+  display: none;
+}
+
+/* Map popup */
+div.maplibregl-popup-content {
+  padding: 0;
+  border-radius: 0.3rem;
+  box-shadow: 0 0 0.1rem 0.3rem rgba(0, 0, 0, 0.1);
+  max-width: min(320px, 80vw);
+  font-size: 140%;
+}
+
+.maplibregl-popup-content h3 {
+  margin: 0;
+  background-color: #f8f8f8;
+  border-top: 0.3rem solid rgba(0, 32, 92, 1.0);
+  padding: 1.3rem 2rem 0.5rem 0.8rem;
+  font-weight: normal;
+}
+
+.maplibregl-popup-content .maplibregl-popup-close-button {
+  font-size: 200%;
+}
+
+.maplibregl-popup-content .map-popup-body {
+  padding: 0.8rem;
+}
+
+.maplibregl-popup-content .registry {
+  font-size: 80%;
+  font-style: italic;
+}
+
+/* Map offcanvas (mobile bottom sheet) */
+#map-offcanvas {
+  --bs-offcanvas-height: auto;
+  max-height: 70vh;
+  min-height: 40vh;
+  border-top: 0.1rem solid rgb(204, 204, 204);
+  border-radius: 1rem 1rem 0 0;
+}
+
+#map-offcanvas .offcanvas-header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  border: none;
+  padding: 1rem;
+}
+
+#map-offcanvas .offcanvas-body {
+  padding: 2rem 1.5rem;
+}
+
+#map-offcanvas .card {
+  border: none;
+  box-shadow: none;
+}
+
+/* Filter warning */
+#filter-warning {
+  font-size: 120%;
+  padding: 10px;
+  margin: 10px;
+  background-color: #fee;
+  color: #444;
+  border-radius: 8px;
+}
+
+#filter-warning a {
+  color: #000;
+  font-weight: bold;
+}
+
+.filter-warning-visible {
+  display: block;
+}
+
+.filter-warning-hidden {
+  display: none;
+}
+
+/* Search column layout */
+#map-row {
+  flex-direction: column-reverse;
+}
+
+.search-column {
+  display: flex;
+  flex-direction: column;
+  height: 120vh;
+  overflow: hidden;
+}
+
+.search-column > *:not(#results) {
+  flex-shrink: 0;
+}
+
+#results {
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+@media screen and (min-width: 991.98px) {
+  .search-column {
+    height: 90vh;
+  }
+
+  #jump-to-search {
+    display: none;
+  }
+}
+
+#result-count {
+  padding-top: 5px;
+}
+
+/* Fade animation */
+.fade {
+  opacity: 1;
+  animation-name: fade-opacity;
+  animation-iteration-count: 1;
+  animation-timing-function: ease-in;
+  animation-duration: 0.1s;
+}
+
+@keyframes fade-opacity {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Map controls — basemap switcher and overlay toggle */
+.basemap-switch-ctrl,
+.overlay-toggle-ctrl {
+  padding: 10px;
+  background: white;
+}
+
+.basemap-switch-ctrl label,
+.overlay-toggle-ctrl label {
+  display: block;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.basemap-switch-ctrl input[type="radio"],
+.overlay-toggle-ctrl input[type="checkbox"] {
+  margin-right: 6px;
+}
+
+/* Draw control buttons */
+.maplibregl-ctrl-group .mapbox-gl-draw_polygon,
+.maplibregl-ctrl-group .mapbox-gl-draw_trash {
+  cursor: pointer;
+  position: relative;
+  width: 29px;
+  height: 29px;
+  background-size: 20px 20px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.maplibregl-ctrl-group button {
+  position: relative;
+}
+
+/* CSS tooltips for control buttons */
+.maplibregl-ctrl-group button[title]::after {
+  content: attr(title);
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.maplibregl-ctrl-group button[title]:hover::after {
+  opacity: 1;
+}
+
+.maplibregl-ctrl-group .mapbox-gl-draw_polygon.active {
+  background-color: #f6ab60;
+  filter: invert(1);
+  box-shadow: inset 0 0 0 2px rgba(9, 84, 159, 0.5);
+}
+
+.maplibregl-ctrl-group .mapbox-gl-draw_polygon.active:hover {
+  background-color: #f89027;
+}
+
+.maplibregl-canvas-container.mode-draw_polygon {
+  cursor: crosshair;
+}
+
+/* Pagefind result thumbnails */
+.pagefind-modular-list-thumb {
+  display: none;
+}

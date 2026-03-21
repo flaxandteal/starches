@@ -1,4 +1,4 @@
-import { Popup, Map as MLMap, NavigationControlOptions, NavigationControl, GeolocateControl, StyleSpecification, MapMouseEvent } from 'maplibre-gl';
+import { Map as MLMap, NavigationControlOptions, NavigationControl, GeolocateControl, StyleSpecification, MapMouseEvent } from 'maplibre-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import type { FeatureCollection } from 'geojson';
 import { deserialize as fgbDeserialize } from 'flatgeobuf/lib/mjs/geojson';
@@ -19,15 +19,14 @@ import {
   OverlayControlOption
 } from './map-controls';
 import { updateOptions } from './map-arcgis';
-// Import map-arcgis to register the ArcGIS basemap loader
 import './map-arcgis';
-import { addMarkerImage } from './map-icons';
+import { addMarkerImage, buildIconConfig, preloadCategoryIcons, IconConfig, buildCategoryIconExpression } from './map-icons';
 import { ensureFlatbushLoaded, FlatbushManager } from './fbwrapper';
 import { getFlatbushManager, getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager, ILayerManager } from './shared/managers';
-import { loadTemplate } from './shared/handlebar-utils';
-import { debug, debugWarn } from './shared/debug';
-import { buildIconConfig, preloadCategoryIcons, IconConfig, buildCategoryIconExpression } from './map-icons';
-import { marked } from 'marked';
+import { debugWarn } from './shared/debug';
+import { resultFunction } from './map-popup';
+import type { TargetingMap } from './map-types';
+import './map-types';
 
 // Read map layer styles from CSS custom properties (defined in map.css)
 const _rootStyle = getComputedStyle(document.documentElement);
@@ -43,75 +42,6 @@ const mapConfig: MapConfig | undefined = params.map_config;
 
 // Get icon config from Hugo params, with fallback to defaults
 const iconConfig: IconConfig = buildIconConfig(params.map_icons);
-
-// Load the map dialog template
-const mapDialogTemplatePromise = loadTemplate('/templates/map-dialog-template.html');
-
-declare global {
-  interface Window {
-    map: TargetingMap;
-  }
-  const bootstrap: {
-    Offcanvas: {
-      getOrCreateInstance: (el: HTMLElement) => { show: () => void; hide: () => void };
-    };
-  };
-}
-
-type TargetingMap = MLMap & { targeting?: number[] | boolean; resetViewControl?: ResetViewControl };
-
-async function resultFunction(map: TargetingMap, e: MapMouseEvent & { features?: any[] }) {
-  if (!e.features || e.features.length === 0) {
-    console.warn('No features found at click location');
-    return;
-  }
-
-  const feature = e.features[0];
-  console.log('Clicked feature:', feature);
-  const title = feature.properties.title;
-  const description = feature.properties.description;
-  const excerpt = await marked.parse(description.trim());
-  const coordinates: number[] = feature.geometry.coordinates.slice();
-  const lngLat = e.lngLat;
-
-  map.stop();
-  map.targeting = coordinates;
-  const touch = isTouch();
-
-  const mapDialogTemplate = await mapDialogTemplatePromise;
-  if (typeof mapDialogTemplate !== 'function') {
-    console.error('Map dialog template failed to load');
-    return;
-  }
-  const url = feature.properties.url || '#';
-  const renderedHtml = mapDialogTemplate({ title, excerpt, location: coordinates, url });
-
-  if (touch) {
-    const offcanvasContent = document.getElementById("map-offcanvas__content");
-    if (offcanvasContent) {
-      offcanvasContent.innerHTML = renderedHtml;
-    }
-
-    const offcanvasEl = document.getElementById("map-offcanvas");
-    if (offcanvasEl) {
-      const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
-      offcanvas.show();
-    }
-  } else {
-    // (maplibre)
-    // Ensure that if the map is zoomed out such that multiple
-    // copies of the feature are visible, the popup appears
-    // over the copy being pointed to.
-    while (Math.abs(lngLat.lng - coordinates[0]) > 180) {
-      coordinates[0] += lngLat.lng > coordinates[0] ? 360 : -360;
-    }
-
-    new Popup({ maxWidth: '320px' })
-      .setLngLat(coordinates as [number, number])
-      .setHTML(renderedHtml)
-      .addTo(window.map);
-  }
-}
 
 class ResetViewControl extends NavigationControl {
   defaultLatLng: [number, number];
