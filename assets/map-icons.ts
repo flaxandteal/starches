@@ -357,6 +357,20 @@ export function buildCategoryIconExpression(
 }
 
 /**
+ * Add a basic marker image to the map
+ * Replaces the standalone map-tools.ts implementation
+ */
+export async function addMarkerImage(map: MLMap, name?: string, color?: string): Promise<void> {
+  const imageName = name || 'marker-new';
+  if (map.hasImage(imageName)) return;
+
+  const markerSvg = getMarkerSvg();
+  const svg = color ? recolorSvg(markerSvg, color) : markerSvg;
+  const img = await svgToImage(svg, MARKER_WIDTH, MARKER_HEIGHT);
+  map.addImage(imageName, img);
+}
+
+/**
  * Build a coalesce expression that tries category icon first, then falls back
  * This is useful when some features may not have a category property
  *

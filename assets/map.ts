@@ -21,7 +21,7 @@ import {
 import { updateOptions } from './map-arcgis';
 // Import map-arcgis to register the ArcGIS basemap loader
 import './map-arcgis';
-import { addMarkerImage } from './map-tools';
+import { addMarkerImage } from './map-icons';
 import { ensureFlatbushLoaded, FlatbushManager } from './fbwrapper';
 import { getFlatbushManager, getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager, ILayerManager } from './shared/managers';
 import { loadTemplate } from './shared/handlebar-utils';
