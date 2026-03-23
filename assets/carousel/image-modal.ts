@@ -1,4 +1,4 @@
-import { ImageInput } from '../shared/types';
+import type { ImageInput } from '../shared';
 
 async function downloadImage(e: Event, url: string): Promise<void> {
   e.preventDefault();

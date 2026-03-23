@@ -1,5 +1,5 @@
 import { marked } from 'marked';
-import { debugError } from '../shared/debug';
+import { debugError } from '../shared';
 import { createSectionExtension, createNodeBlockExtension } from './marked-extensions';
 
 // Shared renderer options (URLs disabled for now)

@@ -4,9 +4,9 @@ import { AlizarinModel, client, graphManager, staticStore, staticTypes, viewMode
 export { graphManager, staticTypes, renderers } from 'alizarin/inline';
 import '@alizarin/filelist';
 import '@alizarin/clm';
-import { debug } from '../shared/debug';
-import { AssetMetadata } from '../shared/managers';
-import { getPrecompiledTemplate } from '../shared/handlebar-utils';
+import { debug } from '../shared';
+import type { AssetMetadata } from '../shared';
+import { getPrecompiledTemplate } from '../shared';
 
 export interface Asset {
   asset: AlizarinModel<any>;

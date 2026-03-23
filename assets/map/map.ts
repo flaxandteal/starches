@@ -3,9 +3,8 @@ import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import type { FeatureCollection } from 'geojson';
 import { deserialize as fgbDeserialize } from 'flatgeobuf/lib/mjs/geojson';
 import * as params from '@params';
-import { getGeoBounds, updateSearchParams, getSearchParams, getSelectionPolygon } from '../search/searchContext';
-import { isTouch } from '../shared/utils';
-import { getConfig } from '../shared/managers';
+import { getGeoBounds, updateSearchParams, getSearchParams, getSelectionPolygon } from '../search';
+import { isTouch, getConfig } from '../shared';
 import {
   MapConfig,
   BasemapLoadResult,
@@ -22,8 +21,8 @@ import { updateOptions } from './map-arcgis';
 import './map-arcgis';
 import { addMarkerImage, buildIconConfig, preloadCategoryIcons, IconConfig, buildCategoryIconExpression } from './map-icons';
 import { ensureFlatbushLoaded, FlatbushManager } from './fbwrapper';
-import { getFlatbushManager, getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager, ILayerManager } from '../shared/managers';
-import { debugWarn } from '../shared/debug';
+import { getFlatbushManager, getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, debugWarn } from '../shared';
+import type { IMapManager, ILayerManager } from '../shared';
 import { resultFunction } from './map-popup';
 import type { TargetingMap } from './map-types';
 import './map-types';

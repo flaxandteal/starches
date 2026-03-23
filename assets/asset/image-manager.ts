@@ -1,4 +1,4 @@
-import { ImageInput } from '../shared/types';
+import type { ImageInput } from '../shared';
 
 export async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
   const images: ImageInput[] = [];

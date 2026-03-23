@@ -1,9 +1,8 @@
 import {
   Asset, staticTypes, renderers
 } from './alizarin-init';
-import { debug } from '../shared/debug';
-import { registerDialogs, setupDialogLinks } from '../shared/dialog';
-import { initCarousel } from '../carousel/carousel';
+import { debug, registerDialogs, setupDialogLinks } from '../shared';
+import { initCarousel } from '../carousel';
 import { renderPDFAsset } from './pdf-export';
 import { extractImageList } from './image-manager';
 import { RENDERER_OPTIONS, renderToHtml, injectSections } from './markdown-renderer';

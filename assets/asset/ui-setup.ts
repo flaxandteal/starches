@@ -1,5 +1,5 @@
 import { Asset } from './alizarin-init';
-import { debug } from '../shared/debug';
+import { debug } from '../shared';
 import {
   getNavigation,
   hasSearchContext,
@@ -7,7 +7,7 @@ import {
   getSearchParams as getSearchContextParams,
   updateBreadcrumbs,
   makeSearchQuery
-} from '../search/searchContext';
+} from '../search';
 
 // Navigation setup
 export async function setupAssetNavigation(currentId: string): Promise<void> {

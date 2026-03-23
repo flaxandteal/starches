@@ -1,7 +1,6 @@
 import { Popup, MapMouseEvent } from 'maplibre-gl';
 import { marked } from 'marked';
-import { isTouch } from '../shared/utils';
-import { loadTemplate } from '../shared/handlebar-utils';
+import { isTouch, loadTemplate } from '../shared';
 import type { TargetingMap } from './map-types';
 
 declare const bootstrap: {

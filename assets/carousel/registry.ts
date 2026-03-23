@@ -1,4 +1,4 @@
-import { CarouselProvider } from '../shared/types';
+import type { CarouselProvider } from '../shared';
 
 const providers: Map<string, CarouselProvider> = new Map();
 

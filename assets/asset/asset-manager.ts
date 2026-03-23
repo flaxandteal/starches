@@ -3,8 +3,7 @@ import {
   parseAssetUrlParams, loadAsset, loadMaritimeAsset, fetchTemplate,
   graphManager
 } from './alizarin-init';
-import { debug } from '../shared/debug';
-import { IAssetManager } from '../shared/managers';
+import { debug, IAssetManager } from '../shared';
 import { renderAsset, renderAssetForDebug } from './render';
 
 export class AssetManager implements IAssetManager {

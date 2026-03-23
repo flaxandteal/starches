@@ -1,6 +1,6 @@
 import { Map as MLMap } from 'maplibre-gl';
-import { addMarkerImage } from '../map/map-icons';
-import { AssetMetadata } from '../shared/managers';
+import { addMarkerImage } from '../map';
+import { AssetMetadata } from '../shared';
 
 interface AssetWithMeta {
   meta: AssetMetadata;

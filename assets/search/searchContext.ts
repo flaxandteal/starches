@@ -7,11 +7,9 @@ import {
   getConfig,
   getSearchContextManager,
   resolveSearchContextManagerWith,
-  SearchParams,
-  SearchContext,
-  ISearchContextManager
-} from '../shared/managers';
-import { debug, debugError } from '../shared/debug';
+  debug, debugError,
+} from '../shared';
+import type { SearchParams, SearchContext, ISearchContextManager } from '../shared';
 
 // SessionStorage key for search context
 const STORAGE_KEY = 'starches_search_context';

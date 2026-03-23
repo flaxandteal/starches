@@ -1,8 +1,8 @@
 import Swiper from 'swiper/bundle';
-import { ImageInput, CarouselProvider } from '../shared/types';
+import type { ImageInput, CarouselProvider } from '../shared';
 import { swiperConfigs } from './swiper-config';
 
-export type { ImageInput } from '../shared/types';
+export type { ImageInput } from '../shared';
 
 function getRandomImages(images: ImageInput[], amount: number): ImageInput[] {
   const sortedImages = images.sort(() => Math.random() - 0.5);

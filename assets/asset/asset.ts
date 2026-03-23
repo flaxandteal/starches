@@ -1,11 +1,10 @@
 import { parseAssetUrlParams } from './alizarin-init';
-import { debug } from '../shared/debug';
+import { debug, resolveAssetManagerWith } from '../shared';
 import {
   setupAssetNavigation, setupSwapLink,
   setupAssetTitle, setupLegacyRecord,
   setupDemoWarning, formatTimeElements
 } from './ui-setup';
-import { resolveAssetManagerWith } from '../shared/managers';
 import { AssetManager } from './asset-manager';
 import '../w3c-treegrid.js';
 

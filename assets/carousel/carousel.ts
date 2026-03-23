@@ -1,5 +1,5 @@
-import { ImageInput } from '../shared/types';
-import { getConfig } from '../shared/managers';
+import type { ImageInput } from '../shared';
+import { getConfig } from '../shared';
 import { getCarouselProvider, getRegisteredProviders } from './registry';
 import './providers';
 
