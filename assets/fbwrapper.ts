@@ -26,11 +26,13 @@ export class FlatbushManager {
             this.index = Flatbush.from(arrayBuffer);
 
             flatbushJson = await fetch('/flatbush.json');
+            this.locs = await flatbushJson.json();
         } catch (e) {
             console.warn(`Could not load Flatbush: ${e}`);
+            this.locs = [];
+            this.setFiltered(null);
             return false;
         }
-        this.locs = await flatbushJson.json();
         if (bounds) {
             this.filter(bounds);
         } else {
