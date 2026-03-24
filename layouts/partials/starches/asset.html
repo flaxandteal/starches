@@ -24,14 +24,14 @@
 {{- end -}}
 
 <div id="demo-warning">
-  This is a front-end demo with full datasets - if you see this banner, potentially-sensitive data will be loaded, even it is not displayed (<a href="#" id="swap-link"></a>)
+ {{ T "frontend_demo" }} (<a href="#" id="swap-link"></a>)
 </div>
 
 <div class="navigation-container">
   <div class="nav-back">
-    <a href="{{ site.BaseURL }}" class="govuk-button govuk-button--secondary back-link">Return to Search</a>
+    <a href="{{ site.BaseURL }}" class="govuk-button govuk-button--secondary back-link">{{ T "return_to_search" }}</a>
     <button class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="navigator.clipboard.writeText(document.location.href)">
-      Copy link
+      {{ T "copy_link" }}
     </button>
   </div>
   <div class="asset-breadcrumbs" id="search-breadcrumbs">
@@ -46,8 +46,8 @@
     {{/* Populated by JavaScript */}}
   </div>
   <div class="nav-buttons" id="top-navigation">
-    <a href="#" class="govuk-button govuk-button--secondary" id="prev-asset-top" style="display: none;">Previous</a>
-    <a href="#" class="govuk-button govuk-button--secondary" id="next-asset-top" style="display: none;">Next</a>
+    <a href="#" class="govuk-button govuk-button--secondary" id="prev-asset-top" style="display: none;">{{ T "previous" }}</a>
+    <a href="#" class="govuk-button govuk-button--secondary" id="next-asset-top" style="display: none;">{{ T "next" }}</a>
   </div>
 </div>
 
@@ -56,14 +56,14 @@
 
 <div class="modern-navigation" id="bottom-nav-container">
   <div class="nav-back">
-    <a href="{{ site.BaseURL }}" class="govuk-back-link back-link">Return to Search</a>
+    <a href="{{ site.BaseURL }}" class="govuk-back-link back-link">{{ T "return_to_search" }}</a>
   </div>
   <div class="nav-position" id="position-counter-bottom">
     {{/* Populated by JavaScript */}}
   </div>
   <div class="nav-buttons" id="bottom-navigation">
-    <a href="#" class="govuk-button govuk-button--secondary" id="prev-asset-bottom" style="display: none;">Previous</a>
-    <a href="#" class="govuk-button govuk-button--secondary" id="next-asset-bottom" style="display: none;">Next</a>
+    <a href="#" class="govuk-button govuk-button--secondary" id="prev-asset-bottom" style="display: none;">{{ T "previous" }}</a>
+    <a href="#" class="govuk-button govuk-button--secondary" id="next-asset-bottom" style="display: none;">{{ T "next" }}</a>
   </div>
 </div>
 
@@ -76,11 +76,11 @@
 <div id="asset-dialog__content"></div>
 
 <button class="govuk-button dialog-cancel" type="button" id="asset-dialog__cancel"
-    onclick="document.getElementById('asset-dialog').close()">Cancel</button>
+    onclick="document.getElementById('asset-dialog').close()">{{ T "cancel" }}</button>
 </dialog>
 
 <div id="legacy-record-container">
-<h2>Legacy Record</h2>
+<h2>{{ T "legacy_record" }}</h2>
 
 <pre id="legacy-record">
 </pre>

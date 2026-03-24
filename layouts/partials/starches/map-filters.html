@@ -2,11 +2,11 @@
   <fieldset class="govuk-fieldset" aria-describedby="chosenRecord-hint">
     <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
       <h3 class="govuk-fieldset__heading govuk-heading-l">
-        Which collection would you like to search?
+        {{ T "filter_by_record_type" }}
       </h3>
     </legend>
     <div class="govuk-hint">
-        <p>These are types of records available.</p>
+        <p>{{ T "filter_by_record_type_hint" }}</p>
     </div>
     <div id="filter"></div>
   </fieldset>
