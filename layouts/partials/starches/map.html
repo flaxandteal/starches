@@ -31,8 +31,7 @@
         <div id="result-count" class="result-count"></div>
         <div id="instructions">
             <p>{{ T "search_above" }}</p>
-
-            <p>{{ T "each_result_has" }} <strong>{{ T "view" }}</strong> {{ T "button_to_open"}} <strong>{{ T "open_tab" }}</strong> {{ T "open_in_a_new_tab" }}</p>
+            <p>{{ T "each_result_has" }} <strong>{{ T "view" }}</strong>, {{ T "button_to_open"}} <strong>{{ T "open_tab" }}</strong> {{ T "open_in_a_new_tab" }}</p>
         </div>
         <div id="results">
         </div>
@@ -45,7 +44,7 @@
 {{ if .Params.includeSearch }}
             <div id="map-cover">
                 <div id="map-instructions">
-                    {{ T "search_by" }}<strong>{{ T "searchbox" }}</strong>{{ T "or_chose_record_type" }}<strong>{{ T "zooming"}}</strong> {{ T "in_a_small_area"}}
+                    {{ T "search_by" }}<strong> {{ T "searchbox" }}</strong>  {{ T "or_chose_record_type" }}<strong> {{ T "zooming"}}</strong> {{ T "in_a_small_area"}}
                 </div>
             </div>
 {{ end }}
