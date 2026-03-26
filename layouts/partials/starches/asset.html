@@ -29,7 +29,7 @@
 
 <div class="navigation-container">
   <div class="nav-back">
-    <a href="{{ site.BaseURL }}" class="govuk-button govuk-button--secondary back-link">{{ i18n "return_to_search" }}</a>
+    <a href="{{ site.BaseURL }}{{ .Lang }}" class="govuk-button govuk-button--secondary back-link">{{ i18n "return_to_search" }}</a>
     <button class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="navigator.clipboard.writeText(document.location.href)">
       {{ i18n "copy_link" }}
     </button>
@@ -56,7 +56,7 @@
 
 <div class="modern-navigation" id="bottom-nav-container">
   <div class="nav-back">
-    <a href="{{ site.BaseURL }}" class="govuk-back-link back-link">{{ i18n "return_to_search" }}</a>
+    <a href="{{ site.BaseURL }}{{ .Lang }}" class="govuk-back-link back-link">{{ i18n "return_to_search" }}</a>
   </div>
   <div class="nav-position" id="position-counter-bottom">
     {{/* Populated by JavaScript */}}

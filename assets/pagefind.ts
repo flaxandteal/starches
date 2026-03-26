@@ -132,7 +132,11 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
         };
 
         // Render the Handlebars template
-        const rawHtml = resultCardTemplate(templateData);
+        var rawHtml = resultCardTemplate(templateData);
+        const currentLang = document.getElementById('currentLanguage') ? document.getElementById('currentLanguage').textContent : 'en';
+        if (currentLang !== "en") {
+            rawHtml = rawHtml.replaceAll('/asset/', `/${currentLang}/asset/`);
+        }
         return rawHtml;
     };
 
