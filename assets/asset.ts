@@ -991,7 +991,9 @@ function setupSwapLink(slug: string, publicView: boolean): void {
   const swapLink = document.querySelector<HTMLAnchorElement>("a#swap-link");
   if (swapLink) {
     swapLink.href = `?slug=${slug}&full=${publicView}`;
-    swapLink.innerHTML = publicView ? "visit full view" : "visit public view";
+    const publicViewTranslation = swapLink.getAttribute("data-translation-public-view");
+    const fullViewTranslation = swapLink.getAttribute("data-translation-full-view");
+    swapLink.innerHTML = publicView ? fullViewTranslation : publicViewTranslation;
   }
 }
 
