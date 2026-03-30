@@ -532,10 +532,10 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
   if (Array.isArray(markdown)) {
     markdown = markdown.join("\n\n");
   }
-
+  const translationsElement = document.getElementById("translationsForAsset");
   const returnElt = document.createElement('a');
   returnElt.href = "../asset-list/?model=" + asset.asset.__.wkrm.graphId;
-  returnElt.innerText = "List all resources for this model";
+  returnElt.innerText = translationsElement.getAttribute("data-translation-list-all-resources");
   document.getElementById('asset').appendChild(returnElt);
   const treegridElt = document.createElement('tree-grid');
   document.getElementById('asset').appendChild(treegridElt);
@@ -991,7 +991,9 @@ function setupSwapLink(slug: string, publicView: boolean): void {
   const swapLink = document.querySelector<HTMLAnchorElement>("a#swap-link");
   if (swapLink) {
     swapLink.href = `?slug=${slug}&full=${publicView}`;
-    swapLink.innerHTML = publicView ? "visit full view" : "visit public view";
+    const publicViewTranslation = swapLink.getAttribute("data-translation-public-view");
+    const fullViewTranslation = swapLink.getAttribute("data-translation-full-view");
+    swapLink.innerHTML = publicView ? fullViewTranslation : publicViewTranslation;
   }
 }
 

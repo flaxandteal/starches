@@ -27,12 +27,14 @@
     <script>window.STARCHES_HAS_SEARCH = true;</script>
     <div id="search-column">
         <div id="search"></div>
-        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
+        <div>
+            <p id="translationsParagraph" class="map-hidden" data-translation-showing-all="{{ i18n "showing_all" }}" data-translation-search-results="{{ i18n "search_results" }}"  data-translation-showing-first="{{ i18n "showing_first" }}"></p>
+        </div>
+        <div id="filter-warning" class="filter-warning-hidden">{{ i18n "geographical_filter" }} <a href="javascript:resetView()">{{ i18n "reset"}}</a> {{ i18n "see_all_results" }}</div>
         <div id="result-count" class="result-count"></div>
         <div id="instructions">
-            <p>Search above to find assets.</p>
-
-            <p>Each result has a <strong>View</strong> button to open it in this tab, and <strong>Open Tab</strong> to open the result in a new tab.</p>
+            <p>{{ i18n "search_above" }}</p>
+            <p>{{ i18n "each_result_has" }} <strong>{{ i18n "view" }}</strong>, {{ i18n "button_to_open"}} <strong>{{ i18n "open_tab" }}</strong> {{ i18n "open_in_a_new_tab" }}</p>
         </div>
         <div id="results">
         </div>
@@ -40,14 +42,12 @@
 
 {{ end }}
     <div id="map-column">
-        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
+        <div id="filter-warning" class="filter-warning-hidden">{{ i18n "geographical_filter" }} <a href="javascript:resetView()">{{ i18n "reset"}}</a> {{ i18n "see_all_results" }}</div>
         <div id="map-container">
 {{ if .Params.includeSearch }}
             <div id="map-cover">
                 <div id="map-instructions">
-                    Search by typing 4+ characters into the <strong>searchbox</strong>, or
-                    by choosing a record type and <strong>zooming</strong> in to a small area
-                    - pinch the map or tap a grey dot to zoom.
+                    {{ i18n "search_by" }}<strong> {{ i18n "searchbox" }}</strong>  {{ i18n "or_chose_record_type" }}<strong> {{ i18n "zooming"}}</strong> {{ i18n "in_a_small_area"}}
                 </div>
             </div>
 {{ end }}
