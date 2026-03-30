@@ -27,6 +27,9 @@
     <script>window.STARCHES_HAS_SEARCH = true;</script>
     <div id="search-column">
         <div id="search"></div>
+        <div>
+            <p id="translationsParagraph" class="map-hidden" data-translation-showing-all="{{ i18n "showing_all" }}" data-translation-search-results="{{ i18n "search_results" }}"  data-translation-showing-first="{{ i18n "showing_first" }}"></p>
+        </div>
         <div id="filter-warning" class="filter-warning-hidden">{{ i18n "geographical_filter" }} <a href="javascript:resetView()">{{ i18n "reset"}}</a> {{ i18n "see_all_results" }}</div>
         <div id="result-count" class="result-count"></div>
         <div id="instructions">

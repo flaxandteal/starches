@@ -19,27 +19,28 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
   let resultCount = document.getElementById("result-count");
   const map = await getMap();
   if (results.geofilteredResultCount) {
+      const translationsElement = document.getElementById("translationsParagraph");
       const layer = map.getLayer('assets-flat');
       if (results.geofilteredResultCount == results.unfilteredResultCount) {
         if (layer) {
             map.setLayoutProperty('assets-flat', 'visibility', 'visible');
         }
-        resultCount.innerHTML = `Showing all <strong>${results.unfilteredResultCount}</strong> search results`;
+        resultCount.innerHTML = translationsElement.getAttribute("data-translation-showing-all") + ` <strong>${results.unfilteredResultCount}</strong> ` + translationsElement.getAttribute("data-translation-search-results");
       } else if (results.unfilteredResultCount === 0 && results.geofilteredResultCount < config.maxMapPoints) {
         if (layer) {
             map.setLayoutProperty('assets-flat', 'visibility', 'visible');
         }
-        resultCount.innerHTML = `Showing all <strong>${results.geofilteredResultCount}</strong> search results`;
+        resultCount.innerHTML = translationsElement.getAttribute("data-translation-showing-all") + ` <strong>${results.geofilteredResultCount}</strong> ` + translationsElement.getAttribute("data-translation-search-results");;
       } else if (results.geofilteredResultCount > results.unfilteredResultCount) { // when there is no term
         if (layer) {
             map.setLayoutProperty('assets-flat', 'visibility', 'none');
         }
-        resultCount.innerHTML = `Showing first <strong>${results.geofilteredResultCount}</strong> search results`;
+        resultCount.innerHTML = translationsElement.getAttribute("data-translation-showing-first") + ` <strong>${results.geofilteredResultCount}</strong> ` + translationsElement.getAttribute("data-translation-search-results");;
       } else {
         if (layer) {
             map.setLayoutProperty('assets-flat', 'visibility', 'visible');
         }
-        resultCount.innerHTML = `Showing first <strong>${results.geofilteredResultCount}</strong> / <strong>${results.unfilteredResultCount}</strong> search results`;
+        resultCount.innerHTML = translationsElement.getAttribute("data-translation-showing-first") + ` <strong>${results.geofilteredResultCount}</strong> / <strong>${results.unfilteredResultCount}</strong> ` + translationsElement.getAttribute("data-translation-search-results");;
       }
 
   } else {
