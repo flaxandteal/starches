@@ -54,7 +54,6 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
               const loc = JSON.parse(re.meta.location);
               const slug = re.meta.slug;
               if (loc && !visibleIds.has(slug)) {
-                console.log("URL", re.url);
                 const url = await makeSearchQuery(re.url);
                 let [indexOnly, description] = re.content.split('$$$');
                 if (!(description && description.trim().length > 0)) {
@@ -186,7 +185,6 @@ class SearchManager {
                     debug("Saved search context with " + slugs.length + " slugs", slugs);
                   });
 
-                  console.log('UPDATING', this.lastTerm, this.lastFilters, geoBounds);
                   await updateSearchParams({
                     searchTerm: this.lastTerm,
                     searchFilters: this.lastFilters,
@@ -276,7 +274,6 @@ class SearchManager {
     const shortTerm = (!term || term.trim().length < config.minSearchLength);
 
     // if (!(settings && settings.filters && Object.keys(settings.filters).length) && term && term.length < MIN_SEARCH_LENGTH) {
-    console.log("TERM LENGTH", term.trim().length, config.minSearchLength)
     if (
         (!zoom || zoom < config.minSearchZoom) &&
         (!term || term.trim().length < config.minSearchLength)
