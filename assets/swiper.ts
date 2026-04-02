@@ -6,6 +6,7 @@ export interface ImageInput {
   caption: string;
   previewUrl?: string;
   originalUrl?: string;
+  type?: string;
 }
 
 function getRandomImages(images: ImageInput[], amount: number): ImageInput[] {
@@ -76,7 +77,20 @@ function populateSlides(wrapper: Element, images: ImageInput[], config: string):
         slideText.textContent = imageData.alt;
         slide.appendChild(slideText);
       }
+      let child;
+      const isVideo = imageData.type && imageData.type.startsWith("video");
       const img = document.createElement('img');
+      console.log(imageData, 'image');
+      if (isVideo) {
+        child = document.createElement('div');
+        child.classList = ['swiper-video'];
+        let play = document.createElement('div');
+        play.innerHTML = "&#9658;";
+        child.appendChild(img);
+        child.appendChild(play);
+      } else {
+        child = img;
+      }
       img.src = imageData.previewUrl;
       img.alt = imageData.alt;
       img.style.cursor = 'pointer';
@@ -95,7 +109,7 @@ function populateSlides(wrapper: Element, images: ImageInput[], config: string):
         }
       }
 
-      slide.appendChild(img);
+      slide.appendChild(child);
       wrapper.appendChild(slide);
     });
   });
@@ -127,6 +141,9 @@ async function downloadImage(e: Event, url: string): Promise<void> {
 function setupModal(imageList: ImageInput[]): void {
   const modal = document.getElementById('image-modal') as HTMLElement;
   const modalImg = document.getElementById('modal-img') as HTMLImageElement;
+  const modalVideo = document.getElementById('modal-video') as HTMLDivElement;
+  const modalVideoThumbnail = document.getElementById('modal-video-thumbnail') as HTMLImageElement;
+  const modalVideoFrame = document.getElementById('modal-video-frame') as HTMLIFrameElement;
   const modalCaption = document.getElementById('modal-caption') as HTMLElement;
   const closeModal = document.getElementById('close-modal') as HTMLElement;
   const prevBtn = document.getElementById('modal-prev') as HTMLButtonElement;
@@ -147,8 +164,20 @@ function setupModal(imageList: ImageInput[]): void {
     currentIndex = index;
 
     const image = imageList[currentIndex];
-    modalImg.src = image.previewUrl || '';
-    modalImg.alt = image.caption || image.alt || '';
+    const isVideo = image.type && image.type.startsWith("video");
+    if (isVideo) {
+      modalVideo.style.display = "inline-block";
+      modalImg.style.display = "none";
+      modalVideo.src = image.originalUrl;
+      modalVideo.poster = image.previewUrl || '';
+      modalVideo['aria-label'] = image.caption || image.alt || '';
+      modalImg.alt = image.caption || image.alt || '';
+    } else {
+      modalVideo.style.display = "none";
+      modalImg.style.display = "inline-block";
+      modalImg.src = image.previewUrl || '';
+      modalImg.alt = image.caption || image.alt || '';
+    }
     modalCaption.textContent = modalImg.alt;
   }
 
@@ -156,7 +185,7 @@ function setupModal(imageList: ImageInput[]): void {
   if (downloadOriginalLink) {
 
     downloadOriginalLink.addEventListener('click', (e) => {
-      const originalImageURL = imageList.find(img => img.previewUrl === modalImg.src)?.originalUrl || '';
+      const originalImageURL = imageList.find(img => img.previewUrl === modalImg.src || img.originalUrl === modalImg.src)?.originalUrl || '';
       downloadImage(e, originalImageURL)
     });
   }
@@ -165,7 +194,7 @@ function setupModal(imageList: ImageInput[]): void {
     downloadReducedLink.addEventListener('click', (e) => downloadImage(e, modalImg.src));
   }
 
-  document.querySelectorAll('.swiper-slide img').forEach((img, index) => {
+  document.querySelectorAll('.swiper-slide img, .swiper-slide .swiper-video').forEach((img, index) => {
     img.addEventListener('click', function () {
       currentIndex = index;
       showImage(currentIndex);
