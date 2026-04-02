@@ -1001,6 +1001,16 @@ function setupSwapLink(slug: string, publicView: boolean): void {
     swapLink.href = `?slug=${slug}&full=${publicView}`;
     swapLink.innerHTML = publicView ? "visit full view" : "visit public view";
   }
+
+  const swapLinkPublic = document.querySelector<HTMLAnchorElement>("a#swap-link-public");
+  if (swapLinkPublic) {
+    if (publicView && params.default_show_full_asset === "true") {
+      swapLinkPublic.href = `?slug=${slug}&full=true`;
+      swapLinkPublic.removeAttribute('hidden');
+    } else {
+      swapLinkPublic.setAttribute('hidden', '');
+    }
+  }
 }
 
 async function setupBackLinks(currentSlug: string): Promise<void> {
@@ -1094,7 +1104,12 @@ function setupDemoWarning(asset: Asset, publicView: boolean, hasLegacyRecord: bo
   if (!warningEl) return;
 
   const isPublicScope = Array.isArray(asset.asset.$.scopes) && asset.asset.$.scopes.includes('public');
-  warningEl.classList.toggle('js-hidden', isPublicScope && publicView && !hasLegacyRecord);
+  const shouldHide = isPublicScope && publicView && !hasLegacyRecord;
+  if (shouldHide) {
+    warningEl.setAttribute('hidden', '');
+  } else {
+    warningEl.removeAttribute('hidden');
+  }
 }
 
 function formatTimeElements(): void {
@@ -1126,6 +1141,17 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (await ecr.external_cross_reference_source == "Sketchfab") {
       document.getElementById('sketchfab-viewer')?.classList.remove('hidden');
     }
+  }
+
+  // Toggle public/private view based on full param
+  const privateViewEl = document.getElementById('private-view');
+  const publicViewEl = document.getElementById('public-view');
+  if (publicView) {
+    publicViewEl?.removeAttribute('hidden');
+    privateViewEl?.setAttribute('hidden', '');
+  } else {
+    privateViewEl?.removeAttribute('hidden');
+    publicViewEl?.setAttribute('hidden', '');
   }
 
   setupAssetTitle(asset.meta.title);
