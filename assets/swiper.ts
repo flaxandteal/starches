@@ -80,7 +80,6 @@ function populateSlides(wrapper: Element, images: ImageInput[], config: string):
       let child;
       const isVideo = imageData.type && imageData.type.startsWith("video");
       const img = document.createElement('img');
-      console.log(imageData, 'image');
       if (isVideo) {
         child = document.createElement('div');
         child.classList = ['swiper-video'];
