@@ -1,0 +1,354 @@
+html.govuk-template {
+    background-color: inherit;
+    max-width: 1140px;
+}
+
+.app-back-to-top__link {
+    background-color: white;
+}
+
+time[pubdate=""] {
+    display: inline-block;
+    padding-bottom: 1.4rem;
+    font-style: italic;
+}
+
+time[pubdate=""]:before {
+    content: "Updated"
+}
+
+
+.alizarin-domain-value {
+    font-weight: bold;
+}
+
+.alizarin-concept-value {
+    font-weight: inherit;
+}
+
+.govuk-width-container {
+    margin: 0 auto;
+    padding: 0 1rem 0 1rem;
+}
+
+.dashboard-container {
+    grid-template-columns: 0px 100%; /* TODO: once there are entries, reopen this */
+}
+
+.dashboard-nav {
+    display: none; /* TODO: once there are entries, reopen this */
+}
+
+.govuk-header__logotype {
+    padding-right: 0;
+}
+
+.govuk-header .govuk-header__link--homepage {
+    font-weight: 400;
+}
+
+header.govuk-header {
+    margin: 3em 0 0;
+    background-color: white;
+}
+
+a.govuk-footer__copyright-logo {
+  background-image: none !important;
+}
+
+.govuk-footer__meta {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+div.govuk-header__container {
+    border-bottom: 0.4rem solid rgba(127, 86, 197);
+    padding: 0 0 1em;
+}
+
+#dfc-registry {
+    border-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    background-color: rgba(127, 86, 197, 0.9);
+}
+
+#dfc-registry ul {
+    width: 100%;
+    list-style: none;
+    display: flex;
+    flex-direction: row;
+    max-width: 90vw;
+}
+
+#dfc-registry li {
+    display: inline-block;
+    font-size: 2.4rem;
+    line-height: 2.2rem;
+    padding-top: 1.2rem;
+    padding-bottom: 1.2rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: white;
+}
+
+.pagefind-modular-list-thumb {
+    display: none
+}
+
+#filter-warning {
+    font-size: 120%;
+    padding: 10px;
+    margin: 10px;
+    background-color: #fee;
+    color: #444;
+    border-radius: 8px;
+}
+
+#map-instructions {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: block;
+    text-align: center;
+    margin: 0;
+    padding: 1rem;
+    max-width: 85%;
+    max-height: 80%;
+    overflow-y: auto;
+    color: white;
+    font-size: 1.2rem;
+    line-height: 1.4;
+    background: rgba(0.3, 0.3, 0.3, 0.6);
+    border-radius: 0.3rem;
+}
+
+@media screen and (min-width: 800px) {
+  #map-instructions {
+    max-width: 50%;
+    font-size: 1.4rem;
+    padding: 2rem;
+  }
+}
+
+#map-cover {
+    height: 100%;
+    width: 100%;
+    background-color: rgba(0.3, 0.3, 0.3, 0.3);
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+    left: 0;
+    top: 0;
+}
+
+#filter-warning a {
+    color: #000;
+    font-weight: bold;
+}
+
+.filter-warning-visible {
+    display: block;
+}
+
+.filter-warning-hidden {
+    display: none;
+}
+
+#map-row {
+  flex-direction: column-reverse;
+}
+
+.search-column {
+    display: flex;
+    flex-direction: column;
+    height: 120vh;
+    overflow: hidden;
+}
+
+.search-column > *:not(#results) {
+    flex-shrink: 0;
+}
+
+#results {
+    flex: 1;
+    min-height: 0;
+    max-height: 100%;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.result-links .govuk-button {
+    font-size: 90%;
+}
+
+.result-links {
+    width: 100%;
+    text-align: left;
+}
+
+#map-container {
+    position: relative;
+    background-color: rgba(240, 240, 240, 1.0);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='rgba(220, 220, 220, 1.0)' viewBox='0 0 16 16'%3E%3Cpath d='M8 13.1l-8-8 2.1-2.2 5.9 5.9 5.9-5.9 2.1 2.2z'/%3E%3C/svg%3E");
+    background-size: 30vw;
+    background-position: 8vw 0;
+}
+
+#map-column {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    margin-bottom: 1rem;
+}
+
+.map {
+    box-sizing: border-box;
+    height: 70vh;
+    width: 100%;
+    max-width: 100%;
+    border: 10px solid #fff;
+}
+
+@media screen and (min-width: 991.98px) {
+  .map {
+      height: 90vh;
+      max-width: 75vw;
+  }
+
+  .search-column {
+    height: 90vh;
+  }
+
+  #map-column {
+    flex: 3
+    
+  }
+
+  #map-row {
+    flex-direction: row;
+  }
+
+  #jump-to-search {
+    display: none;
+  }
+}
+
+#result-count {
+    padding-top: 5px;
+}
+
+.fade {
+    opacity: 1;
+    animation-name: fade-opacity;
+    animation-iteration-count: 1;
+    animation-timing-function: ease-in;
+    animation-duration: 0.1s;
+}
+
+@keyframes fade-opacity {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.instructions-hidden {
+  display: none;
+}
+
+.maplibregl-popup-content {
+  font-size: 140%;
+}
+
+.consent-list-inline label {
+  display: inline-block;
+}
+
+.consent-list-inline label.govuk-checkboxes__label h3 {
+  margin-top: 0;
+}
+
+
+div.maplibregl-popup-content {
+    padding: 0 0 0 0;
+    border-radius: 0.3rem;
+    box-shadow: 0 0 0.1rem 0.3rem rgba(0.3, 0.3, 0.3, 0.1);
+    max-width: min(320px, 80vw);
+}
+
+.maplibregl-popup-content h3 {
+  margin: 0 0 0 0;
+  background-color: #f8f8f8;
+  border-top: 0.3rem solid rgba(0, 32, 92, 1.0);
+  padding-left: 0.8rem;
+  padding-right: 2.0rem;
+  padding-top: 1.3rem;
+  padding-bottom: 0.5rem;
+  font-weight: normal;
+}
+
+.maplibregl-popup-content .govuk-button {
+  margin-bottom: 0;
+  font-size: 90%;
+}
+
+.maplibregl-popup-content .maplibregl-popup-close-button {
+  font-size: 200%;
+}
+
+.maplibregl-popup-content .map-popup-body {
+  padding: 0.8rem 0.8rem 0.8rem 0.8rem;
+}
+
+.maplibregl-popup-content .registry {
+  font-size: 80%;
+  font-style: italic;
+}
+
+p.acknowledgement {
+  font-size: 80%;
+  font-style: italic;
+  padding-top: 3rem;
+}
+
+/* Map Offcanvas (mobile bottom sheet) */
+#map-offcanvas {
+  --bs-offcanvas-height: auto;
+  
+  max-height: 70vh;
+  min-height: 40vh;
+  border-top: 0.1rem solid rgb(204, 204, 204);
+  border-radius: 1rem 1rem 0 0;
+}
+
+#map-offcanvas .offcanvas-header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  border: none;
+  padding: 1rem;
+}
+
+#map-offcanvas .offcanvas-body {
+  padding: 2rem 1.5rem;
+}
+
+#map-offcanvas .card {
+  border: none;
+  box-shadow: none;
+}
+
+/* no useful filters currently */
+#filterToggle {
+    visibility: hidden
+}
+
+#filterContent {
+    visibility: hidden
+}

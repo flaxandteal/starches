@@ -99,7 +99,7 @@ function parseAssetUrlParams(): AssetUrlParams {
   if (!slug || slug !== slugify(slug)) {
     console.error("Bad slug");
   }
-  console.log("params", params)
+
   return {
     slug: slug || '',
     publicView: fullParam ? fullParam === "false" : params.default_show_full_asset ? params.default_show_full_asset === "false" : true
@@ -504,13 +504,11 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
 
 // Helper to inject sectioned HTML into the DOM
 function injectSections(sections: SectionedHtml): void {
-  console.log("Injecting Section")
   for (const [sectionId, html] of Object.entries(sections)) {
     const element = document.getElementById(sectionId);
     if (element) {
       element.innerHTML = html;
     } else {
-      console.log("Fallback section injection for", sectionId);
       // Fallback: if no matching element, append to 'asset' element
       const assetElement = document.getElementById('asset');
       if (assetElement) {
@@ -618,12 +616,21 @@ async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
       return;
     }
 
+    let caption = (await imageList._.captions.caption);
+    let copyright = (await imageList._.copyright.copyright_note.copyright_note_text);
+    if (copyright) {
+      if (!copyright.includes('©')) {
+        copyright = '© ' + copyright;
+      }
+      caption = [(caption || ""), copyright].join(" ");
+    }
+
     images.push({
       name: await image.name,
       previewUrl: (await imageList._.preview[0]?.url) ?? (await image.url),
       originalUrl: await image.url,
       alt: (await image._file && await image._file.alt_text) || (await image.name),
-      caption: (await imageList._.captions.caption) 
+      caption: caption
     });
   }));
 
@@ -744,9 +751,10 @@ async function buildImageDialogs(images: ImageRef[], assetTitle: string): Promis
   const dialogs: Record<string, Dialog> = {};
 
   for (const { image, index } of images) {
+    const isVideo = image.type && image.type.startsWith("video");
     dialogs[`image_${index}`] = {
       title: `<h3>Image for ${assetTitle}</h3>\n<h4>${await image.external_cross_reference}</h4>`,
-      body: `<img src='${image.url.__clean}' />`
+      body: isVideo ? `<video src='${image.url.__clean}' preload="none" muted />` : `<img src='${image.url.__clean}' />`
     };
   }
 
@@ -1026,13 +1034,15 @@ async function setupRegistryInfo(asset: Asset): Promise<void> {
         memberships.map(async (membership: any) => {
           const registry = await membership.record_or_registry;
           const json = await registry.forJson();
-          return `<li>${"Heritage Place"}</li>`;
+          return `<li>${json.meta.title}</li>`;
         })
       );
     }
     dfcRegistryElement.innerHTML = `<ul><li>${name}</li></ul>`;
+    //dfcRegistryElement.innerHTML = `<ul>${items.join("\n")}</ul>`;
   } else {
     dfcRegistryElement.innerHTML = `<ul><li>${name}</li></ul>`;
+    //dfcRegistryElement.innerHTML = `<ul><li>${asset.asset.__.wkrm.modelClassName}</li></ul>`;
   }
 }
 
@@ -1103,13 +1113,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const { slug, publicView } = parseAssetUrlParams();
   const asset = await assetManagerInstance.loadAssetFromUrl();
-  console.log("Asset meta:", asset.meta);
 
   // Run UI setup tasks concurrently where possible
   await Promise.all([
     assetManagerInstance.render(publicView),
-    // setupRegistryInfo(asset),
-    // setupBackLinks(slug)
+    setupRegistryInfo(asset),
+    setupBackLinks(slug)
   ]);
 
   // TODO: Make hardcoded check for Sketchfab to display 3D asset more flexible

@@ -164,7 +164,7 @@ export class customFilterPills extends FilterPills {
                     this.pushFilters();
                     
                     this.onFilterSelect?.(this.filter, val, val);
-                });
+                }, false);
             }
 
             // Append the new pill to the wrapper

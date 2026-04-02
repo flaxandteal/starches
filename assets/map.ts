@@ -67,7 +67,6 @@ async function resultFunction(map: TargetingMap, e: MapMouseEvent & { features?:
   }
 
   const feature = e.features[0];
-  console.log('Clicked feature:', feature);
   const title = feature.properties.title;
   const description = feature.properties.description;
   const excerpt = await marked.parse(description.trim());
@@ -885,6 +884,15 @@ class MapManager implements IMapManager {
 document.addEventListener('DOMContentLoaded', async (event) => {
   const mapManagerInstance = new MapManager();
   await mapManagerInstance.addMaps();
+
+  const resetLink = document.getElementById("reset-link") as HTMLElement;
+  if (resetLink) {
+    resetLink.addEventListener("click", (event) => {
+      // @ts-expect-error No resetView on window
+      window.resetView();
+      event.preventDefault();
+    });
+  }
   resolveMapManagerWith(mapManagerInstance);
 
   ensureFlatbushLoaded();
