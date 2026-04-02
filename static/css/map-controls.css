@@ -1,0 +1,78 @@
+/* Map control styles - moved from inline JavaScript to satisfy CSP */
+
+.basemap-switch-ctrl {
+    padding: 10px !important;
+    background: white !important;
+}
+
+.basemap-switch-ctrl label,
+.overlay-toggle-ctrl label {
+    display: block !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+
+.basemap-switch-ctrl input[type="radio"],
+.overlay-toggle-ctrl input[type="checkbox"] {
+    margin-right: 6px !important;
+}
+
+.overlay-toggle-ctrl {
+    padding: 10px !important;
+    background: white !important;
+}
+
+/* Draw control buttons in nav control - use mapbox-gl-draw icons */
+.maplibregl-ctrl-group .mapbox-gl-draw_polygon,
+.maplibregl-ctrl-group .mapbox-gl-draw_trash {
+    cursor: pointer;
+    position: relative;
+    width: 29px;
+    height: 29px;
+    background-size: 20px 20px;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Ensure buttons can anchor tooltips */
+.maplibregl-ctrl-group button {
+    position: relative;
+}
+
+/* CSS tooltips for all control buttons */
+.maplibregl-ctrl-group button[title]::after {
+    content: attr(title);
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.maplibregl-ctrl-group button[title]:hover::after {
+    opacity: 1;
+}
+
+.maplibregl-ctrl-group .mapbox-gl-draw_polygon.active {
+    background-color: #f6ab60;
+    filter: invert(1);
+    box-shadow: inset 0 0 0 2px rgba(9, 84, 159, 0.5);
+}
+
+.maplibregl-ctrl-group .mapbox-gl-draw_polygon.active:hover {
+    background-color: #f89027;
+}
+
+/* Crosshair cursor when drawing */
+.maplibregl-canvas-container.mode-draw_polygon {
+    cursor: crosshair;
+}
+
