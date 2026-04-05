@@ -11,7 +11,7 @@
     "@types/geojson": "^7946.0.16",
     "@types/leaflet": "^1.9.17",
     "@types/leaflet.markercluster": "^1.5.5",
-    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.49/alizarin-0.2.1-alpha.49.tgz",
+    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.55/alizarin-0.2.1-alpha.55.tgz",
     "dompurify": "^3.2.6",
     "flatbush": "^4.4.0",
     "flatgeobuf": "^4.0.1",
@@ -25,11 +25,11 @@
     "mapbox-gl-arcgis-featureserver": "^0.0.8",
     "marked": "^15.0.7",
     "marked-plaintify": "^1.1.1",
-    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.49/starches-builder-v2.0.0-alpha.49.tar.gz",
+    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.55/starches-builder-v2.0.0-alpha.55.tar.gz",
     "toml": "^3.0.0"
   },
   "name": "starches",
-  "version": "0.2.1-alpha.58",
+  "version": "0.2.1-alpha.59",
   "description": "Static Arches export for Coral",
   "main": "reindex.js",
   "directories": {
@@ -40,6 +40,8 @@
     "build": "dotenv -- tsc && vite build",
     "preview": "dotenv vite preview",
     "reindex": "dotenv -- bash -c 'rm -f prebuild/preindex/* docs/definitions/business_data/* && for data in prebuild/business_data/*; do echo DATA $data; dotenv -- node --loader ts-node/esm/transpile-only utils/preindex.ts $data; done && dotenv -- node --loader ts-node/esm/transpile-only utils/reindex.ts'",
+    "generate-icon-bundle": "node scripts/generate-icon-bundle.mjs",
+    "generate-wasm-fallback": "node scripts/generate-wasm-fallback.mjs",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage"
