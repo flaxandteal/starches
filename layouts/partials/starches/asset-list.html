@@ -24,7 +24,7 @@
 {{- end -}}
 
 <div id="demo-warning" class="js-hidden">
-  This is a front-end demo with full datasets - if you see this banner, potentially-sensitive data will be loaded, even it is not displayed (<a href="#" id="swap-link"></a>)
+ {{ i18n "frontend_demo" }} (<a href="#" id="swap-link" data-translation-public-view="{{ i18n "visit_public_view" }}" data-translation-full-view="{{ i18n "visit_full_view" }}"></a>)
 </div>
 
 <h1 id="asset-title"></h1>
@@ -46,5 +46,5 @@
   <div id="map-dialog__heading"></div>
   <div id="map-dialog__content"></div>
   <button class="govuk-button dialog-cancel" type="button" id="map-dialog__cancel"
-      onclick="document.getElementById('map-dialog').close()">Cancel</button>
+      onclick="document.getElementById('map-dialog').close()">{{ i18n "cancel" }}</button>
 </dialog>
