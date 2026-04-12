@@ -1,4 +1,5 @@
 import { Map as MLMap, Marker } from 'maplibre-gl';
+import { iconSvgBundle } from './map-icons-svg-bundle';
 
 /**
  * Heritage category to Material Icon mapping
@@ -19,6 +20,8 @@ export interface IconConfig {
 const _rootStyle = getComputedStyle(document.documentElement);
 const DEFAULT_MARKER_COLOR = _rootStyle.getPropertyValue('--map-marker-color').trim() || '#09549f';
 const DEFAULT_MARKER_ICON_COLOR = _rootStyle.getPropertyValue('--map-marker-icon-color').trim() || '#ffffff';
+const SELECTED_MARKER_COLOR = _rootStyle.getPropertyValue('--map-marker-selected-color').trim() || '#ffffff';
+const SELECTED_MARKER_ICON_COLOR = _rootStyle.getPropertyValue('--map-marker-selected-icon-color').trim() || '#09549f';
 
 /**
  * Cache for the base marker SVG from MapLibre
@@ -138,7 +141,14 @@ async function fetchMaterialIconSvg(iconName: string): Promise<string> {
     return svgCache.get(iconName)!;
   }
 
-  // Material Symbols URL format
+  // Check the build-time bundle (covers all default icons)
+  if (iconName in iconSvgBundle) {
+    const svg = iconSvgBundle[iconName];
+    svgCache.set(iconName, svg);
+    return svg;
+  }
+
+  // Network fallback for custom icons not in the bundle
   const url = `https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/${iconName}/default/24px.svg`;
 
   try {
@@ -304,6 +314,47 @@ export async function preloadCategoryIcons(
   return iconMap;
 }
 
+/** Suffix for selected icon variants */
+export const SELECTED_SUFFIX = '-selected';
+
+/** Name for the selected fallback marker */
+export const SELECTED_FALLBACK_MARKER_NAME = FALLBACK_MARKER_NAME + SELECTED_SUFFIX;
+
+/**
+ * Preload selected (white pin) variants of all category icons
+ */
+export async function preloadSelectedCategoryIcons(
+  map: MLMap,
+  config: IconConfig,
+  categories?: string[]
+): Promise<void> {
+  const categoriesToLoad = categories || Object.keys(config.categories);
+
+  // Selected fallback marker
+  await addFallbackMarker(map, config, SELECTED_MARKER_COLOR);
+  // Re-register under selected name (addFallbackMarker won't re-add if name exists, so use manual approach)
+  if (!map.hasImage(SELECTED_FALLBACK_MARKER_NAME)) {
+    const markerSvg = getMarkerSvg();
+    const plainSvg = createPlainMarkerSvg(markerSvg, SELECTED_MARKER_COLOR);
+    const img = await svgToImage(plainSvg, MARKER_WIDTH, MARKER_HEIGHT);
+    map.addImage(SELECTED_FALLBACK_MARKER_NAME, img);
+  }
+
+  await Promise.all(
+    categoriesToLoad.map(async (category) => {
+      const selectedName = getIconNameForCategory(category) + SELECTED_SUFFIX;
+      if (map.hasImage(selectedName)) return;
+
+      const categoryConfig = config.categories[category] || { icon: config.defaultIcon };
+      const markerSvg = getMarkerSvg();
+      const iconSvg = await fetchMaterialIconSvg(categoryConfig.icon);
+      const compositeSvg = createCompositeMarkerSvg(markerSvg, iconSvg, SELECTED_MARKER_COLOR, SELECTED_MARKER_ICON_COLOR);
+      const img = await svgToImage(compositeSvg, MARKER_WIDTH, MARKER_HEIGHT);
+      map.addImage(selectedName, img);
+    })
+  );
+}
+
 /**
  * Get the icon image name for a category
  * Returns the default if category not found
@@ -353,6 +404,25 @@ export function buildCategoryIconExpression(
   // Fallback icon if no match
   expression.push(fallbackIcon);
 
+  return expression;
+}
+
+/**
+ * Build a MapLibre expression for selected (white) category-based icon selection
+ */
+export function buildSelectedCategoryIconExpression(
+  config: IconConfig,
+  propertyName: string = 'category',
+  fallbackIcon: string = SELECTED_FALLBACK_MARKER_NAME
+): any[] {
+  const expression: any[] = ['match', ['get', propertyName]];
+
+  for (const category of Object.keys(config.categories)) {
+    expression.push(category);
+    expression.push(getIconNameForCategory(category) + SELECTED_SUFFIX);
+  }
+
+  expression.push(fallbackIcon);
   return expression;
 }
 

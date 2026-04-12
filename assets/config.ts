@@ -12,8 +12,29 @@ function makeDefaultConfiguration(): Partial<StarchesConfiguration> {
   };
 }
 
+// Hugo lowercases all frontmatter keys, so we need to normalize them back to camelCase
+const CONFIG_KEY_MAP: Record<string, string> = {
+  showgeolocatecontrol: 'showGeolocateControl',
+  changemaplayeronzoom: 'changeMapLayerOnZoom',
+  minsearchzoom: 'minSearchZoom',
+  minsearchlength: 'minSearchLength',
+  maxmappoints: 'maxMapPoints',
+  timetoshowloadingms: 'timeToShowLoadingMs',
+  hassearch: 'hasSearch',
+  allowsearchcontext: 'allowSearchContext',
+};
+
+function normalizeConfigKeys(obj: Record<string, any>): Partial<StarchesConfiguration> {
+  const normalized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    normalized[CONFIG_KEY_MAP[key.toLowerCase()] || key] = value;
+  }
+  return normalized;
+}
+
 function buildConfig() {
-  const base: Partial<StarchesConfiguration> = window.STARCHES_BASE_CONFIGURATION ? JSON.parse(window.STARCHES_BASE_CONFIGURATION) : {};
+  const raw: Record<string, any> = window.STARCHES_BASE_CONFIGURATION ? JSON.parse(window.STARCHES_BASE_CONFIGURATION) : {};
+  const base = normalizeConfigKeys(raw);
   const loadedConfiguration: StarchesConfiguration = {
     hasSearch: !!window.STARCHES_HAS_SEARCH,
     ...makeDefaultConfiguration(),

@@ -1,6 +1,4 @@
-import { utils } from 'alizarin/inline';
-// import { utils, setWasmURL } from 'alizarin';
-// setWasmURL('/wasm/alizarin_bg.wasm');
+import { utils } from './alizarin-loader';
 const { slugify } = utils;
 import { getConfig } from './managers';
 import { getFilters, getTerm, updateSearchParams, getSelectionPolygon } from './searchContext';

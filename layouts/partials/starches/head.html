@@ -1,3 +1,11 @@
+{{ if $.Site.Params.Ga4token }}
+<!-- Google Tag Manager -->
+{{ with resources.Get "gtm.js" | resources.ExecuteAsTemplate "js/gtm.js" $ }}
+<script src="{{ .RelPermalink }}"></script>
+{{ end }}
+<!-- End Google Tag Manager -->
+{{ end }}
+
 <script src="https://cdn.jsdelivr.net/npm/handlebars@4.7.8/dist/handlebars.runtime.min.js"></script>
 <script src="{{ "js/handlebars-helpers.js" | relURL }}"></script>
 <script src="{{ "js/precompiled-templates.js" | relURL }}"></script>

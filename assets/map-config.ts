@@ -8,9 +8,16 @@ export interface RasterBasemapConfig {
   attribution?: string;
 }
 
+export interface VectorTileSupplementConfig {
+  url: string;
+  sourceLayers: string[];
+}
+
 export interface ArcGISVectorBasemapConfig {
   type: 'arcgis-vector';
   url: string;
+  labelUrl?: string;
+  supplements?: VectorTileSupplementConfig[];
   attribution?: string;
 }
 

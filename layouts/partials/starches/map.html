@@ -23,6 +23,9 @@
 {{- .Page.Store.Set "notice-style-loaded-flag" true -}}
 {{- end -}}
 <div id="map-row">
+{{ with .Params.starches_config }}
+    <script>window.STARCHES_BASE_CONFIGURATION = '{{ . | jsonify }}';</script>
+{{ end }}
 {{ if .Params.includeSearch }}
     <script>window.STARCHES_HAS_SEARCH = true;</script>
     <div id="search-column">

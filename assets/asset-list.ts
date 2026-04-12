@@ -1,4 +1,4 @@
-import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, wasmReady, slugify } from 'alizarin/inline';
+import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, wasmReady, slugify } from './alizarin-loader';
 import { debug } from './debug';
 import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './managers';
 

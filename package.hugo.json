@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.55/alizarin-0.2.1-alpha.55.tgz",
+    "@alizarin/clm": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.55/alizarin-clm-0.2.1-alpha.55.tgz",
+    "@alizarin/filelist": "https://github.com/flaxandteal/alizarin/releases/download/v0.2.1-alpha.55/alizarin-filelist-0.2.1-alpha.55.tgz",
+    "marked": "^15.0.7",
+    "handlebars": "^4.7.8",
+    "flatgeobuf": "^4.0.1",
+    "geojson": "^0.5.0"
+  }
+}

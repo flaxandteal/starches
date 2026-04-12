@@ -2,11 +2,7 @@ import { marked, Token, Tokens } from 'marked';
 import * as params from '@params';
 import * as Handlebars from 'handlebars';
 import { Map as MLMap } from 'maplibre-gl';
-import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, renderers, wasmReady, slugify } from 'alizarin/inline';
-// import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, renderers, wasmReady, slugify, setWasmURL } from 'alizarin';
-// setWasmURL('/wasm/alizarin_bg.wasm');
-import '@alizarin/filelist'; // Registers file-list type (images)
-import '@alizarin/clm'; // Registers reference type
+import { AlizarinModel, client, RDM, graphManager, staticStore, staticTypes, viewModels, renderers, wasmReady, slugify } from './alizarin-loader';
 import { addMarkerImage } from 'map-tools';
 import {
   getNavigation,
@@ -543,6 +539,7 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
 
   const nodeObjectsByAlias = asset.asset.__.getNodeObjectsByAlias();
   treegridElt.data = { listItems: markdown, nodeObjectsByAlias };
+  addAssetToMap(asset);
 
   return buildImageDialogs([], asset.meta.title);
 }
@@ -763,6 +760,7 @@ async function buildImageDialogs(images: ImageRef[], assetTitle: string): Promis
 
 function addAssetToMap(asset: Asset) {
   const location = asset.meta.location;
+  console.log('render asset', asset, location);
   if (location) {
     const centre = location;
     const zoom = 16;

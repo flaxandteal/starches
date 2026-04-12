@@ -193,6 +193,8 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
                     }
                     const location = JSON.parse(locationStr);
                     window.map.flyTo({ center: location, zoom: 14 });
+                    // @ts-expect-error selectFeatureAtCoordinates attached in map.ts
+                    window.selectFeatureAtCoordinates?.(location[0], location[1]);
                 }
             }
         });

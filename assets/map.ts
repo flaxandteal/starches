@@ -26,7 +26,7 @@ import { ensureFlatbushLoaded, FlatbushManager } from './fbwrapper';
 import { getFlatbushManager, getMap, getSearchManager, resolvePrimaryMapWith, resolveMapManagerWith, IMapManager, ILayerManager } from './managers';
 import { loadTemplate } from './handlebar-utils';
 import { debug, debugWarn } from './debug';
-import { buildIconConfig, preloadCategoryIcons, IconConfig, buildCategoryIconExpression } from './map-icons';
+import { buildIconConfig, preloadCategoryIcons, preloadSelectedCategoryIcons, IconConfig, buildCategoryIconExpression, buildSelectedCategoryIconExpression } from './map-icons';
 import { marked } from 'marked';
 
 // Read map layer styles from CSS custom properties (defined in map.css)
@@ -60,6 +60,39 @@ declare global {
 
 type TargetingMap = MLMap & { targeting?: number[] | boolean; resetViewControl?: ResetViewControl };
 
+const SELECTED_SOURCE = 'assets-selected';
+const SELECTED_LAYER = 'assets-selected';
+
+/** Update the selected-feature layer with a single feature (or clear it) */
+function selectFeature(map: MLMap, feature?: GeoJSON.Feature | null) {
+  const source = map.getSource(SELECTED_SOURCE);
+  if (!source || !('setData' in source)) return;
+  (source as any).setData({
+    type: 'FeatureCollection',
+    features: feature ? [feature] : []
+  });
+}
+
+/** Select the nearest asset feature at the given coordinates */
+function selectFeatureAtCoordinates(map: MLMap, lng: number, lat: number) {
+  const source = map.getSource('assets');
+  if (!source || !('_data' in source)) return;
+  const data = (source as any)._data as FeatureCollection;
+  if (!data?.features) return;
+
+  let best: GeoJSON.Feature | null = null;
+  let bestDist = Infinity;
+  for (const f of data.features) {
+    if (f.geometry.type !== 'Point') continue;
+    const [fLng, fLat] = (f.geometry as GeoJSON.Point).coordinates;
+    const d = (fLng - lng) ** 2 + (fLat - lat) ** 2;
+    if (d < bestDist) { bestDist = d; best = f; }
+  }
+  if (best && bestDist < 0.0001) {
+    selectFeature(map, best);
+  }
+}
+
 async function resultFunction(map: TargetingMap, e: MapMouseEvent & { features?: any[] }) {
   if (!e.features || e.features.length === 0) {
     console.warn('No features found at click location');
@@ -67,6 +100,7 @@ async function resultFunction(map: TargetingMap, e: MapMouseEvent & { features?:
   }
 
   const feature = e.features[0];
+  selectFeature(map, feature);
   const title = feature.properties.title;
   const description = feature.properties.description;
   const excerpt = await marked.parse(description.trim());
@@ -185,6 +219,9 @@ class ResetViewControl extends NavigationControl {
     if (source && 'setData' in source) {
       (source as any).setData({ type: 'FeatureCollection', features: [] });
     }
+
+    // Clear selected feature
+    selectFeature(this._map, null);
 
     // Clear selection polygon
     this.clearDraw();
@@ -595,6 +632,8 @@ class MapManager implements IMapManager {
 
     // @ts-expect-error No resetView on window
     window.resetView = resetViewControl.resetView.bind(resetViewControl);
+    // @ts-expect-error No selectFeatureAtCoordinates on window
+    window.selectFeatureAtCoordinates = (lng: number, lat: number) => selectFeatureAtCoordinates(map, lng, lat);
     map.resetViewControl = resetViewControl;
 
     // Add polygon draw control (no default UI - we use custom buttons)
@@ -732,7 +771,9 @@ class MapManager implements IMapManager {
 
     // Preload category icons for heritage assets
     // Icons are loaded from Google Material Symbols
-    preloadCategoryIcons(map, iconConfig).catch(e => {
+    preloadCategoryIcons(map, iconConfig).then(() =>
+      preloadSelectedCategoryIcons(map, iconConfig)
+    ).catch(e => {
       debugWarn('Failed to preload category icons:', e);
     });
 
@@ -776,6 +817,25 @@ class MapManager implements IMapManager {
       'layout': {
         // Use category-based icons if available, fallback to default marker
         'icon-image': buildCategoryIconExpression(iconConfig, 'category'),
+        'icon-allow-overlap': true,
+        'text-allow-overlap': true,
+        'text-offset': [cssNum('--map-asset-text-offset-x', 0), cssNum('--map-asset-text-offset-y', 1.25)],
+        'text-anchor': 'top'
+      },
+      'filter': ['==', '$type', 'Point']
+    });
+
+    // Selected feature overlay (white pin variant)
+    map.addSource(SELECTED_SOURCE, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+    map.addLayer({
+      'id': SELECTED_LAYER,
+      'type': 'symbol',
+      'source': SELECTED_SOURCE,
+      'layout': {
+        'icon-image': buildSelectedCategoryIconExpression(iconConfig, 'category'),
         'icon-allow-overlap': true,
         'text-allow-overlap': true,
         'text-offset': [cssNum('--map-asset-text-offset-x', 0), cssNum('--map-asset-text-offset-y', 1.25)],

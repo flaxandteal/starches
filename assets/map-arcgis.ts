@@ -32,9 +32,12 @@ function isBinaryRequest(url: string): boolean {
   return BINARY_EXTENSIONS.some(ext => urlLower.includes(ext));
 }
 
-// ArcGIS-specific request transformation
+// ArcGIS-specific request transformation.
+// ArcGIS server returns HTML by default — f=json forces JSON responses.
+// Binary requests (.pbf, .png, etc.) are excluded; JSON endpoints like
+// VectorTileServer root (TileJSON), style JSON, and sprite JSON all
+// tolerate f=json harmlessly.
 function transformRequest(url: string, resourceType: string) {
-  // ArcGIS server returns HTML by default - add f=json for JSON responses
   if (isArcGISRestUrl(url) && !url.includes('f=json') && !isBinaryRequest(url)) {
     const separator = url.includes('?') ? '&' : '?';
     return { url: url + separator + 'f=json' };
@@ -67,6 +70,88 @@ export class ArcGISVectorBasemapLoader implements IBasemapLoader {
       // Capture layer IDs added by the basemap
       const allLayers = map.getStyle().layers.map(l => l.id);
       const addedLayerIds = allLayers.filter(id => !layersBefore.has(id));
+
+      // Load supplementary vector tile sources (e.g. roads/buildings from another tileset)
+      if (arcgisConfig.supplements) {
+        for (let i = 0; i < arcgisConfig.supplements.length; i++) {
+          const supp = arcgisConfig.supplements[i];
+          try {
+            const suppLayer = await VectorTileLayer.fromUrl(supp.url);
+
+            // Rename sources to avoid collision with base layer
+            for (const srcId of Object.keys(suppLayer.sources)) {
+              suppLayer.setSourceId(srcId, `${basemapId}-supp${i}-${srcId}`);
+            }
+
+            // Add tile sources only (not layers — we'll cherry-pick)
+            suppLayer.addSourcesTo(map);
+
+            const renamedSourceId = Object.keys(suppLayer.sources)[0];
+            const matchedSourceLayers = new Set<string>();
+
+            // Add style layers that reference configured source-layers (skip symbol/text layers)
+            for (const layer of suppLayer.layers as any[]) {
+              if (layer['source-layer'] && layer.type !== 'symbol' && supp.sourceLayers.includes(layer['source-layer'])) {
+                map.addLayer({ ...layer });
+                addedLayerIds.push(layer.id);
+                matchedSourceLayers.add(layer['source-layer']);
+              }
+            }
+
+            // Add fallback layers for source-layers with no matching style
+            // (e.g. tile data uses a different name than the style references)
+            for (const sl of supp.sourceLayers) {
+              if (!matchedSourceLayers.has(sl)) {
+                const fallbackId = `${basemapId}-supp${i}-${sl}`;
+                map.addLayer({
+                  id: fallbackId,
+                  type: 'fill',
+                  source: renamedSourceId,
+                  'source-layer': sl,
+                  paint: {
+                    'fill-color': 'rgba(230,230,230,0.8)',
+                    'fill-outline-color': '#CCCCCC'
+                  }
+                });
+                addedLayerIds.push(fallbackId);
+              }
+            }
+          } catch (e) {
+            console.warn(`Failed to load supplement ${i} for basemap ${basemapId}:`, e);
+          }
+        }
+      }
+
+      // Load label overlay if configured
+      if (arcgisConfig.labelUrl) {
+        try {
+          const layersBeforeLabels = new Set(map.getStyle().layers.map(l => l.id));
+          const labelLayer = await VectorTileLayer.fromUrl(arcgisConfig.labelUrl);
+
+          // Rename source IDs to avoid collision with the base layer (both use "esri")
+          for (const sourceId of Object.keys(labelLayer.sources)) {
+            labelLayer.setSourceId(sourceId, `${basemapId}-labels-${sourceId}`);
+          }
+
+          labelLayer.addSourcesAndLayersTo(map);
+
+          // Capture label layer IDs and restyle for light background
+          const allLayersAfterLabels = map.getStyle().layers.map(l => l.id);
+          const labelLayerIds = allLayersAfterLabels.filter(id => !layersBeforeLabels.has(id));
+
+          for (const layerId of labelLayerIds) {
+            const layer = map.getLayer(layerId);
+            if (layer && layer.type === 'symbol') {
+              map.setPaintProperty(layerId, 'text-color', '#333333');
+              map.setPaintProperty(layerId, 'text-halo-color', 'rgba(255,255,255,0.85)');
+            }
+          }
+
+          addedLayerIds.push(...labelLayerIds);
+        } catch (e) {
+          console.warn(`Failed to load label layer for basemap ${basemapId}:`, e);
+        }
+      }
 
       // Get source IDs from the added layers
       const sourceIds = new Set<string>();
