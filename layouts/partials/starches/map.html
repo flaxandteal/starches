@@ -4,6 +4,9 @@
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
 <link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
 
+{{ partial "starches/pagefind-wasm-fallback.html" . }}
+{{ partial "starches/csp-actions.html" . }}
+
 {{ $baseAssets := (slice "map.ts" "search.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
@@ -24,13 +27,13 @@
 {{- end -}}
 <div id="map-row">
 {{ with .Params.starches_config }}
-    <script>window.STARCHES_BASE_CONFIGURATION = '{{ . | jsonify }}';</script>
+    <div id="starches-base-configuration" data-config="{{ . | jsonify | htmlEscape }}" hidden></div>
 {{ end }}
 {{ if .Params.includeSearch }}
-    <script>window.STARCHES_HAS_SEARCH = true;</script>
+    <div id="starches-has-search" hidden></div>
     <div id="search-column">
         <div id="search"></div>
-        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
+        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="#" data-action="reset-view">reset</a> view to see all results</div>
         <div id="result-count" class="result-count"></div>
         <div id="instructions">
             <p>Search above to find assets.</p>
@@ -43,7 +46,7 @@
 
 {{ end }}
     <div id="map-column">
-        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="javascript:resetView()">reset</a> view to see all results</div>
+        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="#" data-action="reset-view">reset</a> view to see all results</div>
         <div id="map-container">
 {{ if .Params.includeSearch }}
             <div id="map-cover">

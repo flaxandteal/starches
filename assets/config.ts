@@ -33,10 +33,15 @@ function normalizeConfigKeys(obj: Record<string, any>): Partial<StarchesConfigur
 }
 
 function buildConfig() {
-  const raw: Record<string, any> = window.STARCHES_BASE_CONFIGURATION ? JSON.parse(window.STARCHES_BASE_CONFIGURATION) : {};
+  const configEl = document.getElementById('starches-base-configuration');
+  const configData = configEl?.getAttribute('data-config') || '';
+  const raw: Record<string, any> = configData ? JSON.parse(configData) : (
+    window.STARCHES_BASE_CONFIGURATION ? JSON.parse(window.STARCHES_BASE_CONFIGURATION) : {}
+  );
   const base = normalizeConfigKeys(raw);
+  const hasSearch = !!document.getElementById('starches-has-search') || !!window.STARCHES_HAS_SEARCH;
   const loadedConfiguration: StarchesConfiguration = {
-    hasSearch: !!window.STARCHES_HAS_SEARCH,
+    hasSearch,
     ...makeDefaultConfiguration(),
     ...base
   };

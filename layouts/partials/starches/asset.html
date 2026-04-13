@@ -4,6 +4,9 @@
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
 <link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
 
+{{ partial "starches/pagefind-wasm-fallback.html" . }}
+{{ partial "starches/csp-actions.html" . }}
+
 {{ $baseAssets := (slice "asset.ts" "search.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
@@ -30,7 +33,7 @@
 <div class="navigation-container">
   <div class="nav-back">
     <a href="{{ site.BaseURL }}" class="govuk-button govuk-button--secondary back-link">Return to Search</a>
-    <button class="govuk-button govuk-button--secondary" data-module="govuk-button" onclick="navigator.clipboard.writeText(document.location.href)">
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button" data-action="copy-link">
       Copy link
     </button>
   </div>
@@ -76,7 +79,7 @@
 <div id="asset-dialog__content"></div>
 
 <button class="govuk-button dialog-cancel" type="button" id="asset-dialog__cancel"
-    onclick="document.getElementById('asset-dialog').close()">Cancel</button>
+    data-action="close-dialog" data-target="asset-dialog">Cancel</button>
 </dialog>
 
 <div id="legacy-record-container">

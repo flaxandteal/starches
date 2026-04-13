@@ -1,0 +1,15 @@
+{{/*
+  CSP-compliant event delegation for data-action attributes.
+  Replaces inline onclick handlers and javascript: URLs.
+  Include once per page.
+*/}}
+{{- if not (.Page.Store.Get "csp-actions-loaded") -}}
+{{- $js := resources.Get "csp-actions.ts" -}}
+{{- $opts := dict "minify" hugo.IsProduction "target" "es2020" -}}
+{{- $js = $js | js.Build $opts -}}
+{{- if hugo.IsProduction -}}
+  {{- $js = $js | fingerprint -}}
+{{- end -}}
+<script src="{{ $js.RelPermalink }}"{{ if hugo.IsProduction }} integrity="{{ $js.Data.Integrity }}"{{ end }}></script>
+{{- .Page.Store.Set "csp-actions-loaded" true -}}
+{{- end -}}

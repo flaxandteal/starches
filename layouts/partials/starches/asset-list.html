@@ -4,6 +4,9 @@
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
 <link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
 
+{{ partial "starches/pagefind-wasm-fallback.html" . }}
+{{ partial "starches/csp-actions.html" . }}
+
 {{ $baseAssets := (slice "asset-list.ts" "search.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
@@ -46,5 +49,5 @@
   <div id="map-dialog__heading"></div>
   <div id="map-dialog__content"></div>
   <button class="govuk-button dialog-cancel" type="button" id="map-dialog__cancel"
-      onclick="document.getElementById('map-dialog').close()">Cancel</button>
+      data-action="close-dialog" data-target="map-dialog">Cancel</button>
 </dialog>

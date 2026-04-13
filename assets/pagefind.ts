@@ -187,14 +187,28 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
             if (viewButton) {
                 event.preventDefault();
                 let locationStr = viewButton.getAttribute('data-location');
+                console.log('[view-on-map] clicked, locationStr:', locationStr, 'map:', !!window.map);
                 if (locationStr && window.map) {
                     if (!locationStr.includes("[")) {
                         locationStr = `[${locationStr}]`;
                     }
                     const location = JSON.parse(locationStr);
-                    window.map.flyTo({ center: location, zoom: 14 });
+                    console.log('[view-on-map] parsed location:', location);
+                    // Highlight immediately so the pin glows while the camera animates,
+                    // then defer the popup to moveend so it lands when the map has settled.
                     // @ts-expect-error selectFeatureAtCoordinates attached in map.ts
-                    window.selectFeatureAtCoordinates?.(location[0], location[1]);
+                    const feature = window.selectFeatureAtCoordinates?.(location[0], location[1]);
+                    console.log('[view-on-map] feature:', feature);
+                    console.log('[view-on-map] showFeaturePopup available:', typeof window.showFeaturePopup);
+                    window.map.once('moveend', async () => {
+                        console.log('[view-on-map] moveend fired, feature:', !!feature);
+                        if (feature) {
+                            // @ts-expect-error showFeaturePopup attached in map.ts
+                            await window.showFeaturePopup?.(feature);
+                            console.log('[view-on-map] showFeaturePopup called');
+                        }
+                    });
+                    window.map.flyTo({ center: location, zoom: 14 });
                 }
             }
         });

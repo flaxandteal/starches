@@ -73,12 +73,12 @@ function selectFeature(map: MLMap, feature?: GeoJSON.Feature | null) {
   });
 }
 
-/** Select the nearest asset feature at the given coordinates */
-function selectFeatureAtCoordinates(map: MLMap, lng: number, lat: number) {
+/** Select the nearest asset feature at the given coordinates and return it. */
+function selectFeatureAtCoordinates(map: MLMap, lng: number, lat: number): GeoJSON.Feature | null {
   const source = map.getSource('assets');
-  if (!source || !('_data' in source)) return;
+  if (!source || !('_data' in source)) return null;
   const data = (source as any)._data as FeatureCollection;
-  if (!data?.features) return;
+  if (!data?.features) return null;
 
   let best: GeoJSON.Feature | null = null;
   let bestDist = Infinity;
@@ -90,6 +90,45 @@ function selectFeatureAtCoordinates(map: MLMap, lng: number, lat: number) {
   }
   if (best && bestDist < 0.0001) {
     selectFeature(map, best);
+    return best;
+  }
+  return null;
+}
+
+/**
+ * Render the dialog/offcanvas/popup for a feature without any click event context.
+ * Used by resultFunction (click on map) and by the pagefind "view on map" flow,
+ * which fires this after a programmatic flyTo settles.
+ */
+async function showFeaturePopup(map: TargetingMap, feature: GeoJSON.Feature | null) {
+  if (!feature || feature.geometry.type !== 'Point') return;
+  const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+  const props = (feature.properties || {}) as Record<string, unknown>;
+  const title = props.title as string | undefined;
+  const description = (props.description as string | undefined) || '';
+  const excerpt = await marked.parse(description.trim());
+
+  const mapDialogTemplate = await mapDialogTemplatePromise;
+  if (typeof mapDialogTemplate !== 'function') {
+    console.error('Map dialog template failed to load');
+    return;
+  }
+  const url = (props.url as string | undefined) || '#';
+  const renderedHtml = mapDialogTemplate({ title, excerpt, location: coordinates, url });
+
+  if (isTouch()) {
+    const offcanvasContent = document.getElementById("map-offcanvas__content");
+    if (offcanvasContent) offcanvasContent.innerHTML = renderedHtml;
+    const offcanvasEl = document.getElementById("map-offcanvas");
+    if (offcanvasEl) {
+      const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+      offcanvas.show();
+    }
+  } else {
+    new Popup({ maxWidth: '320px' })
+      .setLngLat(coordinates)
+      .setHTML(renderedHtml)
+      .addTo(window.map);
   }
 }
 
@@ -634,6 +673,8 @@ class MapManager implements IMapManager {
     window.resetView = resetViewControl.resetView.bind(resetViewControl);
     // @ts-expect-error No selectFeatureAtCoordinates on window
     window.selectFeatureAtCoordinates = (lng: number, lat: number) => selectFeatureAtCoordinates(map, lng, lat);
+    // @ts-expect-error No showFeaturePopup on window
+    window.showFeaturePopup = (feature: GeoJSON.Feature) => showFeaturePopup(map, feature);
     map.resetViewControl = resetViewControl;
 
     // Add polygon draw control (no default UI - we use custom buttons)

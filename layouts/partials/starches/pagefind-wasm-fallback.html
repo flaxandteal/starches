@@ -1,0 +1,25 @@
+{{/*
+  Pagefind WASM Fallback Interceptor
+  ===================================
+  Wraps window.fetch so that pagefind's wasm.*.pagefind requests
+  fall back to a base64-encoded .txt file when the original request
+  fails (e.g. corporate firewall blocking binary / unknown extensions).
+
+  Projects must generate the .txt fallbacks after pagefind runs:
+    for f in docs/pagefind/wasm.*.pagefind; do
+      base64 -w0 "$f" > "${f}.txt"
+    done
+
+  Include this partial BEFORE any <script> tags that load pagefind.
+  Uses an external script (not inline) for CSP compatibility.
+*/}}
+{{- if not (.Page.Store.Get "pagefind-wasm-fallback-loaded") -}}
+{{- $js := resources.Get "pagefind-wasm-fallback.ts" -}}
+{{- $opts := dict "minify" hugo.IsProduction "target" "es2020" -}}
+{{- $js = $js | js.Build $opts -}}
+{{- if hugo.IsProduction -}}
+  {{- $js = $js | fingerprint -}}
+{{- end -}}
+<script src="{{ $js.RelPermalink }}"{{ if hugo.IsProduction }} integrity="{{ $js.Data.Integrity }}"{{ end }}></script>
+{{- .Page.Store.Set "pagefind-wasm-fallback-loaded" true -}}
+{{- end -}}
