@@ -21,6 +21,11 @@
   cursor: default;
 }
 
+#treegrid td .cell-content {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
 #treegrid tbody tr:nth-child(odd) { background-color: #eeeeee; }
 #treegrid tbody tr:nth-child(even) { background-color: #f4f4f4; }
 

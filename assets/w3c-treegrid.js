@@ -118,7 +118,7 @@ class TreeGrid extends HTMLElement {
               aria-posinset="${posInSet}"
               aria-setsize="${setSize}"${hidden ? ' class="hidden"' : ''}>
             <td role="gridcell">${this._esc(node.name)}</td>
-            <td role="gridcell">${value != null ? await marked.parse(`${value}`) : '<em>(empty)</em>'}</td>
+            <td role="gridcell"><div class="cell-content">${value != null ? await marked.parse(`${value}`) : '<em>(empty)</em>'}</div></td>
             <td role="gridcell">${this._esc(node.alias)}</td>
             <td role="gridcell">${this._esc(node.datatype)}</td>
           </tr>`;
@@ -151,7 +151,7 @@ class TreeGrid extends HTMLElement {
                   aria-setsize="${value.length}"${hideChildren ? ' class="hidden"' : ''}
                   ${nested ? `aria-expanded="${!hideChildren}"` : ''}>
                 <td role="gridcell">[ ${m + 1} / ${value.length} ]</td>
-                <td role="gridcell">${nested ? '' : await marked.parse(String(value[m]))}</td>
+                <td role="gridcell">${nested ? '' : `<div class="cell-content">${await marked.parse(String(value[m]))}</div>`}</td>
                 <td role="gridcell">${this._esc(node.alias)}</td>
                 <td role="gridcell">${this._esc(node.datatype)}</td>
               </tr>`;
