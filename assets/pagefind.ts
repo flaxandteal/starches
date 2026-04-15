@@ -7,6 +7,54 @@ import { makeSearchQuery, updateSearchParams } from "./searchContext";
 import { getConfig } from './managers';
 import { renderFilters, addActiveFilter } from "./map-ui";
 
+// Enterprise proxies (Zscaler, TrustWave) block pagefind's gzip-compressed
+// binary files (.pf_meta, .pf_fragment, .pf_index, .pf_filter, .pagefind).
+// Zscaler returns HTTP 200 with an HTML block page instead of the binary,
+// so we can't rely on response.ok - we detect the block via Content-Type.
+//
+// When a block is detected, we retry with a .txt sidecar (base64-encoded
+// version of the same file, generated at build time by `npm run pagefind:fallback`).
+// The decoded bytes are returned as a synthetic Response so pagefind's
+// decompression pipeline works unchanged. A nicer approach would gate this on
+// a setting at build-time.
+const PAGEFIND_BINARY_RE = /\.(pf_meta|pf_fragment|pf_index|pf_filter|pagefind)$/;
+const _originalFetch = window.fetch;
+window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const response = await _originalFetch(input, init);
+
+    if (!PAGEFIND_BINARY_RE.test(url)) return response;
+
+    // Detect two failure modes:
+    // 1. Zscaler proxy block: HTTP 200 with text/html body (block page)
+    // 2. Missing file: HTTP 404 (nginx returns application/gzip content-type
+    //    due to the location block's `default_type`, so we can't rely on
+    //    content-type alone — check response.ok instead)
+    const ct = response.headers.get('content-type') || '';
+    if (response.ok && !ct.includes('text/html')) return response;
+
+    // Blocked or missing — try base64 .txt fallback
+    console.warn(`[pagefind-proxy] ${url} returned ${response.status} (likely proxy block or missing), trying .txt fallback`);
+    try {
+        const txtResponse = await _originalFetch(url + '.txt', init);
+        const txtCt = txtResponse.headers.get('content-type') || '';
+        if (!txtResponse.ok || txtCt.includes('text/html')) {
+            console.error(`[pagefind-proxy] .txt fallback for ${url} also failed`);
+            return response;
+        }
+        const b64 = (await txtResponse.text()).trim();
+        const binary = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        return new Response(binary.buffer, {
+            status: 200,
+            statusText: 'OK',
+            headers: { 'Content-Type': 'application/octet-stream' },
+        });
+    } catch (e) {
+        console.error(`[pagefind-proxy] .txt fallback failed for ${url}:`, e);
+        return response;
+    }
+};
+
 /**
  * Get a precompiled Handlebars template
  * @param templateName - The name of the precompiled template
