@@ -407,39 +407,29 @@ export async function getTerm(): Promise<string | undefined> {
 }
 
 export async function makeSearchQuery(url: string, searchParams?: SearchParams) {
-  let term;
-  let geoBounds;
-  let filters;
   if (!searchParams) {
     searchParams = await getSearchParams();
   }
 
-  let fullUrl = url;
-  if (url.includes("?")) {
-    fullUrl += "&";
-  } else {
-    fullUrl += "/?";
-  }
-
-  const params = new URLSearchParams();
+  const urlObj = new URL(url, window.location.origin);
 
   if (searchParams.searchTerm) {
-    params.set('searchTerm', searchParams.searchTerm);
+    urlObj.searchParams.set('searchTerm', searchParams.searchTerm);
   }
-  
+
   if (searchParams.geoBounds) {
-    params.set('geoBounds', JSON.stringify(searchParams.geoBounds));
+    urlObj.searchParams.set('geoBounds', JSON.stringify(searchParams.geoBounds));
   }
-  
+
   if (searchParams.searchFilters) {
-    params.set('searchFilters', JSON.stringify(searchParams.searchFilters));
+    urlObj.searchParams.set('searchFilters', JSON.stringify(searchParams.searchFilters));
   }
 
   if (searchParams.selectionPolygon) {
-    params.set('selectionPolygon', JSON.stringify(searchParams.selectionPolygon));
+    urlObj.searchParams.set('selectionPolygon', JSON.stringify(searchParams.selectionPolygon));
   }
 
-  return `${fullUrl}${params.toString()}`;
+  return urlObj.pathname + urlObj.search;
 }
 
 window.addEventListener('DOMContentLoaded', async (event) => {
