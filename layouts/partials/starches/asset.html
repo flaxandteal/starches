@@ -3,6 +3,7 @@
 <link rel="stylesheet" href="{{ "css/map.css" | absURL }}">
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
 <link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
+<link rel="stylesheet" href="{{ "css/custom.css" | absURL }}">
 
 {{ partial "starches/pagefind-wasm-fallback.html" . }}
 {{ partial "starches/csp-actions.html" . }}
@@ -10,7 +11,7 @@
 {{ $baseAssets := (slice "asset.ts" "search.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
-{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction "default_show_full_asset" site.Params.default_show_full_asset ) }}
+{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction "default_show_full_asset" site.Params.default_show_full_asset "ros_madair" site.Params.ros_madair ) }}
 {{ $sourceMap := cond hugo.IsProduction "" "inline" }}
 {{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2022" "params" $params }}
 {{ $js = $js | js.Build $opts }}
@@ -71,6 +72,9 @@
 </div>
 
 <div id="asset">
+</div>
+
+<div id="resource-relations" hidden>
 </div>
 
 <dialog id="asset-dialog" aria-labelledby="asset-dialog__heading">

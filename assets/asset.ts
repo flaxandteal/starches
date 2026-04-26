@@ -13,6 +13,7 @@ import {
   makeSearchQuery
 } from './searchContext';
 import { debug, debugError } from './debug';
+import { loadAndRenderRelations } from './relations';
 import { IAssetManager, AssetMetadata, resolveAssetManagerWith } from './managers';
 import { loadTemplate, getPrecompiledTemplate } from 'handlebar-utils';
 import { initSwiper, ImageInput, ImageSet } from 'swiper';
@@ -927,6 +928,10 @@ class AssetManager implements IAssetManager {
   getAsset(): Asset | null {
     return this.asset;
   }
+
+  getGraphManager(): typeof graphManager | null {
+    return this.graphManager;
+  }
 }
 
 // Navigation setup
@@ -1135,9 +1140,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   ]);
 
   // TODO: Make hardcoded check for Sketchfab to display 3D asset more flexible
-  for (const ecr of await asset.asset.external_cross_references || []) {
-    if (await ecr.external_cross_reference_source == "Sketchfab") {
-      document.getElementById('sketchfab-viewer')?.classList.remove('hidden');
+  if (await asset.asset.__has('external_cross_references')) {
+    for (const ecr of await asset.asset.external_cross_references || []) {
+      if (await ecr.external_cross_reference_source == "Sketchfab") {
+        document.getElementById('sketchfab-viewer')?.classList.remove('hidden');
+      }
     }
   }
 
@@ -1159,6 +1166,28 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupDemoWarning(asset, publicView, !!legacyRecord);
 
   formatTimeElements();
+
+  // Load resource relations via Ros Madair (progressive enhancement)
+  if (params.ros_madair) {
+    loadAndRenderRelations(asset.meta.resourceinstanceid, {
+      wasmModule: params.ros_madair.wasm_module,
+      indexBaseUrl: params.ros_madair.index_base_url,
+      rdfBaseUri: params.ros_madair.rdf_base_uri,
+      onMetaDiscovered: (resources) => {
+        for (const r of resources) {
+          try {
+            const summary = new staticTypes.StaticResourceSummary({
+              resourceinstanceid: r.id,
+              graph_id: r.graphId,
+              name: r.name,
+              descriptors: { name: r.name, slug: r.slug },
+            });
+            staticStore.registry.insert(summary);
+          } catch { /* skip if summary creation fails */ }
+        }
+      },
+    });
+  }
 
   // Navigation setup with slight delay for localStorage availability
   setTimeout(() => setupAssetNavigation(slug), 100);

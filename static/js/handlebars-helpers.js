@@ -11,7 +11,7 @@
     return;
   }
 
-  Handlebars.registerHelper("pointToCoords", (point) => point.features[0].geometry.coordinates.map((c) => (c.toFixed(8))).join(", "));
+  Handlebars.registerHelper("pointToCoords", (point) => point.features[0].geometry.coordinates.map((c) => (c.toFixed(8))).reverse().join(", "));
   Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replaceAll(fm, to) : base);
   Handlebars.registerHelper("nl", (base, nl) => base ? base.replaceAll("\n", nl) : base);
   Handlebars.registerHelper("plus", (a, b) => a + b);
