@@ -44,7 +44,7 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
       resultCount.innerHTML = "";
   }
   const visibleIds = new Set(fg.features.map(marker => marker.properties.slug).filter(marker => marker));
-  return Promise.all(results.results.slice(0, config.maxMapPoints).map(r => {
+  return Promise.all((results.results || []).slice(0, config.maxMapPoints).map(r => {
       let data = null;
       try {
           data = r.data().then(async re => {
@@ -353,7 +353,7 @@ class SearchManager {
     // Ensure we have an independent copy
     this.lastFilters = JSON.parse(JSON.stringify(settings && settings.filters));
     results.context = {term, settings};
-    results.results = results.results.slice(0, config.maxMapPoints);
+    results.results = (results.results || []).slice(0, config.maxMapPoints);
     results.geofilteredResultCount = results.results.length;
     return results;
   }
