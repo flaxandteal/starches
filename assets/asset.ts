@@ -531,9 +531,10 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
   const returnElt = document.createElement('a');
   returnElt.href = "../asset-list/?model=" + asset.asset.__.wkrm.graphId;
   returnElt.innerText = "List all resources for this model";
-  document.getElementById('asset').appendChild(returnElt);
+  const assetElt = document.getElementById('asset') || document.getElementById('asset-overview');
+  assetElt.appendChild(returnElt);
   const treegridElt = document.createElement('tree-grid');
-  document.getElementById('asset').appendChild(treegridElt);
+  assetElt.appendChild(treegridElt);
   const nodes = asset.asset.__.getNodeObjectsByAlias();
 
   setupDialogLinks();
