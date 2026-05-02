@@ -19,6 +19,7 @@ import { loadTemplate, getPrecompiledTemplate } from 'handlebar-utils';
 import { initSwiper, ImageInput, ImageSet } from 'swiper';
 import { markdownToPdf, PdfImage } from 'pdf-make';
 import './w3c-treegrid.js';
+import { FileItemViewModel } from '@alizarin/filelist';
 
 // Types and interfaces
 interface AssetUrlParams {
@@ -223,7 +224,15 @@ function extractCentrePoint(geometry: any): [number, number] | null {
 const RENDERER_OPTIONS = {
   conceptValueToUrl: async () => null,
   domainValueToUrl: async () => null,
-  resourceReferenceToUrl: async (rr) => await rr.getSlug().then(s => s && `?slug=${s}`)
+  resourceReferenceToUrl: async (rr) => await rr.getSlug().then(s => s && `?slug=${s}`),
+  extensionToMarkdown: async (vm, _depth: number) => {
+    if (vm instanceof FileItemViewModel && vm.isImage()) {
+      const altText = vm.getAltText();
+      const caption = (vm.name || "") + (altText? `: ${altText}` : "");
+      return `![${caption}](${vm.url})`;
+    }
+    return vm.toString();
+  }
 };
 
 // Create GOV.UK-styled marked renderer
@@ -629,6 +638,7 @@ async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
       previewUrl: (await imageList._.preview[0]?.url) ?? (await image.url),
       originalUrl: await image.url,
       alt: (await image._file && await image._file.alt_text) || (await image.name),
+      type: (await image._file && await image._file.type) || (await image.type),
       caption: caption
     });
   }));
@@ -762,7 +772,6 @@ async function buildImageDialogs(images: ImageRef[], assetTitle: string): Promis
 
 function addAssetToMap(asset: Asset) {
   const location = asset.meta.location;
-  console.log('render asset', asset, location);
   if (location) {
     const centre = location;
     const zoom = 16;
@@ -1029,10 +1038,14 @@ async function setupBackLinks(currentSlug: string): Promise<void> {
   }
 }
 
-function setupAssetTitle(title: string): void {
+function setupAssetTitle(title: string, modelName?: string): void {
   const titleEl = document.getElementById("asset-title");
   if (titleEl) {
     titleEl.innerText = title;
+  }
+  const modelEl = document.getElementById("asset-model-name");
+  if (modelEl && modelName) {
+    modelEl.innerText = modelName;
   }
 }
 
@@ -1160,7 +1173,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     publicViewEl?.setAttribute('hidden', '');
   }
 
-  setupAssetTitle(asset.meta.title);
+  setupAssetTitle(asset.meta.title, asset.asset.__.wkrm.modelName);
   setupSwapLink(slug, publicView);
 
   const legacyRecord = await setupLegacyRecord(asset, publicView);

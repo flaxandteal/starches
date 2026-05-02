@@ -66,6 +66,22 @@ div.govuk-header__container {
     padding: 0 0 1em;
 }
 
+#asset-title + .asset-model-subtitle {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #505a5f;
+    background-color: rgba(127, 86, 197, 0.08);
+    margin: 0 0 1em;
+    padding: 0.6rem 0.4rem;
+    line-height: 1.4;
+}
+
+#asset-title:has(+ .asset-model-subtitle) {
+    margin-bottom: 0;
+}
+
 #dfc-registry {
     border-bottom: 0;
     padding-top: 0;

@@ -2,13 +2,11 @@
 <link href="https://unpkg.com/maplibre-gl@^5.3.1/dist/maplibre-gl.css" rel="stylesheet" />
 <link rel="stylesheet" href="{{ "css/map.css" | absURL }}">
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
-<link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
 <link rel="stylesheet" href="{{ "css/custom.css" | absURL }}">
 
-{{ partial "starches/pagefind-wasm-fallback.html" . }}
 {{ partial "starches/csp-actions.html" . }}
 
-{{ $baseAssets := (slice "asset.ts" "search.ts") }}
+{{ $baseAssets := (slice "asset.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
 {{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction "default_show_full_asset" site.Params.default_show_full_asset "ros_madair" site.Params.ros_madair ) }}
@@ -57,6 +55,7 @@
 
 <div id="map" class="maplibregl-map"></div>
 <h1 id="asset-title"></h1>
+<h4 id="asset-model-name" class="asset-model-subtitle"></h4>
 
 <div class="modern-navigation" id="bottom-nav-container">
   <div class="nav-back">
