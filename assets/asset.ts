@@ -69,7 +69,7 @@ const MODEL_FILES: Record<string, ModelFileConfig> = {
 };
 
 interface TreeGridElement extends HTMLElement {
-  data: { listItems: string | string[]; nodeObjectsByAlias: Map<string, any> };
+  data: { listItems: string | string[]; nodeObjectsByAlias: Map<string, any>; nodeSkeleton?: Record<string, any> };
 }
 
 declare global {
@@ -524,6 +524,28 @@ function injectSections(sections: SectionedHtml): void {
   }
 }
 
+// Build a nested skeleton of the graph definition so the tree-grid
+// can show all nodes (including empty ones) in their proper hierarchy.
+function buildNodeSkeleton(modelWrapper: any): Record<string, any> {
+  const rootNode = modelWrapper.getRootNode();
+  return buildSkeletonForNode(modelWrapper, rootNode.nodeid, new Set());
+}
+
+function buildSkeletonForNode(modelWrapper: any, nodeId: string, visited: Set<string>): Record<string, any> {
+  if (visited.has(nodeId)) return {};
+  visited.add(nodeId);
+  const childAliases: string[] = modelWrapper.getChildNodeAliases(nodeId) || [];
+  const skeleton: Record<string, any> = {};
+  for (const alias of childAliases) {
+    const childNodeId = modelWrapper.getNodeIdFromAlias(alias);
+    const grandChildren: string[] = modelWrapper.getChildNodeAliases(childNodeId) || [];
+    skeleton[alias] = grandChildren.length > 0
+      ? buildSkeletonForNode(modelWrapper, childNodeId, visited)
+      : {};
+  }
+  return skeleton;
+}
+
 // Rendering functions
 async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>> {
   const alizarinRenderer = new renderers.MarkdownRenderer({
@@ -549,7 +571,8 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
   setupDialogLinks();
 
   const nodeObjectsByAlias = asset.asset.__.getNodeObjectsByAlias();
-  treegridElt.data = { listItems: markdown, nodeObjectsByAlias };
+  const nodeSkeleton = buildNodeSkeleton(asset.asset.__);
+  treegridElt.data = { listItems: markdown, nodeObjectsByAlias, nodeSkeleton };
   addAssetToMap(asset);
 
   return buildImageDialogs([], asset.meta.title);

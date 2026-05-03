@@ -10,6 +10,7 @@ class TreeGrid extends HTMLElement {
   _tabbingRow = null;
   _data = null;
   _connected = false;
+  _showAllNodes = false;
 
   // Focus mode from URL ?cell= parameter
   _cellParam = new URLSearchParams(window.location.search).get('cell');
@@ -50,17 +51,25 @@ class TreeGrid extends HTMLElement {
     }
   }
 
+  toggleShowAllNodes() {
+    this._showAllNodes = !this._showAllNodes;
+    this._render();
+  }
+
   // --- Rendering ---
 
   async _render() {
     const label = this.getAttribute('aria-label') || 'Tree Grid';
     const rows = this._data
-      ? await this._buildRows(this._data.listItems, this._data.nodeObjectsByAlias, 1, false)
+      ? await this._buildRows(this._data.listItems, this._data.nodeObjectsByAlias, 1, false, this._data.nodeSkeleton)
       : '';
+
+    const toggleLabel = this._showAllNodes ? 'Hide empty nodes' : 'Show all nodes';
 
     this.shadowRoot.innerHTML = `
       <link rel="stylesheet" type="text/css" href="/css/w3c-treegrid.css">
       <div id="treegrid" class="table-wrap">
+        <button id="toggle-empty-nodes" type="button">${toggleLabel}</button>
         <table id="treegrid-table"
                role="treegrid"
                aria-label="${this._esc(label)}">
@@ -87,15 +96,29 @@ class TreeGrid extends HTMLElement {
     if (this._data) {
       this._initAttributes();
       this._addEventListeners();
+      this.shadowRoot.querySelector('#toggle-empty-nodes')
+        .addEventListener('click', () => this.toggleShowAllNodes());
     }
   }
 
-  async _buildRows(items, nodeObjectsByAlias, level, hidden) {
-    if (!items || typeof items !== 'object') return '';
+  async _buildRows(items, nodeObjectsByAlias, level, hidden, skeleton) {
+    if (!items || typeof items !== 'object') items = {};
 
     const entries = Object.entries(items).sort(
       (a, b) => a[0].localeCompare(b[0])
     );
+
+    // Merge in missing nodes from skeleton at every level when showing all
+    if (this._showAllNodes && skeleton) {
+      const presentKeys = new Set(entries.map(([k]) => k));
+      for (const [alias] of Object.entries(skeleton)) {
+        if (!presentKeys.has(alias) && !alias.startsWith('__')) {
+          entries.push([alias, {}]);
+        }
+      }
+      entries.sort((a, b) => a[0].localeCompare(b[0]));
+    }
+
     let html = '';
 
     for (let i = 0; i < entries.length; i++) {
@@ -107,6 +130,7 @@ class TreeGrid extends HTMLElement {
       const node = nodeObjectsByAlias.get(key);
       if (!node) continue;
 
+      const childSkeleton = skeleton && skeleton[key];
       const posInSet = i + 1;
       const setSize = entries.length;
 
@@ -126,7 +150,9 @@ class TreeGrid extends HTMLElement {
       // Branch node
       } else {
         const empty = Object.keys(value).length === 0;
+        const hasSkeletonChildren = childSkeleton && Object.keys(childSkeleton).length > 0;
         const expanded = !(Array.isArray(value) && value.length > 5) && !empty;
+        const expandable = !empty || (this._showAllNodes && hasSkeletonChildren);
         const hideChildren = hidden || !expanded;
 
         html += `
@@ -134,9 +160,9 @@ class TreeGrid extends HTMLElement {
               aria-level="${level}"
               aria-posinset="${posInSet}"
               aria-setsize="${setSize}"${hidden ? ' class="hidden"' : ''}
-              aria-expanded="${expanded}">
+              ${expandable ? `aria-expanded="${expanded}"` : ''}>
             <td role="gridcell">${this._esc(node.name)}</td>
-            <td role="gridcell">${empty ? '<em>(empty)</em>' : ''}</td>
+            <td role="gridcell">${empty && !hasSkeletonChildren ? '<em>(empty)</em>' : ''}</td>
             <td role="gridcell">${this._esc(node.alias)}</td>
             <td role="gridcell">${this._esc(node.datatype)}</td>
           </tr>`;
@@ -156,11 +182,11 @@ class TreeGrid extends HTMLElement {
                 <td role="gridcell">${this._esc(node.datatype)}</td>
               </tr>`;
             if (nested) {
-              html += await this._buildRows(value[m], nodeObjectsByAlias, level + 2, hideChildren);
+              html += await this._buildRows(value[m], nodeObjectsByAlias, level + 2, hideChildren, childSkeleton);
             }
           }
         } else {
-          html += await this._buildRows(value, nodeObjectsByAlias, level + 1, hideChildren);
+          html += await this._buildRows(value, nodeObjectsByAlias, level + 1, hideChildren, childSkeleton);
         }
       }
     }

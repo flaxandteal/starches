@@ -1,3 +1,13 @@
+#toggle-empty-nodes {
+  margin-bottom: 0.5em;
+  padding: 0.3em 0.8em;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: #f3f2f1;
+  border: 1px solid #b1b4b6;
+  color: #0b0c0c;
+}
+
 #treegrid {
   width: 100%;
   border-collapse: collapse;
