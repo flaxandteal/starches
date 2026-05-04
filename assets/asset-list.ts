@@ -93,7 +93,7 @@ async function renderAssets(assetList: AssetList): Promise<void> {
     groups.get(modelName)!.push(
       [
         meta.title,
-        `<li><a href='../asset/?slug=${await asset.getSlug()}&full=true'>${await asset.getName()}</a></li>`
+        `<li><a href='../asset/?slug=${await asset.getSlug()}&full=true'>${await asset.getName() || '(untitled)'}</a></li>`
       ]
     );
   }

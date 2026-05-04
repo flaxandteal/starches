@@ -80,6 +80,7 @@ declare global {
     archesUrl?: string;
     alizarinAsset?: Asset;
     showDialog?: (dialogId: string) => void;
+    sparqlStore?: any;
   }
 }
 
@@ -224,7 +225,10 @@ function extractCentrePoint(geometry: any): [number, number] | null {
 const RENDERER_OPTIONS = {
   conceptValueToUrl: async () => null,
   domainValueToUrl: async () => null,
-  resourceReferenceToUrl: async (rr) => await rr.getSlug().then(s => s && `?slug=${s}`),
+  resourceReferenceToUrl: async (rr) => await rr.getSlug().then(s => {
+    console.log(s, 'slug');
+    return s && `?slug=${s}`;
+  }),
   extensionToMarkdown: async (vm, _depth: number) => {
     if (vm instanceof FileItemViewModel && vm.isImage()) {
       const altText = vm.getAltText();
