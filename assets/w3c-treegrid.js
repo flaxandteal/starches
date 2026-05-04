@@ -11,6 +11,7 @@ class TreeGrid extends HTMLElement {
   _data = null;
   _connected = false;
   _showAllNodes = false;
+  _rawModalTrigger = null;
 
   // Focus mode from URL ?cell= parameter
   _cellParam = new URLSearchParams(window.location.search).get('cell');
@@ -61,7 +62,7 @@ class TreeGrid extends HTMLElement {
   async _render() {
     const label = this.getAttribute('aria-label') || 'Tree Grid';
     const rows = this._data
-      ? await this._buildRows(this._data.listItems, this._data.nodeObjectsByAlias, 1, false, this._data.nodeSkeleton)
+      ? await this._buildRows(this._data.listItems, this._data.nodeObjectsByAlias, 1, false, this._data.nodeSkeleton, '')
       : '';
 
     const toggleLabel = this._showAllNodes ? 'Hide empty nodes' : 'Show all nodes';
@@ -77,6 +78,7 @@ class TreeGrid extends HTMLElement {
             <col id="treegrid-col1">
             <col id="treegrid-col2">
             <col id="treegrid-col3">
+            <col id="treegrid-col5">
           </colgroup>
           <thead>
             <tr>
@@ -84,6 +86,7 @@ class TreeGrid extends HTMLElement {
               <th scope="col">Value</th>
               <th scope="col">Node Alias</th>
               <th scope="col">Data Type</th>
+              <th scope="col"></th>
             </tr>
           </thead>
           <tbody id="treegrid-body">
@@ -91,6 +94,11 @@ class TreeGrid extends HTMLElement {
           </tbody>
         </table>
       </div>
+      <dialog id="raw-modal" aria-labelledby="raw-modal-title">
+        <button id="raw-modal-close" type="button">Close</button>
+        <h2 id="raw-modal-title">Data</h2>
+        <pre id="raw-modal-content"></pre>
+      </dialog>
     `;
 
     if (this._data) {
@@ -98,10 +106,11 @@ class TreeGrid extends HTMLElement {
       this._addEventListeners();
       this.shadowRoot.querySelector('#toggle-empty-nodes')
         .addEventListener('click', () => this.toggleShowAllNodes());
+      this._addModalListeners();
     }
   }
 
-  async _buildRows(items, nodeObjectsByAlias, level, hidden, skeleton) {
+  async _buildRows(items, nodeObjectsByAlias, level, hidden, skeleton, parentPath) {
     if (!items || typeof items !== 'object') items = {};
 
     const entries = Object.entries(items).sort(
@@ -130,6 +139,7 @@ class TreeGrid extends HTMLElement {
       const node = nodeObjectsByAlias.get(key);
       if (!node) continue;
 
+      const nodePath = parentPath ? `${parentPath}.${key}` : key;
       const childSkeleton = skeleton && skeleton[key];
       const posInSet = i + 1;
       const setSize = entries.length;
@@ -145,6 +155,7 @@ class TreeGrid extends HTMLElement {
             <td role="gridcell"><div class="cell-content">${value != null ? await marked.parse(`${value}`) : '<em>(empty)</em>'}</div></td>
             <td role="gridcell">${this._esc(node.alias)}</td>
             <td role="gridcell">${this._esc(node.datatype)}</td>
+            <td role="gridcell"><button class="raw-link" type="button" data-path="${this._esc(nodePath)}">Raw</button></td>
           </tr>`;
 
       // Branch node
@@ -165,10 +176,12 @@ class TreeGrid extends HTMLElement {
             <td role="gridcell">${empty && !hasSkeletonChildren ? '<em>(empty)</em>' : ''}</td>
             <td role="gridcell">${this._esc(node.alias)}</td>
             <td role="gridcell">${this._esc(node.datatype)}</td>
+            <td role="gridcell"><button class="raw-link" type="button" data-path="${this._esc(nodePath)}">Raw</button></td>
           </tr>`;
 
         if (Array.isArray(value)) {
           for (let m = 0; m < value.length; m++) {
+            const itemPath = `${nodePath}.${m}`;
             const nested = value[m] != null && typeof value[m] === 'object' && !(value[m] instanceof String);
             html += `
               <tr role="row"
@@ -180,13 +193,14 @@ class TreeGrid extends HTMLElement {
                 <td role="gridcell">${nested ? '' : `<div class="cell-content">${await marked.parse(String(value[m]))}</div>`}</td>
                 <td role="gridcell">${this._esc(node.alias)}</td>
                 <td role="gridcell">${this._esc(node.datatype)}</td>
+                <td role="gridcell"><button class="raw-link" type="button" data-path="${this._esc(itemPath)}">Raw</button></td>
               </tr>`;
             if (nested) {
-              html += await this._buildRows(value[m], nodeObjectsByAlias, level + 2, hideChildren, childSkeleton);
+              html += await this._buildRows(value[m], nodeObjectsByAlias, level + 2, hideChildren, childSkeleton, itemPath);
             }
           }
         } else {
-          html += await this._buildRows(value, nodeObjectsByAlias, level + 1, hideChildren, childSkeleton);
+          html += await this._buildRows(value, nodeObjectsByAlias, level + 1, hideChildren, childSkeleton, nodePath);
         }
       }
     }
@@ -499,6 +513,117 @@ class TreeGrid extends HTMLElement {
     return false;
   }
 
+  // --- Modal ---
+
+  _addModalListeners() {
+    const modal = this.shadowRoot.querySelector('#raw-modal');
+    const closeBtn = this.shadowRoot.querySelector('#raw-modal-close');
+
+    // Delegate clicks on .raw-link buttons
+    this.shadowRoot.querySelector('#treegrid-body')
+      .addEventListener('click', (e) => {
+        if (e.target.classList.contains('raw-link')) {
+          this._rawModalTrigger = e.target;
+          this._openModal(e.target);
+        }
+      });
+
+    closeBtn.addEventListener('click', () => this._closeModal());
+    // Close on backdrop click (click on the dialog itself, outside the panel)
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) this._closeModal();
+    });
+  }
+
+  _openModal(trigger) {
+    const modal = this.shadowRoot.querySelector('#raw-modal');
+    const title = this.shadowRoot.querySelector('#raw-modal-title');
+    const content = this.shadowRoot.querySelector('#raw-modal-content');
+
+    const path = trigger.dataset.path || '';
+    title.textContent = path;
+
+    let data = null;
+    try {
+      const wasmWrapper = window.alizarinAsset?.asset?.$.wasmWrapper;
+      if (wasmWrapper) {
+        const { aliasPath, filterTileId } = this._resolvePathIndices(wasmWrapper, path);
+        const pseudoList = wasmWrapper.getValuesAtPath(aliasPath, filterTileId);
+        const allValues = pseudoList.getAllValues?.() ?? [];
+        data = allValues.map(v => this._mapsToObjects(v.tileData));
+      }
+    } catch (e) {
+      data = `Error: ${e.message}`;
+    }
+
+    content.textContent = typeof data === 'string'
+      ? data
+      : JSON.stringify(data, null, 2);
+
+    modal.showModal();
+  }
+
+  /** Walk numeric indices in a path using the wasmWrapper (for tileId/sortorder),
+   *  returning the alias-only path and filterTileId for use with asset.$.getValuesAtPath. */
+  _resolvePathIndices(wasmWrapper, path) {
+    const segments = path.replace(/^\./, '').split('.');
+
+    if (!segments.some(s => /^\d+$/.test(s))) {
+      return { aliasPath: path, filterTileId: undefined };
+    }
+
+    const aliasSegments = [];
+    let filterTileId;
+
+    for (const seg of segments) {
+      if (/^\d+$/.test(seg)) {
+        const currentPath = aliasSegments.join('.');
+        const list = wasmWrapper.getValuesAtPath(currentPath, filterTileId);
+        const allValues = list.getAllValues?.() ?? [];
+
+        const sorted = [...allValues].sort((a, b) => {
+          const sa = a.sortorder ?? Number.MAX_SAFE_INTEGER;
+          const sb = b.sortorder ?? Number.MAX_SAFE_INTEGER;
+          return sa - sb;
+        });
+
+        const index = parseInt(seg, 10);
+        if (index >= sorted.length) {
+          throw new Error(`Index ${index} out of bounds for "${currentPath}" (${sorted.length} tiles)`);
+        }
+        filterTileId = sorted[index].tileId;
+      } else {
+        aliasSegments.push(seg);
+      }
+    }
+
+    return { aliasPath: aliasSegments.join('.'), filterTileId };
+  }
+
+  /** Recursively convert Maps (from serde_wasm_bindgen) to plain objects. */
+  _mapsToObjects(val) {
+    if (val instanceof Map) {
+      const obj = {};
+      for (const [k, v] of val) {
+        obj[k] = this._mapsToObjects(v);
+      }
+      return obj;
+    }
+    if (Array.isArray(val)) {
+      return val.map(v => this._mapsToObjects(v));
+    }
+    return val;
+  }
+
+  _closeModal() {
+    const modal = this.shadowRoot.querySelector('#raw-modal');
+    modal.close();
+    if (this._rawModalTrigger) {
+      this._rawModalTrigger.focus();
+      this._rawModalTrigger = null;
+    }
+  }
+
   // --- Event handlers ---
 
   _handleKeyDown(event) {
@@ -553,6 +678,7 @@ class TreeGrid extends HTMLElement {
   }
 
   _handleClick(event) {
+    if (event.target.classList?.contains('raw-link')) return;
     if (event.target.localName !== 'td') return;
 
     const row = this._getContainingRow(event.target);

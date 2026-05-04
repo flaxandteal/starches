@@ -19,6 +19,7 @@ import { loadTemplate, getPrecompiledTemplate } from 'handlebar-utils';
 import { initSwiper, ImageInput, ImageSet } from 'swiper';
 import { markdownToPdf, PdfImage } from 'pdf-make';
 import './w3c-treegrid.js';
+import './relations-treegrid.js';
 import { FileItemViewModel } from '@alizarin/filelist';
 
 // Types and interfaces
@@ -225,10 +226,11 @@ function extractCentrePoint(geometry: any): [number, number] | null {
 const RENDERER_OPTIONS = {
   conceptValueToUrl: async () => null,
   domainValueToUrl: async () => null,
-  resourceReferenceToUrl: async (rr) => await rr.getSlug().then(s => {
-    console.log(s, 'slug');
-    return s && `?slug=${s}`;
-  }),
+  resourceReferenceToUrl: async (rr) => await rr.getSlug().then(s => s && `?slug=${s}`),
+  geojsonToUrl: async (gfc) => {
+    const json = await gfc.forJson();
+    return `https://geojson.io/#data=data:application/json,${encodeURIComponent(JSON.stringify(json))}`;
+  },
   extensionToMarkdown: async (vm, _depth: number) => {
     if (vm instanceof FileItemViewModel && vm.isImage()) {
       const altText = vm.getAltText();
@@ -1065,7 +1067,7 @@ async function setupBackLinks(currentSlug: string): Promise<void> {
   }
 }
 
-function setupAssetTitle(title: string, modelName?: string): void {
+function setupAssetTitle(title: string, modelName?: string, resourceId?: string): void {
   const titleEl = document.getElementById("asset-title");
   if (titleEl) {
     titleEl.innerText = title;
@@ -1073,6 +1075,12 @@ function setupAssetTitle(title: string, modelName?: string): void {
   const modelEl = document.getElementById("asset-model-name");
   if (modelEl && modelName) {
     modelEl.innerText = modelName;
+    if (resourceId) {
+      const idSpan = document.createElement('span');
+      idSpan.className = 'asset-model-resource-id';
+      idSpan.textContent = resourceId;
+      modelEl.appendChild(idSpan);
+    }
   }
 }
 
@@ -1080,23 +1088,17 @@ async function setupRegistryInfo(asset: Asset): Promise<void> {
   const dfcRegistryElement = document.getElementById('dfc-registry');
   if (!dfcRegistryElement) return;
 
-  const name = asset.asset.__.wkrm.modelName;
   if (await asset.asset.__has('record_and_registry_membership')) {
     const memberships = await asset.asset.record_and_registry_membership;
     if (memberships) {
       const items = await Promise.all(
         memberships.map(async (membership: any) => {
           const registry = await membership.record_or_registry;
-          const json = await registry.forJson();
-          return `<li>${json.meta.title}</li>`;
+          return `<li>${await registry.getName()}</li>`;
         })
       );
+      dfcRegistryElement.innerHTML = `<ul>${items.join("\n")}</ul>`;
     }
-    dfcRegistryElement.innerHTML = `<ul><li>${name}</li></ul>`;
-    //dfcRegistryElement.innerHTML = `<ul>${items.join("\n")}</ul>`;
-  } else {
-    dfcRegistryElement.innerHTML = `<ul><li>${name}</li></ul>`;
-    //dfcRegistryElement.innerHTML = `<ul><li>${asset.asset.__.wkrm.modelClassName}</li></ul>`;
   }
 }
 
@@ -1200,7 +1202,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     publicViewEl?.setAttribute('hidden', '');
   }
 
-  setupAssetTitle(asset.meta.title, asset.asset.__.wkrm.modelName);
+  setupAssetTitle(asset.meta.title, asset.asset.__.wkrm.modelName, asset.meta.resourceinstanceid);
   setupSwapLink(slug, publicView);
 
   const legacyRecord = await setupLegacyRecord(asset, publicView);
@@ -1210,10 +1212,18 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Load resource relations via Ros Madair (progressive enhancement)
   if (params.ros_madair) {
+    const gm = assetManagerInstance.getGraphManager();
+    const resolveModelName = gm ? (graphId: string) => {
+      for (const wkrm of gm.wkrms.values()) {
+        if (wkrm.graphId === graphId) return wkrm.modelName;
+      }
+    } : undefined;
+
     loadAndRenderRelations(asset.meta.resourceinstanceid, {
       wasmModule: params.ros_madair.wasm_module,
       indexBaseUrl: params.ros_madair.index_base_url,
       rdfBaseUri: params.ros_madair.rdf_base_uri,
+      resolveModelName,
       onMetaDiscovered: (resources) => {
         for (const r of resources) {
           try {

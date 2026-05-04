@@ -1,6 +1,8 @@
 {
   "type": "module",
   "dependencies": {
+    "@alizarin/clm": "https://github.com/flaxandteal/alizarin/releases/download/v2.0.0-alpha.94/alizarin-clm-2.0.0-alpha.94.tgz",
+    "@alizarin/filelist": "https://github.com/flaxandteal/alizarin/releases/download/v2.0.0-alpha.94/alizarin-filelist-2.0.0-alpha.94.tgz",
     "@drustack/leaflet.resetview": "^1.9.2",
     "@maplibre/maplibre-gl-geocoder": "^1.8.0",
     "@maplibre/maplibre-gl-leaflet": "^0.1.0",
@@ -11,9 +13,7 @@
     "@types/geojson": "^7946.0.16",
     "@types/leaflet": "^1.9.17",
     "@types/leaflet.markercluster": "^1.5.5",
-    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v2.0.0-alpha.93/alizarin-2.0.0-alpha.93.tgz",
-    "@alizarin/clm": "https://github.com/flaxandteal/alizarin/releases/download/v2.0.0-alpha.93/alizarin-clm-2.0.0-alpha.93.tgz",
-    "@alizarin/filelist": "https://github.com/flaxandteal/alizarin/releases/download/v2.0.0-alpha.93/alizarin-filelist-2.0.0-alpha.93.tgz",
+    "alizarin": "https://github.com/flaxandteal/alizarin/releases/download/v2.0.0-alpha.94/alizarin-2.0.0-alpha.94.tgz",
     "dompurify": "^3.2.6",
     "flatbush": "^4.4.0",
     "flatgeobuf": "^4.0.1",
@@ -27,11 +27,11 @@
     "mapbox-gl-arcgis-featureserver": "^0.0.8",
     "marked": "^15.0.7",
     "marked-plaintify": "^1.1.1",
-    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.93/starches-builder-v2.0.0-alpha.93.tar.gz",
+    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.94/starches-builder-v2.0.0-alpha.94.tar.gz",
     "toml": "^3.0.0"
   },
   "name": "starches",
-  "version": "0.2.1-alpha.93",
+  "version": "0.2.1-alpha.94",
   "description": "Static Arches export for Coral",
   "main": "reindex.js",
   "directories": {

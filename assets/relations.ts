@@ -21,6 +21,8 @@ export interface RelationsConfig {
   rdfBaseUri: string;    // RDF base URI used when building the index
   /** Called with metadata discovered from Rós Madair page files. */
   onMetaDiscovered?: (resources: DiscoveredMeta[]) => void;
+  /** Resolves a graph UUID to a human-readable model name. */
+  resolveModelName?: (graphId: string) => string | undefined;
 }
 
 export interface Relation {
@@ -29,6 +31,8 @@ export interface Relation {
   slug: string;
   name: string;
   direction: 'outgoing' | 'incoming';
+  graphId?: string;
+  modelName?: string;
 }
 
 interface SummaryQuad {
@@ -187,6 +191,8 @@ async function resolveRelationMeta(
       for (const rel of rels) {
         rel.name = info.name || rel.resourceId;
         rel.slug = info.slug || rel.resourceId;
+        rel.graphId = info.model || undefined;
+        rel.modelName = info.model || undefined;
       }
 
       const resourceId = uri.split('/resource/').pop()!;
@@ -235,25 +241,19 @@ export async function loadAndRenderRelations(
     const outgoing = relations.filter(r => r.direction === 'outgoing');
     const incoming = relations.filter(r => r.direction === 'incoming');
 
-    let html = '<h2>Linked Resources</h2>';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Linked Resources';
+    container.appendChild(heading);
 
-    if (outgoing.length > 0) {
-      html += '<h3>Outgoing</h3><ul>';
-      for (const r of outgoing) {
-        html += `<li><a href="?slug=${encodeURIComponent(r.slug)}&full=true">${r.name || '(untitled)'}</a> (${r.predicate})</li>`;
-      }
-      html += '</ul>';
-    }
+    const treegrid = document.createElement('relations-treegrid') as any;
+    treegrid.setAttribute('aria-label', 'Linked Resources');
+    treegrid.data = {
+      outgoing,
+      incoming,
+      resolveModelName: config.resolveModelName,
+    };
+    container.appendChild(treegrid);
 
-    if (incoming.length > 0) {
-      html += '<h3>Incoming</h3><ul>';
-      for (const r of incoming) {
-        html += `<li><a href="?slug=${encodeURIComponent(r.slug)}&full=true">${r.name || '(untitled)'}</a> (${r.predicate})</li>`;
-      }
-      html += '</ul>';
-    }
-
-    container.innerHTML = html;
     container.removeAttribute('hidden');
   } catch (err) {
     console.warn('[relations]', err);
