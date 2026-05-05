@@ -9,7 +9,7 @@
 {{ $baseAssets := (slice "asset.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
-{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction "default_show_full_asset" site.Params.default_show_full_asset "ros_madair" site.Params.ros_madair ) }}
+{{ $params := (dict "search_config" site.Params.search_config "is_production" hugo.IsProduction "default_show_full_asset" site.Params.default_show_full_asset "starches" site.Params.starches "ros_madair" site.Params.ros_madair ) }}
 {{ $sourceMap := cond hugo.IsProduction "" "inline" }}
 {{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2022" "params" $params }}
 {{ $js = $js | js.Build $opts }}
@@ -86,6 +86,14 @@
 
 <button class="govuk-button dialog-cancel" type="button" id="asset-dialog__cancel"
     data-action="close-dialog" data-target="asset-dialog">Cancel</button>
+</dialog>
+
+<dialog id="geojson-dialog" aria-labelledby="geojson-dialog__heading">
+  <div class="geojson-dialog__header">
+    <h2 id="geojson-dialog__heading">Geometry</h2>
+    <button class="govuk-button govuk-button--secondary" type="button" id="geojson-dialog__close">Close</button>
+  </div>
+  <div id="geojson-dialog__map"></div>
 </dialog>
 
 <div id="legacy-record-container">

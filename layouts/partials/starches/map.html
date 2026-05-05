@@ -34,6 +34,7 @@
     <div id="starches-has-search" hidden></div>
     <div id="search-column">
         <div id="search"></div>
+        {{ partial "starches/map-filters.html" . }}
         <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="#" data-action="reset-view">reset</a> view to see all results</div>
         <div id="result-count" class="result-count"></div>
         <div id="instructions">

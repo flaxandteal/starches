@@ -1,1 +1,35 @@
 /* Project-level overrides — replace this file in your project's static/css/ */
+
+#geojson-dialog {
+  width: min(90vw, 800px);
+  height: min(80vh, 600px);
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+}
+
+#geojson-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+#geojson-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+#geojson-dialog .geojson-dialog__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+#geojson-dialog .geojson-dialog__header h2 {
+  margin: 0;
+}
+
+#geojson-dialog #geojson-dialog__map {
+  flex: 1;
+  min-height: 0;
+}

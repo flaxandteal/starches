@@ -21,6 +21,7 @@ import { markdownToPdf, PdfImage } from 'pdf-make';
 import './w3c-treegrid.js';
 import './relations-treegrid.js';
 import { FileItemViewModel } from '@alizarin/filelist';
+import { CardRenderer } from './card-renderer';
 
 // Types and interfaces
 interface AssetUrlParams {
@@ -222,6 +223,10 @@ function extractCentrePoint(geometry: any): [number, number] | null {
   return centre;
 }
 
+// GeoJSON modal registry — stores GeoJSON data for modal map display
+const geojsonRegistry = new Map<string, object>();
+let geojsonCounter = 0;
+
 // Shared renderer options (URLs disabled for now)
 const RENDERER_OPTIONS = {
   conceptValueToUrl: async () => null,
@@ -229,7 +234,9 @@ const RENDERER_OPTIONS = {
   resourceReferenceToUrl: async (rr) => await rr.getSlug().then(s => s && `?slug=${s}`),
   geojsonToUrl: async (gfc) => {
     const json = await gfc.forJson();
-    return `https://geojson.io/#data=data:application/json,${encodeURIComponent(JSON.stringify(json))}`;
+    const id = String(geojsonCounter++);
+    geojsonRegistry.set(id, json);
+    return `#show-geojson-${id}`;
   },
   extensionToMarkdown: async (vm, _depth: number) => {
     if (vm instanceof FileItemViewModel && vm.isImage()) {
@@ -240,6 +247,141 @@ const RENDERER_OPTIONS = {
     return vm.toString();
   }
 };
+
+// GeoJSON modal map display
+function computeGeojsonBbox(geojson: any): [number, number, number, number] {
+  let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+
+  function visitCoords(coords: any) {
+    if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+      const [lng, lat] = coords;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    } else {
+      for (const c of coords) visitCoords(c);
+    }
+  }
+
+  const features = geojson.features || (geojson.geometry ? [geojson] : []);
+  for (const f of features) {
+    const geom = f.geometry || f;
+    if (geom.coordinates) visitCoords(geom.coordinates);
+  }
+  return [minLng, minLat, maxLng, maxLat];
+}
+
+let geojsonModalMap: MLMap | null = null;
+let assetPageMap: MLMap | null = null;
+
+function showGeojsonModal(geojson: object): void {
+  const dialog = document.getElementById('geojson-dialog') as HTMLDialogElement | null;
+  if (!dialog) return;
+
+  dialog.showModal();
+
+  requestAnimationFrame(() => {
+    const container = document.getElementById('geojson-dialog__map');
+    if (!container) return;
+
+    // Clean up any previous map
+    if (geojsonModalMap) {
+      geojsonModalMap.remove();
+      geojsonModalMap = null;
+    }
+
+    // Reuse the asset page map's style, or fall back to the same tile source
+    const sourceMap = assetPageMap || (window as any).map;
+    const style = (sourceMap && typeof sourceMap.getStyle === 'function')
+      ? JSON.parse(JSON.stringify(sourceMap.getStyle()))
+      : 'https://tiles.openfreemap.org/styles/bright';
+
+    geojsonModalMap = new MLMap({
+      container,
+      style,
+      pitch: 0,
+      bearing: 0,
+      center: [0, 0],
+      zoom: 1,
+    });
+
+    geojsonModalMap.on('load', () => {
+      if (!geojsonModalMap) return;
+
+      geojsonModalMap.addSource('geojson-preview', {
+        type: 'geojson',
+        data: geojson as any,
+      });
+
+      geojsonModalMap.addLayer({
+        id: 'geojson-preview-fill',
+        type: 'fill',
+        source: 'geojson-preview',
+        paint: {
+          'fill-color': '#3388ff',
+          'fill-opacity': 0.2,
+        },
+      });
+
+      geojsonModalMap.addLayer({
+        id: 'geojson-preview-line',
+        type: 'line',
+        source: 'geojson-preview',
+        paint: {
+          'line-color': '#3388ff',
+          'line-width': 3,
+        },
+      });
+
+      geojsonModalMap.addLayer({
+        id: 'geojson-preview-point',
+        type: 'circle',
+        source: 'geojson-preview',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#3388ff',
+          'circle-stroke-color': '#fff',
+          'circle-stroke-width': 2,
+        },
+      });
+
+      const bbox = computeGeojsonBbox(geojson);
+      if (isFinite(bbox[0])) {
+        geojsonModalMap.fitBounds(bbox as [number, number, number, number], { padding: 40, animate: false });
+      }
+    });
+  });
+}
+
+function setupGeojsonModal(): void {
+  const dialog = document.getElementById('geojson-dialog') as HTMLDialogElement | null;
+  if (!dialog) return;
+
+  const closeBtn = document.getElementById('geojson-dialog__close');
+  closeBtn?.addEventListener('click', () => dialog.close());
+
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+
+  dialog.addEventListener('close', () => {
+    if (geojsonModalMap) {
+      geojsonModalMap.remove();
+      geojsonModalMap = null;
+    }
+  });
+
+  // Delegated click handler for geojson links
+  document.body.addEventListener('click', (e) => {
+    const link = (e.target as HTMLElement).closest('a[href^="#show-geojson-"]') as HTMLAnchorElement | null;
+    if (!link) return;
+    e.preventDefault();
+    const id = link.getAttribute('href')!.replace('#show-geojson-', '');
+    const data = geojsonRegistry.get(id);
+    if (data) showGeojsonModal(data);
+  });
+}
 
 // Create GOV.UK-styled marked renderer
 // Note: Using explicit `this` typing for table method to access parser
@@ -329,11 +471,17 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
     node?: any;         // Looked up node data
   }
 
+  interface WidgetMeta {
+    name: string;
+    description: string;
+  }
+
   interface NodeBlockToken {
     type: 'nodeBlock';
     raw: string;
     title: string;
-    icon?: string;
+    description?: string;
+    widgets?: WidgetMeta[];
     body: string;
     fields: NodeBlockField[];
     tokens: Token[];
@@ -398,12 +546,28 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
           return src.match(/^::/)?.index;
         },
         tokenizer(src: string): NodeBlockToken | undefined {
-          // Match ::Title{icon}::\n...content...\n::end:: (icon is optional)
+          // Match ::Title{description}::\n...content...\n::end:: (description is optional)
+          // Optional <!--widgets:alias=Label;;alias2=Label2--> comment after header
           const match = src.match(/^::([^:{]+)(?:\{([^}]+)\})?::\n([\s\S]*?)::end::/);
           if (match) {
             const title = match[1].trim();
-            const icon = match[2]?.trim();
+            const description = match[2]?.trim();
             let body = match[3].trim();
+
+            // Parse widget metadata comment if present
+            let widgetsMeta: WidgetMeta[] | undefined;
+            const widgetsMatch = body.match(/^<!--widgets:(.+?)-->\n?/);
+            if (widgetsMatch) {
+              body = body.slice(widgetsMatch[0].length).trim();
+              widgetsMeta = widgetsMatch[1].split(';;').map(entry => {
+                const [alias, label] = entry.split('=', 2);
+                const node = nodes.get(alias);
+                return {
+                  name: label || node?.name || alias,
+                  description: node?.description || ''
+                };
+              });
+            }
             const id = `${slugify(title)}-${currentSectionId}`;
             let initiallyCollapsed = params.node_config?.collapsednodes?.includes(id);
 
@@ -444,7 +608,8 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
               type: 'nodeBlock',
               raw: match[0],
               title,
-              icon,
+              description,
+              widgets: widgetsMeta,
               body,
               fields,
               tokens: [],
@@ -463,7 +628,8 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
 
           return nodeTemplate({
             title: nodeToken.title,
-            icon: nodeToken.icon,
+            description: nodeToken.description,
+            widgets: nodeToken.widgets,
             fields: nodeToken.fields,
             body: nodeToken.body,
             id: id,
@@ -744,6 +910,72 @@ async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): 
   return buildImageDialogs(images, asset.meta.title);
 }
 
+/**
+ * Render asset using card-directed traversal.
+ *
+ * Instead of a hand-written Handlebars template, uses the card/widget hierarchy
+ * from the resource model graph to determine structure. Reuses the same
+ * MarkdownRenderer visitor dispatch for value formatting, and feeds the result
+ * into the existing renderToHtml() pipeline.
+ */
+async function renderAssetFromCards(asset: Asset): Promise<Record<string, Dialog>> {
+  const cardRenderer = new CardRenderer(RENDERER_OPTIONS);
+  const model = asset.asset.__;
+  const graph = model.graph;
+
+  // Build node/nodegroup indices from the model
+  const nodesById = model.getNodeObjects();
+  const nodegroups = model.getNodegroupObjects();
+  const nodesByAlias = model.getNodeObjectsByAlias();
+
+  // Card-directed render: visitor pattern for values, card tree for structure
+  const { markdown, rendered: nonstaticAsset } = await cardRenderer.render(asset.asset, graph, nodesById, nodegroups);
+
+  const sections = await renderToHtml(markdown, nodesByAlias, false);
+
+  // Image handling (same as template path)
+  const hasImages = await asset.asset.__has('images');
+  let imageArray = (await Promise.all(((hasImages ? await asset.asset.images : null) || []).map(async (i) => {
+    if (!i || !i[0] || !(await i[0])) {
+      return null;
+    }
+    const isPublic = (await i._.visibility).includes("Public");
+    const webOrder = await i[0]._file && Number.isInteger(await i[0]._file.index);
+    return isPublic && webOrder ? i : null;
+  }))).filter(a => a !== null).sort((a: Object, b: Object) => a[0]._file.index - b[0]._file.index);
+
+  const assetImages = await extractImageList(imageArray);
+  initSwiper(assetImages, 'media/images');
+  injectSections(sections);
+
+  const downloadPdfButton = document.getElementById('asset-download');
+  if (downloadPdfButton) {
+    downloadPdfButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      const link = downloadPdfButton as HTMLAnchorElement;
+      const spinner = document.getElementById('asset-download-spinner');
+
+      link.classList.add('disabled');
+      link.setAttribute('aria-disabled', 'true');
+      link.querySelectorAll<HTMLSpanElement>('span').forEach(s => s.hidden = true);
+      spinner?.removeAttribute('hidden');
+
+      renderPDFAsset(markdown, nodesByAlias, asset.meta.title, assetImages).finally(() => {
+        link.classList.remove('disabled');
+        link.removeAttribute('aria-disabled');
+        link.querySelectorAll<HTMLSpanElement>('span').forEach(s => s.hidden = false);
+        spinner?.setAttribute('hidden', 'true');
+      });
+    });
+  }
+
+  addAssetToMap(asset);
+  setupDialogLinks();
+
+  const { images } = categorizeExternalReferences(nonstaticAsset);
+  return buildImageDialogs(images, asset.meta.title);
+}
+
 function categorizeExternalReferences(nonstaticAsset: any): {
   images: ImageRef[];
   files: any[];
@@ -812,6 +1044,7 @@ function addAssetToMap(asset: Asset) {
       center: centre,
       zoom: zoom
     });
+    assetPageMap = map;
     map.on('load', async () => {
       await addMarkerImage(map as any);
       const source = map.addSource('assets', {
@@ -937,11 +1170,16 @@ class AssetManager implements IAssetManager {
       throw new Error("No asset loaded");
     }
 
-    const template = await fetchTemplate(this.asset.asset);
-
-    this.dialogs = (publicView && template)
-      ? await renderAsset(this.asset, template)
-      : await renderAssetForDebug(this.asset);
+    if (!publicView) {
+      this.dialogs = await renderAssetForDebug(this.asset);
+    } else if (params.starches?.use_card_rendering) {
+      this.dialogs = await renderAssetFromCards(this.asset);
+    } else {
+      const template = await fetchTemplate(this.asset.asset);
+      this.dialogs = template
+        ? await renderAsset(this.asset, template)
+        : await renderAssetFromCards(this.asset);
+    }
 
     this.setupShowDialog();
     debug("Dialogs configured:", Object.keys(this.dialogs));
@@ -1167,6 +1405,8 @@ function formatTimeElements(): void {
 
 // Main entry point
 window.addEventListener('DOMContentLoaded', async () => {
+  setupGeojsonModal();
+
   const assetManagerInstance = new AssetManager();
 
   await assetManagerInstance.initialize();

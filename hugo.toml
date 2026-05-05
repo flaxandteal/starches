@@ -21,6 +21,9 @@ phase = "alpha"
 feedbackurl = "/feedback/"
 cookies = "/cookies/"
 
+[params.starches]
+use_card_rendering = false
+
 [[module.mounts]]
 source = "content"
 target = "content"

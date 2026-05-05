@@ -1,13 +1,20 @@
-<div class="govuk-form-group">
-  <fieldset class="govuk-fieldset" aria-describedby="chosenRecord-hint">
-    <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
-      <h3 class="govuk-fieldset__heading govuk-heading-l">
-        Which collection would you like to search?
-      </h3>
-    </legend>
-    <div class="govuk-hint">
-        <p>These are types of records available.</p>
-    </div>
-    <div id="filter"></div>
-  </fieldset>
+<div class="search-filter">
+  <a href="#" id="filterToggle" class="dropdown-toggle" aria-expanded="false">
+    <span class="search-filter-title">Filter</span>
+  </a>
+  <div id="filterContent" class="filter-content">
+    <ul id="active-filters" class="tag-list tag-dark my-0">
+      <li class="d-none">Filtering:</li>
+    </ul>
+    <ul id="filter-tabs-container"></ul>
+    <div id="tag-content"></div>
+  </div>
 </div>
+
+<template id="filter-tab-template">
+  <li class="tag tag-link"><a href="#"></a></li>
+</template>
+
+<template id="filter-content-template">
+  <div class="content-item"><div class="filter-options-wrap"></div></div>
+</template>
