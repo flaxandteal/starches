@@ -244,7 +244,7 @@ const RENDERER_OPTIONS = {
       const caption = (vm.name || "") + (altText? `: ${altText}` : "");
       return `![${caption}](${vm.url})`;
     }
-    return vm.toString();
+    return vm && vm.toString();
   }
 };
 
