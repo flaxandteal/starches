@@ -23,8 +23,8 @@ type StaticNode = staticTypes.StaticNode;
 type StaticNodegroup = staticTypes.StaticNodegroup;
 type StaticGraph = staticTypes.StaticGraph;
 
-/** Plain object returned by SemanticViewModel.toObject() — {alias: ViewModel} */
-type ViewModelChildren = Record<string, any>;
+/** A SemanticViewModel or the root VM — navigable via property access (Proxy). */
+type NavigableViewModel = SemanticViewModel | Record<string, any>;
 
 // --- Types ---
 
@@ -187,10 +187,9 @@ export class CardRenderer {
     await asset.$.populate(false);
 
     const rootVm: SemanticViewModel = await asset.$.getRootViewModel();
-    const rootChildren: ViewModelChildren = await rootVm.toObject();
 
     const cardTree = buildCardTree(graph, nodesById, nodegroups);
-    const markdown = await this.assembleMarkdown(cardTree, rootChildren);
+    const markdown = await this.assembleMarkdown(cardTree, rootVm);
 
     // Full render for image/file extraction (tiles already loaded, so fast)
     const rendered = await this.valueRenderer.render(asset);
@@ -198,14 +197,14 @@ export class CardRenderer {
     return { markdown, rendered };
   }
 
-  private async assembleMarkdown(cardTree: CardTreeNode[], rootChildren: ViewModelChildren): Promise<string> {
+  private async assembleMarkdown(cardTree: CardTreeNode[], rootVm: NavigableViewModel): Promise<string> {
     const sections: string[] = [];
 
     for (const rootCard of cardTree) {
       if (!rootCard.visible) continue;
 
       const sectionId = slugify(rootCard.name) || rootCard.cardId;
-      const sectionContent = await this.renderCard(rootCard, rootChildren);
+      const sectionContent = await this.renderCard(rootCard, rootVm);
 
       if (sectionContent.trim()) {
         sections.push(`<!--section:${sectionId}-->\n${sectionContent}`);
@@ -216,16 +215,16 @@ export class CardRenderer {
   }
 
   /**
-   * Render a card and its children. Looks up the card's nodegroup VM from
-   * parentContext, handles cardinality-n by iterating instances.
-   *
-   * @param parentContext - Plain object from toObject() (safe, no Proxy).
+   * Render a card and its children. Uses alizarin's VM navigation (Proxy)
+   * to look up the card's nodegroup, handling empty parents with children, etc.
    */
-  private async renderCard(card: CardTreeNode, parentContext: ViewModelChildren): Promise<string> {
+  private async renderCard(card: CardTreeNode, parentVm: NavigableViewModel): Promise<string> {
     if (!card.visible) return '';
 
-    const nodegroupVm = parentContext[card.nodegroupAlias];
-    if (nodegroupVm === null || nodegroupVm === undefined) return '';
+    // Let alizarin navigate to the child VM — its Proxy handles
+    // empty tiles, missing nodegroups, etc.
+    const nodegroupVm = await parentVm[card.nodegroupAlias];
+    if (nodegroupVm == null) return '';
 
     if (card.cardinality === 'n' && Array.isArray(nodegroupVm)) {
       // PseudoList elements are AttrPromises — must await to get SemanticViewModels.
@@ -244,20 +243,16 @@ export class CardRenderer {
    * cards_x_nodes_x_widgets, then render child cards as sibling blocks.
    */
   private async renderCardInstance(card: CardTreeNode, semanticVm: SemanticViewModel): Promise<string> {
-    // toObject() returns a plain {} — safe property access, no Proxy.
-    const children: ViewModelChildren = (typeof semanticVm?.toObject === 'function')
-      ? await semanticVm.toObject()
-      : (typeof semanticVm === 'object' ? semanticVm as unknown as ViewModelChildren : {});
-
     // Render this card's widgets (from cards_x_nodes_x_widgets).
+    // Navigate via alizarin's VM Proxy — it handles null tiles, child lookups, etc.
     // Skip semantic-type VMs — those are nodegroup roots for child cards,
     // not leaf values to display.
     const fields: string[] = [];
     for (const widget of card.widgets) {
       if (!widget.visible) continue;
 
-      const vm = children[widget.nodeAlias];
-      if (vm === null || vm === undefined) continue;
+      const vm = await semanticVm[widget.nodeAlias];
+      if (vm == null) continue;
       if (vm instanceof viewModels.SemanticViewModel) continue;
 
       const rendered = await this.valueRenderer.renderValue(vm, 0);
@@ -268,11 +263,11 @@ export class CardRenderer {
       }
     }
 
-    // Child cards render as sibling blocks (not nested), each looking up
-    // its own nodegroup VM from the children context.
+    // Child cards render as sibling blocks. Navigate via alizarin's VM
+    // to the child card's nodegroup — alizarin handles the parent→child relationship.
     const childBlocks: string[] = [];
     for (const childCard of card.children) {
-      const childResult = await this.renderCard(childCard, children);
+      const childResult = await this.renderCard(childCard, semanticVm);
       if (childResult.trim()) childBlocks.push(childResult);
     }
 
