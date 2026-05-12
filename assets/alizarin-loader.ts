@@ -7,11 +7,11 @@
 // 2. Try /wasm/alizarin_bg.wasm (optimal native loading)
 // 3. Fallback: fetch /wasm/alizarin_bg.txt (base64-encoded WASM as plain text)
 
-import { setWasmURL, initWasm, wasmReady as _alizarinAutoInit } from 'alizarin';
+import { setWasmURL, initWasm, wasmReady as _alizarinAutoInit, version } from 'alizarin';
 
 export {
   AlizarinModel, client, RDM, graphManager, staticStore,
-  staticTypes, viewModels, renderers, slugify, utils
+  staticTypes, viewModels, renderers, slugify, utils, version as alizarinVersion
 } from 'alizarin';
 import '@alizarin/filelist';
 import '@alizarin/clm';
@@ -25,6 +25,7 @@ export const wasmReady: Promise<void> = (async () => {
   try {
     setWasmURL('/wasm/alizarin_bg.wasm');
     await initWasm();
+    console.log(`[alizarin] v${version}`);
     return;
   } catch {
     // .wasm blocked or unavailable
@@ -37,6 +38,7 @@ export const wasmReady: Promise<void> = (async () => {
     const b64 = (await response.text()).trim();
     setWasmURL(`data:application/wasm;base64,${b64}`);
     await initWasm();
+    console.log(`[alizarin] v${version}`);
     return;
   } catch (e) {
     console.error('[alizarin] All WASM loading methods failed:', e);

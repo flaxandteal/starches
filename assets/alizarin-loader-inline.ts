@@ -11,7 +11,12 @@
 export {
   AlizarinModel, client, RDM, graphManager, staticStore,
   staticTypes, viewModels, renderers, slugify, utils,
-  wasmReady, initWasm, setWasmURL
+  initWasm, setWasmURL, version as alizarinVersion
 } from 'alizarin/inline';
+import { wasmReady as _wasmReady, version } from 'alizarin/inline';
 import '@alizarin/filelist';
 import '@alizarin/clm';
+
+export const wasmReady: Promise<void> = _wasmReady.then(() => {
+  console.log(`[alizarin] v${version}`);
+});

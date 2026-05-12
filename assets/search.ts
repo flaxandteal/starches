@@ -315,7 +315,9 @@ class SearchManager {
     } else {
       if (!this.cachedResults || this.lastTerm !== term || filtersChanged) {
         // We have changes (beyond potentially bounding box), so assume results do not exist
-        results = await pagefind.search(term, settings);
+        const trimmed = term.trim().replace(/^"+|"+$/g, '');
+        const searchTerm = (trimmed.length <= 2) ? `"${trimmed}"` : term;
+        results = await pagefind.search(searchTerm, settings);
         this.cachedResults = results;
         results.unfilteredResults = results.results;
       } else {

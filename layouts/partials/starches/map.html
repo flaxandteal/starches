@@ -3,6 +3,7 @@
 <link rel="stylesheet" href="{{ "css/map.css" | absURL }}">
 <link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
 <link rel="stylesheet" href="{{ "pagefind/pagefind-modular-ui.css" | absURL }}" />
+<link rel="stylesheet" href="{{ "css/map-controls.css" | absURL }}">
 <link rel="stylesheet" href="{{ "css/custom.css" | absURL }}">
 
 {{ partial "starches/pagefind-wasm-fallback.html" . }}
@@ -27,8 +28,12 @@
 {{- .Page.Store.Set "notice-style-loaded-flag" true -}}
 {{- end -}}
 <div id="map-row">
+{{ $starches_config := site.Params.starches_config }}
 {{ with .Params.starches_config }}
-    <div id="starches-base-configuration" data-config="{{ . | jsonify | htmlEscape }}" hidden></div>
+    {{ $starches_config = . }}
+{{ end }}
+{{ with $starches_config }}
+    <div id="starches-base-configuration" data-config="{{ . | jsonify }}" hidden></div>
 {{ end }}
 {{ if .Params.includeSearch }}
     <div id="starches-has-search" hidden></div>
