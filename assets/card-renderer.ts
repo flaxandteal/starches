@@ -45,6 +45,7 @@ interface CardTreeNode {
 interface WidgetInfo {
   nodeId: string;
   nodeAlias: string;
+  nodegroupId: string;
   label: string;
   sortorder: number;
   visible: boolean;
@@ -88,6 +89,7 @@ export function buildCardTree(
     const info: WidgetInfo = {
       nodeId: w.node_id,
       nodeAlias: node.alias || '',
+      nodegroupId: node.nodegroup_id || '',
       label: w.label?.toString?.() || node.name || node.alias || '',
       sortorder: w.sortorder ?? 0,
       visible: w.visible !== false
@@ -223,7 +225,14 @@ export class CardRenderer {
 
     // Let alizarin navigate to the child VM — its Proxy handles
     // empty tiles, missing nodegroups, etc.
-    const nodegroupVm = await parentVm[card.nodegroupAlias];
+    let nodegroupVm: any;
+    if (parentVm.__has(card.nodegroupAlias)) {
+      nodegroupVm = await parentVm[card.nodegroupAlias];
+    } else {
+      // Nodegroup not a direct child of parent — may be nested deeper.
+      // Alizarin's flat card tree doesn't always match the semantic tree depth.
+      return '';
+    }
     if (nodegroupVm == null) return '';
 
     if (card.cardinality === 'n' && Array.isArray(nodegroupVm)) {
@@ -248,9 +257,13 @@ export class CardRenderer {
     // Skip semantic-type VMs — those are nodegroup roots for child cards,
     // not leaf values to display.
     const fields: string[] = [];
+
     for (const widget of card.widgets) {
       if (!widget.visible) continue;
+      // Skip nodes from child nodegroups — their own child cards render them.
+      if (!semanticVm.__has(widget.nodeAlias)) continue;
 
+      console.log(semanticVm, widget.nodeAlias);
       const vm = await semanticVm[widget.nodeAlias];
       if (vm == null) continue;
       if (vm instanceof viewModels.SemanticViewModel) continue;
