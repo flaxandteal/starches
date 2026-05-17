@@ -61,7 +61,7 @@ async function getStore(config: RelationsConfig): Promise<any> {
       const wasm = await import(config.wasmModule);
       await wasm.default();
       const store = new wasm.SparqlStore(config.indexBaseUrl);
-      await store.load_summary();
+      await store.loadSummary(config.indexBaseUrl);
       window.sparqlStore = store;
       return store;
     })();
@@ -76,19 +76,27 @@ export async function fetchRelations(
   const store = await getStore(config);
   const uri = `${config.rdfBaseUri}resource/${resourceInstanceId}`;
 
-  const pageId = store.page_for_resource(uri);
-  if (pageId == null) return [];
+  console.debug('[relations] lookup URI:', uri);
+  const pageResult = store.pageForResource(uri);
+  console.debug('[relations] pageResult:', pageResult);
+  if (pageResult == null) return [];
 
-  const dictId = store.lookup_term(uri);
+  const pageInfo = typeof pageResult === 'string' ? JSON.parse(pageResult) : pageResult;
+  const pageId: number = pageInfo.page_id;
+  const layerIndex: number = pageInfo.layer_index ?? 0;
+  console.debug('[relations] pageId:', pageId, 'layerIndex:', layerIndex);
+
+  const dictId = store.lookupTerm(uri);
+  console.debug('[relations] dictId:', dictId);
   if (dictId == null) return [];
 
   // Build set of valid page IDs so we can distinguish real resource-link
   // page_o values from quantized literals (dates, geo, booleans) that
   // happen to look like small integers.
-  const pageMeta: PageMeta[] = JSON.parse(store.page_meta_json());
+  const pageMeta: PageMeta[] = JSON.parse(store.pageMetaJson());
   const validPages = new Set(pageMeta.map(pm => pm.page_id));
 
-  const quads: SummaryQuad[] = JSON.parse(store.summary_from_page(pageId));
+  const quads: SummaryQuad[] = JSON.parse(store.summaryFromPage(pageId));
 
   // Only keep quads that are actual resource links:
   // - reverse predicates (!) are always resource links by construction
@@ -108,7 +116,7 @@ export async function fetchRelations(
       .replace(/_/g, ' ');
 
     const records: PageRecord[] = JSON.parse(
-      await store.load_predicate_records(pageId, predUri),
+      await store.loadPredicateRecords(pageId, predUri),
     );
 
     for (const rec of records) {
@@ -151,7 +159,7 @@ async function resolveRelationMeta(
 ): Promise<void> {
   const discovered: DiscoveredMeta[] = [];
 
-  if (typeof store.load_resource_meta === 'function') {
+  if (typeof store.loadResourceMeta === 'function') {
     // Collect unique page IDs for all related resources
     const pageIds = new Set<number>();
     const uriMap = new Map<string, Relation[]>(); // uri → relations referencing it
@@ -161,9 +169,10 @@ async function resolveRelationMeta(
       if (!uriMap.has(uri)) uriMap.set(uri, []);
       uriMap.get(uri)!.push(rel);
 
-      const pid = store.page_for_resource(uri);
-      if (pid != null) {
-        pageIds.add(pid);
+      const pidResult = store.pageForResource(uri);
+      if (pidResult != null) {
+        const pidInfo = typeof pidResult === 'string' ? JSON.parse(pidResult) : pidResult;
+        pageIds.add(pidInfo.page_id);
       } else {
         console.debug('[relations] no page found for', rel.resourceId, uri);
       }
@@ -173,15 +182,15 @@ async function resolveRelationMeta(
     // so concurrent calls trigger unsafe aliasing detection.
     for (const pid of pageIds) {
       try {
-        await store.load_resource_meta(pid);
+        await store.loadResourceMeta(pid);
       } catch (e) {
-        console.warn('[relations] load_resource_meta failed for page', pid, e);
+        console.warn('[relations] loadResourceMeta failed for page', pid, e);
       }
     }
 
     // Resolve each resource synchronously from the cache
     for (const [uri, rels] of uriMap) {
-      const infoStr = store.resource_info(uri);
+      const infoStr = store.resourceInfo(uri);
       if (infoStr == null) {
         console.debug('[relations] resource_info returned null for', uri);
         continue;
@@ -230,32 +239,104 @@ async function resolveRelationMeta(
 export async function loadAndRenderRelations(
   resourceInstanceId: string,
   config: RelationsConfig,
+  publicView: boolean = false,
 ): Promise<void> {
   const container = document.getElementById('resource-relations');
   if (!container) return;
 
   try {
+    console.debug('[relations] fetching for', resourceInstanceId);
     const relations = await fetchRelations(resourceInstanceId, config);
+    console.debug('[relations] found', relations.length, 'relations', relations);
     if (relations.length === 0) return;
 
-    const outgoing = relations.filter(r => r.direction === 'outgoing');
-    const incoming = relations.filter(r => r.direction === 'incoming');
+    // Populate the expandable banner above "Return to Search"
+    renderRelationsBanner(relations, config.resolveModelName, publicView);
 
-    const heading = document.createElement('h2');
-    heading.textContent = 'Linked Resources';
-    container.appendChild(heading);
+    // Full treegrid only shown in full (non-public) view
+    if (!publicView) {
+      const outgoing = relations.filter(r => r.direction === 'outgoing');
+      const incoming = relations.filter(r => r.direction === 'incoming');
 
-    const treegrid = document.createElement('relations-treegrid') as any;
-    treegrid.setAttribute('aria-label', 'Linked Resources');
-    treegrid.data = {
-      outgoing,
-      incoming,
-      resolveModelName: config.resolveModelName,
-    };
-    container.appendChild(treegrid);
+      const heading = document.createElement('h2');
+      heading.textContent = 'Linked Resources';
+      container.appendChild(heading);
 
-    container.removeAttribute('hidden');
+      const treegrid = document.createElement('relations-treegrid') as any;
+      treegrid.setAttribute('aria-label', 'Linked Resources');
+      treegrid.data = {
+        outgoing,
+        incoming,
+        resolveModelName: config.resolveModelName,
+      };
+      container.appendChild(treegrid);
+
+      container.removeAttribute('hidden');
+    }
   } catch (err) {
     console.warn('[relations]', err);
   }
+}
+
+function renderRelationsBanner(
+  relations: Relation[],
+  resolveModelName?: (graphId: string) => string | undefined,
+  publicView: boolean = false,
+): void {
+  const banner = document.getElementById('related-resources-banner');
+  if (!banner) return;
+
+  const countEl = banner.querySelector('.related-resources-banner__count');
+  const contentEl = document.getElementById('related-resources-banner__content');
+  const toggleBtn = banner.querySelector('.related-resources-banner__toggle');
+  if (!countEl || !contentEl || !toggleBtn) return;
+
+  countEl.textContent = `(${relations.length})`;
+
+  // Build a columnar list of related resources
+  const list = document.createElement('ul');
+  list.className = 'related-resources-banner__list';
+
+  for (const rel of relations) {
+    const li = document.createElement('li');
+
+    const dirSpan = document.createElement('span');
+    dirSpan.className = 'related-resources-banner__dir';
+    dirSpan.textContent = rel.direction === 'incoming' ? '\u2190' : '\u2192';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'related-resources-banner__name';
+    const a = document.createElement('a');
+    a.href = publicView
+      ? `?slug=${encodeURIComponent(rel.slug)}`
+      : `?slug=${encodeURIComponent(rel.slug)}&full=true`;
+    a.textContent = rel.name || '(untitled)';
+    nameSpan.appendChild(a);
+
+    const predSpan = document.createElement('span');
+    predSpan.className = 'related-resources-banner__predicate';
+    predSpan.textContent = rel.predicate;
+
+    const modelSpan = document.createElement('span');
+    modelSpan.className = 'related-resources-banner__model';
+    const modelName = rel.modelName
+      || (rel.graphId && resolveModelName ? (resolveModelName(rel.graphId) || '') : '');
+    modelSpan.textContent = modelName;
+
+    li.appendChild(dirSpan);
+    li.appendChild(nameSpan);
+    li.appendChild(predSpan);
+    li.appendChild(modelSpan);
+    list.appendChild(li);
+  }
+
+  contentEl.appendChild(list);
+  banner.removeAttribute('hidden');
+
+  // Toggle expand/collapse
+  toggleBtn.addEventListener('click', () => {
+    const expanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+    toggleBtn.setAttribute('aria-expanded', String(!expanded));
+    contentEl.hidden = expanded;
+  });
 }

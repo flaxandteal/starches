@@ -207,15 +207,15 @@ export async function updateSearchParams(searchParams: SearchParams): Promise<vo
 
   if (changed) {
     const flattenedSearchParams: SearchParamsKV = {
-      searchTerm: searchParams.searchTerm,
-      searchFilters: searchParams.searchFilters ? JSON.stringify(searchParams.searchFilters) : undefined,
-      geoBounds: searchParams.geoBounds ? JSON.stringify(searchParams.geoBounds) : undefined,
-      selectionPolygon: searchParams.selectionPolygon ? JSON.stringify(searchParams.selectionPolygon) : undefined,
+      searchTerm: mergedSearchParams.searchTerm,
+      searchFilters: mergedSearchParams.searchFilters ? JSON.stringify(mergedSearchParams.searchFilters) : undefined,
+      geoBounds: mergedSearchParams.geoBounds ? JSON.stringify(mergedSearchParams.geoBounds) : undefined,
+      selectionPolygon: mergedSearchParams.selectionPolygon ? JSON.stringify(mergedSearchParams.selectionPolygon) : undefined,
     };
-    const url = await makeSearchQuery("?", searchParams);
+    const url = await makeSearchQuery("?", mergedSearchParams);
     history.pushState(flattenedSearchParams, "", url);
     // Update the cached URL params so subsequent reads see the new values
-    updateBreadcrumbs(searchParams);
+    updateBreadcrumbs(mergedSearchParams);
   }
 }
 

@@ -484,6 +484,7 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
     widgets?: WidgetMeta[];
     body: string;
     fields: NodeBlockField[];
+    fieldGroups?: NodeBlockField[][];
     tokens: Token[];
     initiallyCollapsed: boolean;
     sectionId?: string;
@@ -571,34 +572,45 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
             const id = `${slugify(title)}-${currentSectionId}`;
             let initiallyCollapsed = params.node_config?.collapsednodes?.includes(id);
 
-            // Parse fields - capture multi-line values until next [field] or end
-            // Use multiline mode with ^ to only match [label] at start of line
-            const fields: NodeBlockField[] = [];
-            const fieldPattern = /^\[([^\]]+)\]\s+([\s\S]*?)(?=\n\[|$)/gm;
-            let fieldMatch: RegExpExecArray | null;
+            // Split body by --- separators (cardinality-n instances)
+            const bodyChunks = body.split(/\n---\n/);
 
-            while ((fieldMatch = fieldPattern.exec(body)) !== null) {
-              const label = fieldMatch[1].trim();
-              const value = fieldMatch[2].trim();
+            // Parse fields from each chunk
+            function parseFields(chunk: string): NodeBlockField[] {
+              const chunkFields: NodeBlockField[] = [];
+              const fieldPattern = /^\[([^\]]+)\]\s+([\s\S]*?)(?=\n\[|$)/gm;
+              let fieldMatch: RegExpExecArray | null;
 
-              // Check if it's a node reference (starts with @)
-              const isNodeRef = label.startsWith('@');
-              const alias = isNodeRef ? label.substring(1) : null;
-              const node = alias ? nodes.get(alias) : null;
+              while ((fieldMatch = fieldPattern.exec(chunk)) !== null) {
+                const label = fieldMatch[1].trim();
+                const value = fieldMatch[2].trim();
 
-              // Extract data-id from alizarin-resource-instance spans to build slug
-              const dataIdMatch = value.match(/data-id=['"]([^'"]+)['"]/);
-              const resourceId = dataIdMatch ? dataIdMatch[1] : null;
-              const slug = resourceId ? `?slug=${resourceId}` : null
+                const isNodeRef = label.startsWith('@');
+                const alias = isNodeRef ? label.substring(1) : null;
+                const node = alias ? nodes.get(alias) : null;
 
-              fields.push({
-                alias: alias || '',
-                label: isNodeRef ? (node?.name || alias) : label,
-                value,
-                slug,
-                node
-              });
+                const dataIdMatch = value.match(/data-id=['"]([^'"]+)['"]/);
+                const resourceId = dataIdMatch ? dataIdMatch[1] : null;
+                const slug = resourceId ? `?slug=${resourceId}` : null
+
+                chunkFields.push({
+                  alias: alias || '',
+                  label: isNodeRef ? (node?.name || alias) : label,
+                  value,
+                  slug,
+                  node
+                });
+              }
+              return chunkFields;
             }
+
+            // All fields flat (for backwards compat / single-instance blocks)
+            const fields = parseFields(body.replace(/\n---\n/g, '\n'));
+
+            // Field groups (one per instance, for alternating row shading)
+            const fieldGroups = bodyChunks.length > 1
+              ? bodyChunks.map(chunk => parseFields(chunk.trim()))
+              : undefined;
 
             if (!body) {
               body = '<p><strong>No data available</strong></p>';
@@ -612,6 +624,7 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
               widgets: widgetsMeta,
               body,
               fields,
+              fieldGroups,
               tokens: [],
               initiallyCollapsed,
               sectionId: currentSectionId
@@ -631,6 +644,7 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
             description: nodeToken.description,
             widgets: nodeToken.widgets,
             fields: nodeToken.fields,
+            fieldGroups: nodeToken.fieldGroups,
             body: nodeToken.body,
             id: id,
             initiallyExpanded: !nodeToken.initiallyCollapsed,
@@ -1477,7 +1491,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           } catch { /* skip if summary creation fails */ }
         }
       },
-    });
+    }, publicView);
   }
 
   // Navigation setup with slight delay for localStorage availability

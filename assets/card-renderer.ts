@@ -200,6 +200,7 @@ export class CardRenderer {
   }
 
   private async assembleMarkdown(cardTree: CardTreeNode[], rootVm: NavigableViewModel): Promise<string> {
+    console.debug(`[card-renderer] assembleMarkdown: ${cardTree.length} root cards:`, cardTree.map(c => `${c.name} (${c.nodegroupAlias})`));
     const sections: string[] = [];
 
     for (const rootCard of cardTree) {
@@ -228,30 +229,90 @@ export class CardRenderer {
     let nodegroupVm: any;
     if (parentVm.__has(card.nodegroupAlias)) {
       nodegroupVm = await parentVm[card.nodegroupAlias];
+      if (nodegroupVm == null) {
+        console.debug(`[card-renderer] ${card.name}: __has=true but VM is null (alias=${card.nodegroupAlias})`);
+      }
     } else {
       // Nodegroup not a direct child of parent — may be nested deeper.
       // Alizarin's flat card tree doesn't always match the semantic tree depth.
+      console.debug(`[card-renderer] ${card.name}: __has=false (alias=${card.nodegroupAlias}, parent=${parentVm.__node?.alias || '?'})`);
       return '';
     }
-    if (nodegroupVm == null) return '';
+    if (nodegroupVm == null) {
+      // No tiles for this nodegroup — but child cards may still have data
+      // (collector/grouping nodes often have no tile of their own).
+      if (card.children.length > 0) {
+        console.debug(`[card-renderer] ${card.name}: null VM, rendering ${card.children.length} children from parentVm`);
+        const childBlocks: string[] = [];
+        for (const childCard of card.children) {
+          const childResult = await this.renderCard(childCard, parentVm);
+          if (childResult.trim()) childBlocks.push(childResult);
+        }
+        return childBlocks.join('\n');
+      }
+      return '';
+    }
+    console.debug(`[card-renderer] ${card.name}: VM resolved (type=${nodegroupVm?.constructor?.name}, isArray=${Array.isArray(nodegroupVm)}, length=${Array.isArray(nodegroupVm) ? nodegroupVm.length : 'N/A'})`);
 
-    if (card.cardinality === 'n' && Array.isArray(nodegroupVm)) {
-      // PseudoList elements are AttrPromises — must await to get SemanticViewModels.
-      const instances: SemanticViewModel[] = await Promise.all([...nodegroupVm]);
+    if (Array.isArray(nodegroupVm)) {
+      // PseudoList elements are AttrPromises — must await to get ViewModels.
+      const instances = await Promise.all([...nodegroupVm]);
+      if (card.cardinality === '1') {
+        // Cardinality-1: render only the first instance (Arches enforces at most one tile).
+        // Alizarin may still return a PseudoList for collector nodes even when cardinality is 1.
+        const single = instances[0];
+        if (!single) return '';
+        if (single instanceof viewModels.ResourceInstanceViewModel) {
+          // Resource-instance nodegroup — render as reference, don't traverse into it
+          const rendered = await this.valueRenderer.renderValue(single, 0);
+          return rendered?.toString()?.trim() || '';
+        }
+        return this.renderCardInstance(card, single, true);
+      }
+      // Cardinality-n: emit the card heading once, then each instance as a bare entry
       const blocks = await Promise.all(
-        instances.map(instance => this.renderCardInstance(card, instance))
+        instances.map(instance => {
+          if (instance instanceof viewModels.ResourceInstanceViewModel) {
+            return this.valueRenderer.renderValue(instance, 0).then((r: any) => r?.toString()?.trim() || '');
+          }
+          return this.renderCardInstance(card, instance, false);
+        })
       );
-      return blocks.filter(s => s.trim()).join('\n');
+      const entries = blocks.filter(s => s.trim());
+      if (entries.length === 0) return '';
+
+      const desc = card.description ? `{${card.description}}` : '';
+      const visibleWidgets = card.widgets.filter(w => w.visible);
+      const widgetMeta = visibleWidgets
+        .map(w => `${w.nodeAlias}=${w.label}`)
+        .join(';;');
+      const widgetComment = widgetMeta ? `\n<!--widgets:${widgetMeta}-->` : '';
+      return `::${card.name}${desc}::${widgetComment}\n${entries.join('\n---\n')}\n::end::\n`;
+    }
+
+    // Single value (not array) — check if it's an RIVM before treating as semantic
+    if (nodegroupVm instanceof viewModels.ResourceInstanceViewModel) {
+      const rendered = await this.valueRenderer.renderValue(nodegroupVm, 0);
+      return rendered?.toString()?.trim() || '';
     }
 
     return this.renderCardInstance(card, nodegroupVm as SemanticViewModel);
   }
 
   /**
-   * Render one card instance as a ::Block:: with its widgets from
-   * cards_x_nodes_x_widgets, then render child cards as sibling blocks.
+   * Render one card instance with its widgets from cards_x_nodes_x_widgets,
+   * then render child cards as sibling blocks.
+   *
+   * When wrapInBlock=true (default, used for single/cardinality-1 instances),
+   * wraps the output in a ::Block:: with heading and widget metadata.
+   * When wrapInBlock=false (used for cardinality-n instances where the caller
+   * already emitted the shared heading), returns bare fields only.
    */
-  private async renderCardInstance(card: CardTreeNode, semanticVm: SemanticViewModel): Promise<string> {
+  private async renderCardInstance(card: CardTreeNode, semanticVm: SemanticViewModel, wrapInBlock: boolean = true): Promise<string> {
+    // Guard: only SemanticViewModels can be navigated for widgets/children.
+    // ResourceInstanceViewModels should have been caught in renderCard.
+    if (!semanticVm || typeof semanticVm.__has !== 'function') return '';
+
     // Render this card's widgets (from cards_x_nodes_x_widgets).
     // Navigate via alizarin's VM Proxy — it handles null tiles, child lookups, etc.
     // Skip semantic-type VMs — those are nodegroup roots for child cards,
@@ -262,8 +323,6 @@ export class CardRenderer {
       if (!widget.visible) continue;
       // Skip nodes from child nodegroups — their own child cards render them.
       if (!semanticVm.__has(widget.nodeAlias)) continue;
-
-      console.log(semanticVm, widget.nodeAlias);
       const vm = await semanticVm[widget.nodeAlias];
       if (vm == null) continue;
       if (vm instanceof viewModels.SemanticViewModel) continue;
@@ -284,19 +343,22 @@ export class CardRenderer {
       if (childResult.trim()) childBlocks.push(childResult);
     }
 
-    // Assemble: own fields in a ::Block::, child blocks as siblings.
-    // Description (if present) is encoded in {braces} for the template.
-    // Widget metadata encoded as <!--widgets:alias=Label;;alias2=Label2--> for schema display.
+    // Assemble output. When wrapInBlock=false (cardinality-n), return bare
+    // fields — the caller wraps all instances in a single shared ::Block::.
     const parts: string[] = [];
     const ownContent = fields.join('\n');
     if (ownContent.trim()) {
-      const desc = card.description ? `{${card.description}}` : '';
-      const visibleWidgets = card.widgets.filter(w => w.visible);
-      const widgetMeta = visibleWidgets
-        .map(w => `${w.nodeAlias}=${w.label}`)
-        .join(';;');
-      const widgetComment = widgetMeta ? `\n<!--widgets:${widgetMeta}-->` : '';
-      parts.push(`::${card.name}${desc}::${widgetComment}\n${ownContent}\n::end::\n`);
+      if (wrapInBlock) {
+        const desc = card.description ? `{${card.description}}` : '';
+        const visibleWidgets = card.widgets.filter(w => w.visible);
+        const widgetMeta = visibleWidgets
+          .map(w => `${w.nodeAlias}=${w.label}`)
+          .join(';;');
+        const widgetComment = widgetMeta ? `\n<!--widgets:${widgetMeta}-->` : '';
+        parts.push(`::${card.name}${desc}::${widgetComment}\n${ownContent}\n::end::\n`);
+      } else {
+        parts.push(ownContent);
+      }
     }
     parts.push(...childBlocks);
 
