@@ -79,6 +79,34 @@
     background-color: #f89027;
 }
 
+/* Reusable tooltip for any element with a title attribute */
+.starches-tooltip {
+    position: relative;
+}
+
+.starches-tooltip[title]::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.75);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+}
+
+.starches-tooltip[title]:hover::after,
+.starches-tooltip[title]:focus::after {
+    opacity: 1;
+}
+
 /* Crosshair cursor when drawing */
 .maplibregl-canvas-container.mode-draw_polygon {
     cursor: crosshair;

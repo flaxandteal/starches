@@ -44,6 +44,10 @@ target = "assets"
 source = "layouts"
 target = "layouts"
 
+[[module.mounts]]
+source = "i18n"
+target = "i18n"
+
 [module]
   [[module.imports]]
     path = 'github.com/flaxandteal/hugo-cookies'

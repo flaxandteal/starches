@@ -27,6 +27,20 @@ export function renderFilters(categories: string[]): void {
     tabContainer.innerHTML = '';
     contentContainer.innerHTML = '';
 
+    // Show the filter toggle now that we have filters
+    const filterToggle = document.getElementById('filter-toggle');
+    if (filterToggle) filterToggle.removeAttribute('hidden');
+
+    // Category display names — check i18n element first, then data attribute, then capitalize
+    const i18nEl = document.getElementById('starches-filter-i18n');
+    const i18nLabels: Record<string, string> = i18nEl
+        ? JSON.parse(i18nEl.getAttribute('data-labels') || '{}')
+        : {};
+    const labelsEl = document.getElementById('starches-filter-labels');
+    const paramLabels: Record<string, string> = labelsEl
+        ? JSON.parse(labelsEl.getAttribute('data-labels') || '{}')
+        : {};
+
     categories.forEach((category, index) => {
         const contentId = `filter-content-${category}`;
         const mountPointId = `filter-${category}`;
@@ -38,8 +52,8 @@ export function renderFilters(categories: string[]): void {
 
         if (li && link) {
             li.setAttribute('data-content', contentId);
-            // Capitalize first letter for label
-            link.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+            // Use i18n label, then param label, then capitalize
+            link.textContent = i18nLabels[category] || paramLabels[category] || category.charAt(0).toUpperCase() + category.slice(1);
             
             if (index === 0) li.classList.add('selected');
 
@@ -125,32 +139,11 @@ function removeFilter(category: string): void {
 function hasSearchResults(): boolean {
     const searchResults = document.getElementById('results');
     if (!searchResults) return false;
-    const listItems = searchResults.querySelectorAll('li');
-    return listItems.length > 0;
+    return searchResults.querySelectorAll('.pagefind-modular-list-result').length > 0;
 }
 
-// Filter toggle functionality
+// Help and UI toggle functionality
 document.addEventListener('DOMContentLoaded', (): void => {
-    const filterToggle = document.getElementById('filterToggle');
-    if (filterToggle) {
-        filterToggle.addEventListener('click', (event: Event): void => {
-            event.preventDefault();
-
-            const filterContent = document.getElementById('filterContent');
-            if (!filterContent) return;
-
-            const isExpanded = filterToggle.getAttribute('aria-expanded') === 'true';
-
-            filterToggle.setAttribute('aria-expanded', (!isExpanded).toString());
-
-            if (filterContent.classList.contains('expanded')) {
-                filterContent.classList.remove('expanded');
-            } else {
-                filterContent.classList.add('expanded');
-            }
-        });
-    }
-
     // Help toggle functionality
     const helpToggle = document.getElementById('help-toggle');
     const helpContent = document.getElementById('help-content');

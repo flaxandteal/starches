@@ -195,24 +195,49 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
 
     // Get all available filters directly from the index
     const filterList = await instance.__pagefind__.filters() || {};
+    console.debug('[pagefind] filters:', JSON.stringify(Object.keys(filterList)), 'total keys:', Object.keys(filterList).length);
+
+    // Load filter value labels (e.g. registry slug → human-readable name)
+    let filterLabels: Record<string, Record<string, string>> = {};
+    try {
+        const resp = await fetch('./pagefind/filter-labels.json');
+        if (resp.ok) {
+            filterLabels = await resp.json();
+        }
+    } catch {
+        // No filter labels available — pills will show raw values
+    }
 
     if (Object.keys(filterList).length > 0) {
         renderFilters(Object.keys(filterList));
+        console.debug('[pagefind] renderFilters done, checking mount points');
 
         for (let [key, items] of Object.entries(filterList)) {
-            const filters = new customFilterPills({
-                containerElement: `#filter-${key}`,
-                filter: key,
-                alwaysShow: true,
-                customTemplate: filterTemplate as string,
-                onFilterSelect: addActiveFilter
-            });
+            const mountPoint = document.getElementById(`filter-${key}`);
+            console.debug(`[pagefind] filter "${key}": ${Object.keys(items as object).length} values, mount=#filter-${key} exists=${!!mountPoint}`);
+            try {
+                const filters = new customFilterPills({
+                    containerElement: `#filter-${key}`,
+                    filter: key,
+                    alwaysShow: true,
+                    customTemplate: filterTemplate as string,
+                    onFilterSelect: addActiveFilter,
+                    valueLabels: filterLabels[key] || {},
+                });
 
-            const filterEntries = Object.entries(items as Record<string, number>);
-            filters.available = [["All", 0], ...filterEntries];
+                const filterEntries = Object.entries(items as Record<string, number>);
+                filters.available = [["All", 0], ...filterEntries];
 
-            instance.add(filters);
-            filters.update();
+                instance.add(filters);
+                filters.update();
+                console.debug(`[pagefind] filter "${key}" pills rendered`);
+                console.log('[pagefind] mount element:', mountPoint);
+                console.log('[pagefind] mount innerHTML:', mountPoint?.innerHTML);
+                console.log('[pagefind] filterContent element:', document.getElementById('filterContent'));
+                console.log('[pagefind] tag-content element:', document.getElementById('tag-content'));
+            } catch (e) {
+                console.error(`[pagefind] filter "${key}" error:`, e);
+            }
         }
     }
     

@@ -212,7 +212,7 @@ export async function updateSearchParams(searchParams: SearchParams): Promise<vo
       geoBounds: mergedSearchParams.geoBounds ? JSON.stringify(mergedSearchParams.geoBounds) : undefined,
       selectionPolygon: mergedSearchParams.selectionPolygon ? JSON.stringify(mergedSearchParams.selectionPolygon) : undefined,
     };
-    const url = await makeSearchQuery("?", mergedSearchParams);
+    const url = await makeSearchQuery(null, mergedSearchParams);
     history.pushState(flattenedSearchParams, "", url);
     // Update the cached URL params so subsequent reads see the new values
     updateBreadcrumbs(mergedSearchParams);
@@ -307,14 +307,14 @@ export async function clearSearchContext(): Promise<void> {
  * Get URL for repeating a search with preserved search context
  */
 export async function getSearchUrlWithContext(assetId: string): Promise<string> {
-  return makeSearchQuery("?");
+  return makeSearchQuery(null);
 }
 
 /**
  * Get URL for navigating to asset with preserved search context
  */
 export async function getAssetUrlWithContext(assetId: string): Promise<string> {
-  return makeSearchQuery("asset?");
+  return makeSearchQuery("/asset");
 }
 
 /**
@@ -406,12 +406,12 @@ export async function getTerm(): Promise<string | undefined> {
   return searchTerm;
 }
 
-export async function makeSearchQuery(url: string, searchParams?: SearchParams) {
+export async function makeSearchQuery(path: string | null, searchParams?: SearchParams) {
   if (!searchParams) {
     searchParams = await getSearchParams();
   }
 
-  const urlObj = new URL(url, window.location.origin);
+  const urlObj = new URL(path ?? window.location.pathname, window.location.origin);
 
   if (searchParams.searchTerm) {
     urlObj.searchParams.set('searchTerm', searchParams.searchTerm);

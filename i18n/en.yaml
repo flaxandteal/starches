@@ -1,0 +1,54 @@
+# Starches module default English strings
+# Projects can override any key in their own i18n/en.yaml
+
+# Map search page
+starches_search_prompt:
+  other: "Search above to find assets."
+starches_search_result_actions:
+  other: "Each result has a <strong>View</strong> button to open it in this tab, and <strong>Open Tab</strong> to open the result in a new tab."
+starches_filter_label:
+  other: "Filter"
+starches_filter_active_label:
+  other: "Filtering:"
+starches_filter_reset:
+  other: "Filtering geographically, <a href=\"#\" data-action=\"reset-view\">reset</a> view to see all results"
+starches_map_instructions:
+  other: "Search by typing 4+ characters into the <strong>searchbox</strong>, or by choosing a record type and <strong>zooming</strong> in to a small area - pinch the map or tap a grey dot to zoom."
+
+# Help section (empty by default — projects provide content)
+starches_help_toggle_label:
+  other: "Help"
+starches_help_content:
+  other: ""
+
+# Asset page
+starches_return_to_search:
+  other: "Return to Search"
+starches_copy_link:
+  other: "Copy link"
+starches_related_resources:
+  other: "Related Resources"
+starches_previous:
+  other: "Previous"
+starches_next:
+  other: "Next"
+starches_cancel:
+  other: "Cancel"
+starches_close:
+  other: "Close"
+starches_geometry:
+  other: "Geometry"
+starches_legacy_record:
+  other: "Legacy Record"
+
+# Tooltips
+starches_tooltip_reset_view:
+  other: "Reset view"
+starches_tooltip_draw_polygon:
+  other: "Draw selection polygon"
+starches_tooltip_clear_polygon:
+  other: "Clear selection polygon"
+starches_tooltip_copy_link:
+  other: "Copy a shareable link to this asset"
+starches_tooltip_filter:
+  other: "Filter results by category"

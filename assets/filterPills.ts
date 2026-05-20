@@ -11,16 +11,20 @@ interface CustomFilterPillsOptions {
     pillInner?: (val: string, count: number) => string;
     makeFilterElement?: () => El;
     onFilterSelect?: (category: string, value: string, label: string) => void;
+    /** Mapping from raw filter values to display labels (e.g. registry slug → name) */
+    valueLabels?: Record<string, string>;
 }
 
 export class customFilterPills extends FilterPills {
     customTemplate: string | null;
     onFilterSelect?: (category: string, value: string, label: string) => void;
+    valueLabels: Record<string, string>;
 
     constructor(opts: CustomFilterPillsOptions = {}) {
         super(opts);
         this.customTemplate = opts.customTemplate || null;
         this.onFilterSelect = opts.onFilterSelect;
+        this.valueLabels = opts.valueLabels || {};
 
         if (this.customTemplate) {
             this.processTemplate(this.customTemplate);
@@ -137,10 +141,11 @@ export class customFilterPills extends FilterPills {
             }
 
             // Update the label element
+            const displayLabel = this.valueLabels[val] || val;
             const label = newPillContainer.querySelector("label");
             if (label) {
                 label.setAttribute("for", pillId);
-                label.textContent = `${val} (${count})`;
+                label.textContent = `${displayLabel} (${count})`;
             }
 
             // Add event listener to the input
@@ -162,8 +167,8 @@ export class customFilterPills extends FilterPills {
                     }
                     this.update();
                     this.pushFilters();
-                    
-                    this.onFilterSelect?.(this.filter, val, val);
+
+                    this.onFilterSelect?.(this.filter, val, displayLabel);
                 }, false);
             }
 
@@ -184,9 +189,10 @@ export class customFilterPills extends FilterPills {
                 input.setAttribute("aria-pressed", String(isSelected));
             }
 
+            const displayLabel = this.valueLabels[val] || val;
             const label = pills[i].querySelector("label");
             if (label) {
-                label.textContent = `${val} (${count})`;
+                label.textContent = `${displayLabel} (${count})`;
             }
         });
     }

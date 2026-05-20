@@ -1,11 +1,19 @@
+{{ $filterLabels := site.Params.starches.filter_labels | default dict }}
+{{ $i18nLabels := dict }}
+{{ range $key, $val := $filterLabels }}
+  {{ $i18nKey := printf "starches_filter_label_%s" $key }}
+  {{ $translated := i18n $i18nKey }}
+  {{ if $translated }}
+    {{ $i18nLabels = merge $i18nLabels (dict $key $translated) }}
+  {{ end }}
+{{ end }}
 <div class="search-filter">
-  <a href="#" id="filterToggle" class="dropdown-toggle" aria-expanded="false">
-    <span class="search-filter-title">Filter</span>
-  </a>
+  {{ with $filterLabels }}<div id="starches-filter-labels" data-labels="{{ . | jsonify }}" hidden></div>{{ end }}
+  {{ with $i18nLabels }}<div id="starches-filter-i18n" data-labels="{{ . | jsonify }}" hidden></div>{{ end }}
+  <button id="filter-toggle" class="starches-filter-toggle" aria-expanded="false" aria-controls="filterContent" hidden>
+    {{ i18n "starches_filter_label" }}
+  </button>
   <div id="filterContent" class="filter-content">
-    <ul id="active-filters" class="tag-list tag-dark my-0">
-      <li class="d-none">Filtering:</li>
-    </ul>
     <ul id="filter-tabs-container"></ul>
     <div id="tag-content"></div>
   </div>

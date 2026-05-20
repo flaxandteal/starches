@@ -34,9 +34,9 @@
 
 <div class="navigation-container">
   <div class="nav-back">
-    <a href="{{ site.BaseURL }}" class="govuk-button govuk-button--secondary back-link">Return to Search</a>
-    <button class="govuk-button govuk-button--secondary" data-module="govuk-button" data-action="copy-link">
-      Copy link
+    <a href="{{ site.BaseURL }}" class="govuk-button govuk-button--secondary back-link">{{ i18n "starches_return_to_search" }}</a>
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button" data-action="copy-link" title="{{ i18n "starches_tooltip_copy_link" }}">
+      {{ i18n "starches_copy_link" }}
     </button>
   </div>
   <div class="asset-breadcrumbs" id="search-breadcrumbs">
@@ -51,8 +51,8 @@
     {{/* Populated by JavaScript */}}
   </div>
   <div class="nav-buttons" id="top-navigation">
-    <a href="#" class="govuk-button govuk-button--secondary" id="prev-asset-top" style="display: none;">Previous</a>
-    <a href="#" class="govuk-button govuk-button--secondary" id="next-asset-top" style="display: none;">Next</a>
+    <a href="#" class="govuk-button govuk-button--secondary" id="prev-asset-top" style="display: none;">{{ i18n "starches_previous" }}</a>
+    <a href="#" class="govuk-button govuk-button--secondary" id="next-asset-top" style="display: none;">{{ i18n "starches_next" }}</a>
   </div>
 </div>
 
@@ -62,7 +62,7 @@
 
 <div id="related-resources-banner" class="related-resources-banner" hidden>
   <button class="related-resources-banner__toggle" aria-expanded="false" aria-controls="related-resources-banner__content">
-    <span class="related-resources-banner__label">Related Resources</span>
+    <span class="related-resources-banner__label">{{ i18n "starches_related_resources" }}</span>
     <span class="related-resources-banner__count"></span>
     <span class="related-resources-banner__chevron" aria-hidden="true"></span>
   </button>
@@ -72,14 +72,14 @@
 
 <div class="modern-navigation" id="bottom-nav-container">
   <div class="nav-back">
-    <a href="{{ site.BaseURL }}" class="govuk-back-link back-link">Return to Search</a>
+    <a href="{{ site.BaseURL }}" class="govuk-back-link back-link">{{ i18n "starches_return_to_search" }}</a>
   </div>
   <div class="nav-position" id="position-counter-bottom">
     {{/* Populated by JavaScript */}}
   </div>
   <div class="nav-buttons" id="bottom-navigation">
-    <a href="#" class="govuk-button govuk-button--secondary" id="prev-asset-bottom" style="display: none;">Previous</a>
-    <a href="#" class="govuk-button govuk-button--secondary" id="next-asset-bottom" style="display: none;">Next</a>
+    <a href="#" class="govuk-button govuk-button--secondary" id="prev-asset-bottom" style="display: none;">{{ i18n "starches_previous" }}</a>
+    <a href="#" class="govuk-button govuk-button--secondary" id="next-asset-bottom" style="display: none;">{{ i18n "starches_next" }}</a>
   </div>
 </div>
 
@@ -95,19 +95,19 @@
 <div id="asset-dialog__content"></div>
 
 <button class="govuk-button dialog-cancel" type="button" id="asset-dialog__cancel"
-    data-action="close-dialog" data-target="asset-dialog">Cancel</button>
+    data-action="close-dialog" data-target="asset-dialog">{{ i18n "starches_cancel" }}</button>
 </dialog>
 
 <dialog id="geojson-dialog" aria-labelledby="geojson-dialog__heading">
   <div class="geojson-dialog__header">
-    <h2 id="geojson-dialog__heading">Geometry</h2>
-    <button class="govuk-button govuk-button--secondary" type="button" id="geojson-dialog__close">Close</button>
+    <h2 id="geojson-dialog__heading">{{ i18n "starches_geometry" }}</h2>
+    <button class="govuk-button govuk-button--secondary" type="button" id="geojson-dialog__close">{{ i18n "starches_close" }}</button>
   </div>
   <div id="geojson-dialog__map"></div>
 </dialog>
 
 <div id="legacy-record-container">
-<h2>Legacy Record</h2>
+<h2>{{ i18n "starches_legacy_record" }}</h2>
 
 <pre id="legacy-record">
 </pre>

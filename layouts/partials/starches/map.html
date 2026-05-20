@@ -40,27 +40,30 @@
     <div id="search-column">
         <div id="search"></div>
         {{ partial "starches/map-filters.html" . }}
-        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="#" data-action="reset-view">reset</a> view to see all results</div>
+        <div id="filter-warning" class="filter-warning-hidden">{{ i18n "starches_filter_reset" | safeHTML }}</div>
         <div id="result-count" class="result-count"></div>
-        <div id="instructions">
-            <p>Search above to find assets.</p>
-
-            <p>Each result has a <strong>View</strong> button to open it in this tab, and <strong>Open Tab</strong> to open the result in a new tab.</p>
+        {{ $helpContent := i18n "starches_help_content" }}
+        {{ with $helpContent }}
+        <button id="help-toggle" class="starches-help-toggle" aria-expanded="true" aria-controls="help-content">
+          {{ i18n "starches_help_toggle_label" }}
+        </button>
+        <div id="help-content" class="starches-help-content">
+          {{ . | markdownify }}
         </div>
+        {{ end }}
+        <div id="instructions"></div>
         <div id="results">
         </div>
     </div>
 
 {{ end }}
     <div id="map-column">
-        <div id="filter-warning" class="filter-warning-hidden">Filtering geographically, <a href="#" data-action="reset-view">reset</a> view to see all results</div>
+        <div id="filter-warning" class="filter-warning-hidden">{{ i18n "starches_filter_reset" | safeHTML }}</div>
         <div id="map-container">
 {{ if .Params.includeSearch }}
             <div id="map-cover">
                 <div id="map-instructions">
-                    Search by typing 4+ characters into the <strong>searchbox</strong>, or
-                    by choosing a record type and <strong>zooming</strong> in to a small area
-                    - pinch the map or tap a grey dot to zoom.
+                    {{ i18n "starches_map_instructions" | safeHTML }}
                 </div>
             </div>
 {{ end }}
