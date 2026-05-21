@@ -761,6 +761,9 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
   treegridElt.data = { listItems: markdown, nodeObjectsByAlias, nodeSkeleton };
   addAssetToMap(asset);
 
+  // Hide carousel in debug/full view — no image handling here
+  initSwiper([], 'media/images');
+
   return buildImageDialogs([], asset.meta.title);
 }
 

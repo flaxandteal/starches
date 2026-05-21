@@ -247,6 +247,18 @@ export async function initSwiper(imageList: ImageInput[], path: string): Promise
     return;
   }
 
+  // Hide the carousel area when there are no images
+  if (!imageList || imageList.length === 0) {
+    const carouselContainer = container.closest('.carousel-container') as HTMLElement;
+    // Hide the widest wrapper we can find without escaping the tab pane
+    const target = carouselContainer?.closest('.full-width-content') as HTMLElement
+      ?? carouselContainer;
+    if (target) {
+      target.style.display = 'none';
+    }
+    return;
+  }
+
   const wrapper = container.querySelector('.swiper-wrapper');
   if (!wrapper) {
     console.error('[Swiper] Swiper wrapper not found');

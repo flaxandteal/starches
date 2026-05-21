@@ -1,4 +1,5 @@
-#toggle-empty-nodes {
+#toggle-empty-nodes,
+#toggle-expand-all {
   margin-bottom: 0.5em;
   padding: 0.3em 0.8em;
   font-size: 0.85rem;
@@ -6,6 +7,10 @@
   background: #f3f2f1;
   border: 1px solid #b1b4b6;
   color: #0b0c0c;
+}
+
+#toggle-expand-all {
+  margin-left: 0.5em;
 }
 
 #treegrid {

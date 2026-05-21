@@ -11,6 +11,7 @@ class TreeGrid extends HTMLElement {
   _data = null;
   _connected = false;
   _showAllNodes = false;
+  _expandAllNodes = false;
   _rawModalTrigger = null;
 
   // Focus mode from URL ?cell= parameter
@@ -57,6 +58,24 @@ class TreeGrid extends HTMLElement {
     this._render();
   }
 
+  toggleExpandAllNodes() {
+    this._expandAllNodes = !this._expandAllNodes;
+    if (this._expandAllNodes) {
+      // Expand all: unhide every row and set all aria-expanded to true
+      const rows = this._getAllRows();
+      for (const row of rows) {
+        row.classList.remove('hidden');
+        if (this._isExpandable(row)) {
+          this._setAriaExpanded(row, true);
+        }
+      }
+      this.shadowRoot.querySelector('#toggle-expand-all').textContent = 'Collapse nodes';
+    } else {
+      // Re-render to restore default expand/collapse state
+      this._render();
+    }
+  }
+
   // --- Rendering ---
 
   async _render() {
@@ -66,11 +85,13 @@ class TreeGrid extends HTMLElement {
       : '';
 
     const toggleLabel = this._showAllNodes ? 'Hide empty nodes' : 'Show all nodes';
+    const expandLabel = this._expandAllNodes ? 'Collapse nodes' : 'Expand all nodes';
 
     this.shadowRoot.innerHTML = `
       <link rel="stylesheet" type="text/css" href="/css/w3c-treegrid.css">
       <div id="treegrid" class="table-wrap">
         <button id="toggle-empty-nodes" type="button">${toggleLabel}</button>
+        <button id="toggle-expand-all" type="button">${expandLabel}</button>
         <table id="treegrid-table"
                role="treegrid"
                aria-label="${this._esc(label)}">
@@ -106,6 +127,8 @@ class TreeGrid extends HTMLElement {
       this._addEventListeners();
       this.shadowRoot.querySelector('#toggle-empty-nodes')
         .addEventListener('click', () => this.toggleShowAllNodes());
+      this.shadowRoot.querySelector('#toggle-expand-all')
+        .addEventListener('click', () => this.toggleExpandAllNodes());
       this._addModalListeners();
     }
   }
@@ -162,7 +185,7 @@ class TreeGrid extends HTMLElement {
       } else {
         const empty = Object.keys(value).length === 0;
         const hasSkeletonChildren = childSkeleton && Object.keys(childSkeleton).length > 0;
-        const expanded = !(Array.isArray(value) && value.length > 5) && !empty;
+        const expanded = this._expandAllNodes || (!(Array.isArray(value) && value.length > 5) && !empty);
         const expandable = !empty || (this._showAllNodes && hasSkeletonChildren);
         const hideChildren = hidden || !expanded;
 
