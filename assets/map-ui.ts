@@ -144,6 +144,17 @@ function hasSearchResults(): boolean {
 
 // Help and UI toggle functionality
 document.addEventListener('DOMContentLoaded', (): void => {
+    // Filter toggle functionality
+    const filterToggle = document.getElementById('filter-toggle');
+    const filterContent = document.getElementById('filterContent');
+    if (filterToggle && filterContent) {
+        filterToggle.addEventListener('click', (): void => {
+            const isExpanded = filterToggle.getAttribute('aria-expanded') === 'true';
+            filterToggle.setAttribute('aria-expanded', (!isExpanded).toString());
+            filterContent.classList.toggle('expanded');
+        });
+    }
+
     // Help toggle functionality
     const helpToggle = document.getElementById('help-toggle');
     const helpContent = document.getElementById('help-content');

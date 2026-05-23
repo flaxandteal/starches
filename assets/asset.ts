@@ -1405,7 +1405,9 @@ function setupDemoWarning(asset: Asset, publicView: boolean, hasLegacyRecord: bo
   if (!warningEl) return;
 
   const isPublicScope = Array.isArray(asset.asset.$.scopes) && asset.asset.$.scopes.includes('public');
-  const shouldHide = isPublicScope && publicView && !hasLegacyRecord;
+  // Show the banner if the asset has non-public data, OR if full view is available
+  const hasFullView = params.default_show_full_asset === "true";
+  const shouldHide = isPublicScope && publicView && !hasLegacyRecord && !hasFullView;
   if (shouldHide) {
     warningEl.setAttribute('hidden', '');
   } else {
