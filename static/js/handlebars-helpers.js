@@ -131,5 +131,24 @@
     return a;
   });
 
+  Handlebars.registerHelper("isOdd", (index) => index % 2 !== 0);
+
+  // ---- i18n helper ----------------------------------------------------------
+  // Consumer sites can provide translations by setting
+  // window.__starchesTranslations at any point before the first template
+  // render, e.g.:
+  //   window.__starchesTranslations = { en: { view: "View" }, fr: { view: "Voir" } };
+  // Falls back to the key itself if no translation is found.
+  Handlebars.registerHelper("i18n", function (key) {
+    const translations = window.__starchesTranslations || {};
+    const langEl = document.getElementById('currentLanguage');
+    const lang = langEl ? langEl.textContent.trim() : 'en';
+    return (
+      (translations[lang] && translations[lang][key]) ||
+      (translations['en'] && translations['en'][key]) ||
+      key
+    );
+  });
+
   console.log('Handlebars helpers registered');
 })();
