@@ -197,6 +197,42 @@ export class MapLibreStyleBasemapLoader implements IBasemapLoader {
       const addedSourceIds: string[] = [];
       const addedLayerIds: string[] = [];
 
+      // Load sprite sheet from the style if present, so symbol layers can render
+      if (style.sprite) {
+        try {
+          const spriteUrl = typeof style.sprite === 'string' ? style.sprite : style.sprite[0]?.url || style.sprite;
+          const [metaResp, imgResp] = await Promise.all([
+            fetch(`${spriteUrl}.json`),
+            fetch(`${spriteUrl}.png`),
+          ]);
+          if (metaResp.ok && imgResp.ok) {
+            const meta: Record<string, { x: number; y: number; width: number; height: number; pixelRatio?: number; sdf?: boolean }> = await metaResp.json();
+            const blob = await imgResp.blob();
+            const sheet = await createImageBitmap(blob);
+            for (const [name, info] of Object.entries(meta)) {
+              if (!map.hasImage(name)) {
+                const sprite = await createImageBitmap(sheet, info.x, info.y, info.width, info.height);
+                map.addImage(name, sprite, {
+                  pixelRatio: info.pixelRatio || 1,
+                  sdf: info.sdf || false,
+                });
+              }
+            }
+          }
+        } catch (spriteErr) {
+          console.debug('Could not load style sprites:', spriteErr);
+        }
+      }
+
+      // Load glyphs from the style if present, so text labels can render
+      if (style.glyphs) {
+        const currentStyle = map.getStyle();
+        if (!currentStyle.glyphs) {
+          currentStyle.glyphs = style.glyphs;
+          map.setStyle(currentStyle, { diff: true });
+        }
+      }
+
       // Add sources from the style
       for (const [sourceId, sourceDef] of Object.entries(style.sources || {})) {
         const prefixedId = `${basemapId}-${sourceId}`;

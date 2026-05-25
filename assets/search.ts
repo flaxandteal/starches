@@ -144,7 +144,11 @@ class SearchManager {
               return handleResults(fg, results).then(async (fg) => {
                   const m = await getMap();
                   m.getSource('assets').setData(fg);
-                  
+
+                  // Notify extrusion overlays of matched slugs
+                  const matchedSlugs = fg.features.map(f => f.properties?.slug).filter(Boolean);
+                  m.fire('searchresults' as any, { slugs: matchedSlugs });
+
                   // Save search results to context for prev/next navigation
                   debug("Raw search results:", results.results);
                   

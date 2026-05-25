@@ -43,10 +43,22 @@ export interface RasterOverlayConfig {
   attribution?: string;
 }
 
+export interface GeoJSONExtrusionOverlayConfig {
+  type: 'geojson-extrusion';
+  url: string;
+  heightProperty?: string;
+  idProperty?: string;
+  baseColor?: string;
+  highlightColor?: string;
+  opacity?: number;
+}
+
+export type OverlayConfig = RasterOverlayConfig | GeoJSONExtrusionOverlayConfig;
+
 export interface OverlayDefinition {
   id: string;
   label: string;
-  config: RasterOverlayConfig;
+  config: OverlayConfig;
   visible?: boolean;
 }
 
@@ -55,6 +67,7 @@ export interface MapConfig {
   basemaps: BasemapDefinition[];
   defaultBasemap: string;
   overlays?: OverlayDefinition[];
+  pitch?: number;
 }
 
 // Basemap loader result - tracks what was added to the map
@@ -116,23 +129,29 @@ export class RasterBasemapLoader implements IBasemapLoader {
   }
 }
 
-// Overlay loader (similar to raster basemap but for overlays)
+// Overlay loader (handles raster and geojson-extrusion types)
 export async function loadOverlay(
   map: MLMap,
   overlay: OverlayDefinition
 ): Promise<{ layerId: string; sourceId: string }> {
   const sourceId = `${overlay.id}-source`;
   const layerId = `${overlay.id}-layer`;
+  const config = overlay.config;
 
-  const tiles = Array.isArray(overlay.config.tiles)
-    ? overlay.config.tiles
-    : [overlay.config.tiles];
+  if (config.type === 'geojson-extrusion') {
+    return loadGeoJSONExtrusionOverlay(map, overlay, config);
+  }
+
+  const rasterConfig = config as RasterOverlayConfig;
+  const tiles = Array.isArray(rasterConfig.tiles)
+    ? rasterConfig.tiles
+    : [rasterConfig.tiles];
 
   map.addSource(sourceId, {
     type: 'raster',
     tiles,
-    tileSize: overlay.config.tileSize || 256,
-    attribution: overlay.config.attribution
+    tileSize: rasterConfig.tileSize || 256,
+    attribution: rasterConfig.attribution
   });
 
   map.addLayer({
@@ -140,6 +159,60 @@ export async function loadOverlay(
     type: 'raster',
     source: sourceId,
     layout: { visibility: overlay.visible ? 'visible' : 'none' }
+  });
+
+  return { layerId, sourceId };
+}
+
+async function loadGeoJSONExtrusionOverlay(
+  map: MLMap,
+  overlay: OverlayDefinition,
+  config: GeoJSONExtrusionOverlayConfig
+): Promise<{ layerId: string; sourceId: string }> {
+  const sourceId = `${overlay.id}-source`;
+  const layerId = `${overlay.id}-layer`;
+  const heightProp = config.heightProperty || 'height_m';
+  const baseColor = config.baseColor || '#d4d4d4';
+  const opacity = config.opacity ?? 0.7;
+
+  const response = await fetch(config.url);
+  const geojson = await response.json();
+
+  map.addSource(sourceId, {
+    type: 'geojson',
+    data: geojson,
+  });
+
+  map.addLayer({
+    id: layerId,
+    type: 'fill-extrusion',
+    source: sourceId,
+    paint: {
+      'fill-extrusion-color': baseColor,
+      'fill-extrusion-height': ['get', heightProp],
+      'fill-extrusion-base': 0,
+      'fill-extrusion-opacity': opacity,
+    },
+    layout: { visibility: overlay.visible ? 'visible' : 'none' },
+  });
+
+  // Listen for search result events to highlight matched features
+  const idProp = config.idProperty || 'slug';
+  const highlightColor = config.highlightColor || '#e63946';
+
+  map.on('searchresults' as any, (e: any) => {
+    if (!map.getLayer(layerId)) return;
+    const slugs: string[] = e.slugs || [];
+    if (slugs.length > 0) {
+      map.setPaintProperty(layerId, 'fill-extrusion-color', [
+        'case',
+        ['in', ['get', idProp], ['literal', slugs]],
+        highlightColor,
+        baseColor,
+      ]);
+    } else {
+      map.setPaintProperty(layerId, 'fill-extrusion-color', baseColor);
+    }
   });
 
   return { layerId, sourceId };

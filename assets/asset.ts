@@ -276,13 +276,16 @@ let geojsonModalMap: MLMap | null = null;
 let assetPageMap: MLMap | null = null;
 
 function showGeojsonModal(geojson: object): void {
+  console.debug('[geojson-modal] showGeojsonModal called, data:', geojson);
   const dialog = document.getElementById('geojson-dialog') as HTMLDialogElement | null;
+  console.debug('[geojson-modal] dialog element:', dialog);
   if (!dialog) return;
 
   dialog.showModal();
 
   requestAnimationFrame(() => {
     const container = document.getElementById('geojson-dialog__map');
+    console.debug('[geojson-modal] map container:', container, 'dimensions:', container?.offsetWidth, 'x', container?.offsetHeight);
     if (!container) return;
 
     // Clean up any previous map
@@ -293,9 +296,11 @@ function showGeojsonModal(geojson: object): void {
 
     // Reuse the asset page map's style, or fall back to the same tile source
     const sourceMap = assetPageMap || (window as any).map;
+    console.debug('[geojson-modal] sourceMap:', !!sourceMap, 'assetPageMap:', !!assetPageMap);
     const style = (sourceMap && typeof sourceMap.getStyle === 'function')
       ? JSON.parse(JSON.stringify(sourceMap.getStyle()))
       : 'https://tiles.openfreemap.org/styles/bright';
+    console.debug('[geojson-modal] style type:', typeof style === 'string' ? style : 'cloned object');
 
     geojsonModalMap = new MLMap({
       container,
@@ -306,7 +311,9 @@ function showGeojsonModal(geojson: object): void {
       zoom: 1,
     });
 
+    geojsonModalMap.on('error', (e: any) => console.error('[geojson-modal] map error:', e));
     geojsonModalMap.on('load', () => {
+      console.debug('[geojson-modal] map loaded');
       if (!geojsonModalMap) return;
 
       geojsonModalMap.addSource('geojson-preview', {
@@ -759,6 +766,14 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
   const nodeObjectsByAlias = asset.asset.__.getNodeObjectsByAlias();
   const nodeSkeleton = buildNodeSkeleton(asset.asset.__);
   treegridElt.data = { listItems: markdown, nodeObjectsByAlias, nodeSkeleton };
+  (treegridElt as any).onLinkClick = (link: HTMLAnchorElement) => {
+    const href = link.getAttribute('href') || '';
+    if (href.startsWith('#show-geojson-')) {
+      const id = href.replace('#show-geojson-', '');
+      const data = geojsonRegistry.get(id);
+      if (data) showGeojsonModal(data);
+    }
+  };
   addAssetToMap(asset);
 
   // Hide carousel in debug/full view — no image handling here

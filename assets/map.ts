@@ -571,9 +571,10 @@ class MapManager implements IMapManager {
       layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f0f0f0' } }]
     };
 
+    const pitch = mapConfig?.pitch || 0;
     const map: TargetingMap = new MLMap(updateOptions({
       style: fallbackStyle,
-      pitch: 0,
+      pitch,
       bearing: 0,
       container: container,
       center: center,
@@ -581,8 +582,10 @@ class MapManager implements IMapManager {
       cooperativeGestures: touch,
     }) as any);
 
-    map.dragRotate.disable();
-    map.touchZoomRotate.disableRotation();
+    if (!pitch) {
+      map.dragRotate.disable();
+      map.touchZoomRotate.disableRotation();
+    }
     map.targeting = false;
 
     return new Promise<TargetingMap>((resolve) => {

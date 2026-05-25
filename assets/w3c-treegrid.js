@@ -53,6 +53,10 @@ class TreeGrid extends HTMLElement {
     }
   }
 
+  set onLinkClick(fn) {
+    this._onLinkClick = fn;
+  }
+
   toggleShowAllNodes() {
     this._showAllNodes = !this._showAllNodes;
     this._render();
@@ -542,12 +546,18 @@ class TreeGrid extends HTMLElement {
     const modal = this.shadowRoot.querySelector('#raw-modal');
     const closeBtn = this.shadowRoot.querySelector('#raw-modal-close');
 
-    // Delegate clicks on .raw-link buttons
+    // Delegate clicks on .raw-link buttons and internal links
     this.shadowRoot.querySelector('#treegrid-body')
       .addEventListener('click', (e) => {
         if (e.target.classList.contains('raw-link')) {
           this._rawModalTrigger = e.target;
           this._openModal(e.target);
+          return;
+        }
+        const link = e.target.closest?.('a[href^="#"]');
+        if (link && this._onLinkClick) {
+          e.preventDefault();
+          this._onLinkClick(link);
         }
       });
 
