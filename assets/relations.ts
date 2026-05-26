@@ -241,40 +241,37 @@ export async function loadAndRenderRelations(
   config: RelationsConfig,
   publicView: boolean = false,
 ): Promise<void> {
-  const container = document.getElementById('resource-relations');
-  if (!container) return;
+  const accordionContainer = document.getElementById('related-resources-accordion');
+
+  // Show banner with loading spinner while fetching (non-public view)
+  const banner = document.getElementById('related-resources-banner');
+  const countEl = banner?.querySelector('.related-resources-banner__count');
+  if (banner && countEl) {
+    countEl.innerHTML = '<span class="related-resources-banner__spinner" aria-label="Loading"></span>';
+    banner.removeAttribute('hidden');
+  }
 
   try {
     console.debug('[relations] fetching for', resourceInstanceId);
     const relations = await fetchRelations(resourceInstanceId, config);
     console.debug('[relations] found', relations.length, 'relations', relations);
-    if (relations.length === 0) return;
+    if (relations.length === 0) {
+      if (banner) banner.setAttribute('hidden', '');
+      if (countEl) countEl.innerHTML = '';
+      return;
+    }
 
-    // Populate the expandable banner above "Return to Search"
-    renderRelationsBanner(relations, config.resolveModelName, publicView);
-
-    // Full treegrid only shown in full (non-public) view
-    if (!publicView) {
-      const outgoing = relations.filter(r => r.direction === 'outgoing');
-      const incoming = relations.filter(r => r.direction === 'incoming');
-
-      const heading = document.createElement('h2');
-      heading.textContent = 'Linked Resources';
-      container.appendChild(heading);
-
-      const treegrid = document.createElement('relations-treegrid') as any;
-      treegrid.setAttribute('aria-label', 'Linked Resources');
-      treegrid.data = {
-        outgoing,
-        incoming,
-        resolveModelName: config.resolveModelName,
-      };
-      container.appendChild(treegrid);
-
-      container.removeAttribute('hidden');
+    if (publicView && accordionContainer) {
+      // Public view: render as accordion item in Further Information
+      renderRelationsAccordion(relations, config.resolveModelName, accordionContainer);
+    } else {
+      // Non-public / fallback: populate the expandable banner
+      renderRelationsBanner(relations, config.resolveModelName, publicView);
     }
   } catch (err) {
     console.warn('[relations]', err);
+    if (banner) banner.setAttribute('hidden', '');
+    if (countEl) countEl.innerHTML = '';
   }
 }
 
@@ -339,4 +336,70 @@ function renderRelationsBanner(
     toggleBtn.setAttribute('aria-expanded', String(!expanded));
     contentEl.hidden = expanded;
   });
+}
+
+function renderRelationsAccordion(
+  relations: Relation[],
+  resolveModelName?: (graphId: string) => string | undefined,
+  container?: HTMLElement,
+): void {
+  if (!container) return;
+
+  const id = 'related-resources';
+  const item = document.createElement('div');
+  item.className = 'accordion-item';
+
+  const header = document.createElement('h2');
+  header.className = 'accordion-header';
+  header.id = `heading-${id}`;
+
+  const btn = document.createElement('button');
+  btn.className = 'accordion-button';
+  btn.type = 'button';
+  btn.setAttribute('data-bs-toggle', 'collapse');
+  btn.setAttribute('data-bs-target', `#collapse-${id}`);
+  btn.setAttribute('aria-expanded', 'true');
+  btn.setAttribute('aria-controls', `collapse-${id}`);
+  btn.textContent = `Linked Resources (${relations.length})`;
+  header.appendChild(btn);
+
+  const collapse = document.createElement('div');
+  collapse.id = `collapse-${id}`;
+  collapse.className = 'accordion-collapse collapse show';
+  collapse.setAttribute('aria-labelledby', `heading-${id}`);
+  collapse.setAttribute('role', 'region');
+
+  const body = document.createElement('div');
+  body.className = 'accordion-body';
+
+  const inner = document.createElement('div');
+  inner.className = 'ms-md-4 d-flex flex-column gap-3';
+
+  for (const rel of relations) {
+    const row = document.createElement('div');
+    row.className = 'd-md-flex';
+
+    const modelName = rel.modelName
+      || (rel.graphId && resolveModelName ? (resolveModelName(rel.graphId) || '') : '');
+    const label = document.createElement('p');
+    label.className = 'me-md-2 mb-1';
+    label.innerHTML = `<strong>${rel.predicate}${modelName ? ` (${modelName})` : ''}:</strong>`;
+
+    const value = document.createElement('div');
+    const a = document.createElement('a');
+    a.href = `?slug=${encodeURIComponent(rel.slug)}`;
+    a.textContent = rel.name || '(untitled)';
+    value.appendChild(a);
+
+    row.appendChild(label);
+    row.appendChild(value);
+    inner.appendChild(row);
+  }
+
+  body.appendChild(inner);
+  collapse.appendChild(body);
+  item.appendChild(header);
+  item.appendChild(collapse);
+  container.appendChild(item);
+  container.removeAttribute('hidden');
 }

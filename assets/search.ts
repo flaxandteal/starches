@@ -301,9 +301,8 @@ class SearchManager {
       filtersChanged = hasFilters !== hadFilters;
     }
 
-    if (!term) {
-      // We have no filtering critera, except bounding box (if that was not present,
-      // we would have exited already.
+    if (!term || shortTerm) {
+      // No term, or term below minSearchLength — use geo-only results.
       results = {
           results: this.fb && await this.fb.getFiltered(true),
           unfilteredResultCount: this.fb && this.fb.totalFeatures

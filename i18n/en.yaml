@@ -41,6 +41,14 @@ starches_geometry:
 starches_legacy_record:
   other: "Legacy Record"
 
+# Handlebars template buttons (bridged to JS via head-pre-helpers)
+starches_view:
+  other: "View"
+starches_open_tab:
+  other: "Open In A New Tab"
+starches_zoom:
+  other: "Zoom"
+
 # Tooltips
 starches_tooltip_reset_view:
   other: "Reset view"

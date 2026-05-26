@@ -1,1 +1,10 @@
-{{/* Override this partial to set window.__starchesTranslations or load extra scripts before handlebars-helpers.js */}}
+{{/* Override this partial to extend window.__starchesTranslations or load extra scripts before handlebars-helpers.js */}}
+<script>
+window.__starchesTranslations = {
+  "{{ site.Language.Lang }}": {
+    view: "{{ i18n "starches_view" | safeJS }}",
+    open_tab: "{{ i18n "starches_open_tab" | safeJS }}",
+    zoom: "{{ i18n "starches_zoom" | safeJS }}",
+  }
+};
+</script>

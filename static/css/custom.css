@@ -33,3 +33,129 @@
   flex: 1;
   min-height: 0;
 }
+
+/* --- Related resources banner --- */
+.related-resources-banner {
+    background-color: #F5F4F2;
+    border-top: 0.3rem solid #004B7A;
+    margin-bottom: 0.75rem;
+}
+
+.related-resources-banner__toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1d1d1d;
+    gap: 0.5rem;
+}
+
+.related-resources-banner__toggle:hover {
+    background-color: #EDF2F8;
+}
+
+.related-resources-banner__count {
+    color: #505a5f;
+    font-weight: 400;
+}
+
+.related-resources-banner__chevron {
+    margin-left: auto;
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 0.35em solid transparent;
+    border-right: 0.35em solid transparent;
+    border-top: 0.5em solid #1d1d1d;
+    transition: transform 0.2s;
+}
+
+.related-resources-banner__toggle[aria-expanded="true"] .related-resources-banner__chevron {
+    transform: rotate(180deg);
+}
+
+.related-resources-banner__content {
+    padding: 0 1rem 0.75rem;
+    max-height: 300px;
+    overflow-y: auto;
+    border-top: 1px solid #C8D8E5;
+}
+
+.related-resources-banner__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.related-resources-banner__list li {
+    display: table-row;
+    font-size: 0.9rem;
+}
+
+.related-resources-banner__list li + li {
+    border-top: 1px solid #C8D8E5;
+}
+
+.related-resources-banner__dir,
+.related-resources-banner__name,
+.related-resources-banner__predicate,
+.related-resources-banner__model {
+    display: table-cell;
+    padding: 0.3rem 0.5rem;
+    overflow-wrap: break-word;
+    vertical-align: top;
+}
+
+.related-resources-banner__dir {
+    width: 3ch;
+    color: #505a5f;
+    text-align: center;
+}
+
+.related-resources-banner__name {
+    width: 45%;
+}
+
+.related-resources-banner__name a {
+    color: #0066A4;
+    text-decoration: underline;
+}
+
+.related-resources-banner__name a:hover {
+    color: #004B7A;
+}
+
+.related-resources-banner__predicate {
+    width: 30%;
+    color: #595959;
+    font-size: 0.85rem;
+}
+
+.related-resources-banner__model {
+    width: 25%;
+    color: #595959;
+    font-size: 0.85rem;
+}
+
+.related-resources-banner__spinner {
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    border: 2px solid #C8D8E5;
+    border-top-color: #004B7A;
+    border-radius: 50%;
+    animation: rrb-spin 0.6s linear infinite;
+    vertical-align: middle;
+}
+
+@keyframes rrb-spin {
+    to { transform: rotate(360deg); }
+}

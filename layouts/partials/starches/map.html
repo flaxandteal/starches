@@ -51,7 +51,10 @@
           {{ . | markdownify }}
         </div>
         {{ end }}
-        <div id="instructions"></div>
+        <div id="instructions">
+            <p>{{ i18n "starches_search_prompt" }}</p>
+            <p>{{ i18n "starches_search_result_actions" | safeHTML }}</p>
+        </div>
         <div id="results">
         </div>
     </div>
