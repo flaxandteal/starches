@@ -10,7 +10,8 @@ import {
   MapConfig,
   BasemapLoadResult,
   getBasemapLoader,
-  loadOverlay
+  loadOverlay,
+  substituteApiKeys
 } from './map-config';
 import {
   BasemapSwitchControl,
@@ -38,8 +39,11 @@ const cssNum = (name: string, fallback: number): number => {
   return v ? parseFloat(v) : fallback;
 };
 
-// Get map config from Hugo params, with fallback
-const mapConfig: MapConfig | undefined = params.map_config;
+// Get map config from Hugo params, with API key substitution
+const _rawMapConfig: MapConfig | undefined = params.map_config;
+const mapConfig: MapConfig | undefined = _rawMapConfig
+  ? substituteApiKeys(_rawMapConfig, params.map_api_keys || {})
+  : undefined;
 
 // Get icon config from Hugo params, with fallback to defaults
 const iconConfig: IconConfig = buildIconConfig(params.map_icons);

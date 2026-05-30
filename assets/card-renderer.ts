@@ -519,7 +519,7 @@ export class CardRenderer {
       const rendered = await this.valueRenderer.renderValue(vm, 0);
       const text = rendered?.toString()?.trim() || '';
       if (text) {
-        const html = await marked.parseInline(text);
+        const html = (await marked.parse(text, { breaks: true })).trim();
         fields.push(`[@${widget.nodeAlias}] ${html}`);
       }
     }

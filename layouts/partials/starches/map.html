@@ -12,7 +12,7 @@
 {{ $baseAssets := (slice "map.ts" "search.ts") }}
 {{ range $baseAssets }}
 {{- $js := resources.Get . -}}
-{{ $params := (dict "search_config" $.Params.search_config "map_config" $.Params.map_config "is_production" hugo.IsProduction ) }}
+{{ $params := (dict "search_config" $.Params.search_config "map_config" $.Params.map_config "map_api_keys" ($.Site.Params.map_api_keys | default dict) "is_production" hugo.IsProduction ) }}
 {{ $sourceMap := cond hugo.IsProduction "" "inline" }}
 {{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2022" "params" $params }}
 {{ $js = $js | js.Build $opts }}

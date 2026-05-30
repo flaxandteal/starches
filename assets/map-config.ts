@@ -218,5 +218,23 @@ async function loadGeoJSONExtrusionOverlay(
   return { layerId, sourceId };
 }
 
+// Substitute {key} placeholders in all URL/tile fields of a MapConfig
+export function substituteApiKeys(config: MapConfig, keys: Record<string, string>): MapConfig {
+  const sub = (s: string) => s.replace(/\{(\w+)\}/g, (match, key) => keys[key] ?? match);
+  const subConfig = (c: any) => {
+    const out = { ...c };
+    if (typeof out.url === 'string') out.url = sub(out.url);
+    if (typeof out.labelUrl === 'string') out.labelUrl = sub(out.labelUrl);
+    if (typeof out.tiles === 'string') out.tiles = sub(out.tiles);
+    if (Array.isArray(out.tiles)) out.tiles = out.tiles.map(sub);
+    return out;
+  };
+  return {
+    ...config,
+    basemaps: config.basemaps.map(b => ({ ...b, config: subConfig(b.config) })),
+    overlays: config.overlays?.map(o => ({ ...o, config: subConfig(o.config) })),
+  };
+}
+
 // Register the built-in raster loader
 registerBasemapLoader(new RasterBasemapLoader());

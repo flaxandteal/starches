@@ -168,11 +168,13 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
         const thumbnailURL = result.meta.thumbnailUrl;
         // const thumbnailURL  = params.blob_base_url + '/media/images/' + result.meta.thumbnailName;
 
+        const zoomLevel = (config.minSearchZoom || 10) + 1;
         const templateData = {
             title: result.meta.title || 'Untitled',
             excerpt: result.excerpt,
             url: url,
             location: location,
+            zoomLevel,
             thumbnailURL,
             thumbnailAlt: result.meta.thumbnailAltText ?? '',
             icon: result.meta.icon || 'building',
@@ -281,7 +283,7 @@ export async function buildPagefind(searchAction: (term: string, settings: objec
                             console.log('[view-on-map] showFeaturePopup called');
                         }
                     });
-                    window.map.flyTo({ center: location, zoom: 14 });
+                    window.map.flyTo({ center: location, zoom: (config.minSearchZoom || 10) + 1 });
                 }
             }
         });

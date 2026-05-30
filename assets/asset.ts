@@ -597,11 +597,35 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
         tokenizer(src: string): NodeBlockToken | undefined {
           // Match ::Title{description}::\n...content...\n::end:: (description is optional)
           // Optional <!--widgets:alias=Label;;alias2=Label2--> comment after header
-          const match = src.match(/^::([^:{]+)(?:\{([^}]+)\})?::\n([\s\S]*?)::end::/);
-          if (match) {
-            const title = match[1].trim();
-            const description = match[2]?.trim();
-            let body = match[3].trim();
+          // Uses balanced-pair matching to handle nested blocks.
+          const headerMatch = src.match(/^::([^:{]+)(?:\{([^}]+)\})?::\n/);
+          if (!headerMatch) return undefined;
+          // Find the balanced ::end:: by counting nested openers
+          const afterHeader = src.slice(headerMatch[0].length);
+          let depth = 1;
+          let pos = 0;
+          const openerRe = /::[^:{]+(?:\{[^}]+\})?::\n/g;
+          const closerStr = '::end::';
+          while (depth > 0 && pos < afterHeader.length) {
+            const nextCloser = afterHeader.indexOf(closerStr, pos);
+            if (nextCloser === -1) break;
+            // Count any openers between pos and nextCloser
+            openerRe.lastIndex = pos;
+            let m: RegExpExecArray | null;
+            while ((m = openerRe.exec(afterHeader)) !== null && m.index < nextCloser) {
+              depth++;
+            }
+            depth--; // for the closer we found
+            if (depth === 0) {
+              const bodyStr = afterHeader.slice(0, nextCloser);
+              const rawEnd = headerMatch[0].length + nextCloser + closerStr.length;
+              const match = [src.slice(0, rawEnd), headerMatch[1], headerMatch[2], bodyStr] as RegExpMatchArray;
+              match.index = 0;
+              match.input = src;
+
+              const title = match[1].trim();
+              const description = match[2]?.trim();
+              let body = match[3].trim();
 
             // Parse widget metadata comment if present
             let widgetsMeta: WidgetMeta[] | undefined;
@@ -626,7 +650,7 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
             // Parse fields from each chunk
             function parseFields(chunk: string): NodeBlockField[] {
               const chunkFields: NodeBlockField[] = [];
-              const fieldPattern = /^\[([^\]]+)\]\s+([\s\S]*?)(?=\n\[|$)/gm;
+              const fieldPattern = /(?:^|\n)\[([^\]]+)\]\s+([\s\S]*?)(?=\n\[|\n::\w|\s*$)/g;
               let fieldMatch: RegExpExecArray | null;
 
               while ((fieldMatch = fieldPattern.exec(chunk)) !== null) {
@@ -641,9 +665,12 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
                 const resourceId = dataIdMatch ? dataIdMatch[1] : null;
                 const slug = resourceId ? `?slug=${resourceId}` : null
 
+                // Humanize alias: replace underscores with spaces and title-case
+                const humanize = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
                 chunkFields.push({
                   alias: alias || '',
-                  label: isNodeRef ? (node?.name || alias) : label,
+                  label: isNodeRef ? humanize(node?.name || alias || '') : label,
                   value,
                   slug,
                   node
@@ -679,6 +706,8 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
             };
 
             return token;
+            }
+            pos = nextCloser + closerStr.length;
           }
         },
         renderer(token) {
