@@ -140,6 +140,29 @@ class TreeGrid extends HTMLElement {
   async _buildRows(items, nodeObjectsByAlias, level, hidden, skeleton, parentPath) {
     if (!items || typeof items !== 'object') items = {};
 
+    // When items is an array (e.g. a nested ReferenceListViewModel inside a
+    // PseudoList), render as a single-cell emdash-bulleted list rather than
+    // separate rows — this visually distinguishes multi-value fields from
+    // PseudoList tiles which use the [ m / n ] row pattern.
+    if (Array.isArray(items)) {
+      const lis = await Promise.all(items.map(async (elem) => {
+        const text = await marked.parseInline(String(elem));
+        return `<li>\u2014 ${text}</li>`;
+      }));
+      const listHtml = `<ul style="list-style:none;margin:0;padding:0">${lis.join('')}</ul>`;
+      return `
+        <tr role="row"
+            aria-level="${level}"
+            aria-posinset="1"
+            aria-setsize="1"${hidden ? ' class="hidden"' : ''}>
+          <td role="gridcell"></td>
+          <td role="gridcell"><div class="cell-content">${listHtml}</div></td>
+          <td role="gridcell"></td>
+          <td role="gridcell"></td>
+          <td role="gridcell"><button class="raw-link" type="button" data-path="${this._esc(parentPath)}">Raw</button></td>
+        </tr>`;
+    }
+
     const entries = Object.entries(items).sort(
       (a, b) => a[0].localeCompare(b[0])
     );

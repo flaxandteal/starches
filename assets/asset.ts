@@ -163,13 +163,16 @@ async function getAssetMetadata(asset: AlizarinModel<any>): Promise<AssetMetadat
   let location: [number, number] | null = null;
   let geometry: any = null;
 
-  if (await asset.__has('location_data') && await asset.location_data) {
+  const hasLocation = await asset.__has('location_data');
+  if (hasLocation && await asset.location_data) {
     const locationData = await asset.location_data;
 
     const geometryData = await locationData.geometry;
+    console.debug('[getAssetMetadata] geometryData:', geometryData, 'isArray:', Array.isArray(geometryData));
     if (Array.isArray(geometryData)) {
       if (await geometryData[0] && await geometryData[0].geospatial_coordinates) {
         geometry = await (await geometryData[0].geospatial_coordinates).forJson();
+        console.debug('[getAssetMetadata] geometry forJson:', JSON.stringify(geometry)?.slice(0, 200));
         location = extractCentrePoint(geometry);
       }
 
@@ -180,9 +183,12 @@ async function getAssetMetadata(asset: AlizarinModel<any>): Promise<AssetMetadat
     } else {
       if (geometryData && await geometryData.geospatial_coordinates) {
         geometry = await (await geometryData.geospatial_coordinates).forJson();
+        console.debug('[getAssetMetadata] geometry forJson (non-array):', JSON.stringify(geometry)?.slice(0, 200));
         location = extractCentrePoint(geometry);
       }
     }
+  } else {
+    console.debug('[getAssetMetadata] No location_data: __has=', hasLocation);
   }
 
   return {
@@ -198,27 +204,62 @@ function extractCentrePoint(geometry: any): [number, number] | null {
     return null;
   }
 
+  const geomType = geometry.features[0].geometry.type;
   const coordinates = geometry.features[0].geometry.coordinates;
 
   // If it's already a point, return coordinates directly
-  if (!Array.isArray(coordinates[0])) {
-    return coordinates as [number, number];
+  if (geomType === 'Point' || !Array.isArray(coordinates[0])) {
+    const [lng, lat] = coordinates;
+    if (typeof lng !== 'number' || typeof lat !== 'number' || isNaN(lng) || isNaN(lat)) {
+      console.warn('[extractCentrePoint] Invalid point coordinates:', coordinates);
+      return null;
+    }
+    return [lng, lat];
   }
 
-  // Handle polygon - calculate centroid
-  let polygons = coordinates[0];
-  if (Array.isArray(polygons[0]?.[0])) {
-    polygons = polygons.flat();
+  // Determine the polygon ring. GeoJSON Polygon coordinates should be
+  // [ring, ...] where each ring is [[x,y], ...]. But some sources omit
+  // the outer ring wrapper, giving [[x,y], ...] directly.
+  let ring: [number, number][];
+  if (Array.isArray(coordinates[0][0])) {
+    // Standard: coordinates[0] is the outer ring = [[x,y], [x,y], ...]
+    ring = coordinates[0];
+    // Handle MultiPolygon-style nesting
+    if (Array.isArray(ring[0]?.[0])) {
+      ring = ring.flat();
+    }
+  } else if (typeof coordinates[0][0] === 'number') {
+    // Non-standard: coordinates IS the ring = [[x,y], [x,y], ...]
+    ring = coordinates;
+  } else {
+    console.warn('[extractCentrePoint] Unrecognised coordinate structure:', coordinates);
+    return null;
   }
 
-  const centre = polygons.reduce(
+  if (ring.length === 0) {
+    console.warn('[extractCentrePoint] Empty polygon ring');
+    return null;
+  }
+
+  const centre = ring.reduce(
     (c: [number, number], p: [number, number]) => {
-      c[0] += p[0] / polygons.length;
-      c[1] += p[1] / polygons.length;
+      c[0] += p[0] / ring.length;
+      c[1] += p[1] / ring.length;
       return c;
     },
     [0, 0] as [number, number]
   );
+
+  if (isNaN(centre[0]) || isNaN(centre[1])) {
+    console.warn('[extractCentrePoint] Centroid produced NaN from ring:', ring);
+    return null;
+  }
+
+  // Reject projected coordinates (not WGS84) — valid lng/lat is within ±180/±90
+  if (Math.abs(centre[0]) > 180 || Math.abs(centre[1]) > 90) {
+    console.warn('[extractCentrePoint] Coordinates appear projected (not WGS84):', centre);
+    return null;
+  }
 
   return centre;
 }
@@ -765,6 +806,7 @@ async function renderAssetForDebug(asset: Asset): Promise<Record<string, Dialog>
 
   const nodeObjectsByAlias = asset.asset.__.getNodeObjectsByAlias();
   const nodeSkeleton = buildNodeSkeleton(asset.asset.__);
+
   treegridElt.data = { listItems: markdown, nodeObjectsByAlias, nodeSkeleton };
   (treegridElt as any).onLinkClick = (link: HTMLAnchorElement) => {
     const href = link.getAttribute('href') || '';
@@ -1065,7 +1107,7 @@ async function buildImageDialogs(images: ImageRef[], assetTitle: string): Promis
 
 function addAssetToMap(asset: Asset) {
   const location = asset.meta.location;
-  if (location) {
+  if (location && !isNaN(location[0]) && !isNaN(location[1])) {
     const centre = location;
     const zoom = 16;
     const map = new MLMap({

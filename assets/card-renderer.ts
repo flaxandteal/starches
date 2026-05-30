@@ -40,6 +40,10 @@ interface CardTreeNode {
   cardinality: '1' | 'n';
   widgets: WidgetInfo[];
   children: CardTreeNode[];
+  /** Path of aliases from the parent card's nodegroup root to this card's
+   *  nodegroup root, through intermediate semantic nodes. Empty when the
+   *  nodegroup root is a direct child of the parent's root (common case). */
+  parentAccessPath: string[];
 }
 
 interface WidgetInfo {
@@ -49,6 +53,11 @@ interface WidgetInfo {
   label: string;
   sortorder: number;
   visible: boolean;
+  /** Path of node aliases from nodegroup root to this widget's node.
+   *  Empty array means the widget IS the nodegroup root node. */
+  accessPath: string[];
+  /** True when the widget's node is the nodegroup root itself. */
+  isRootNode: boolean;
 }
 
 interface CardRendererOptions {
@@ -69,6 +78,115 @@ interface CardRendererOptions {
  * nodegroup parent-child relationships (which mirror the card hierarchy).
  * Each card's widgets come from cards_x_nodes_x_widgets.
  */
+/**
+ * Compute the path of node aliases from the nodegroup root to a target node,
+ * walking parent→child edges within the nodegroup.
+ */
+function computeAccessPath(
+  targetNodeId: string,
+  nodegroupRootId: string,
+  edges: any[],
+  nodesById: Map<string, StaticNode>
+): string[] {
+  if (targetNodeId === nodegroupRootId) return []; // widget IS the root
+
+  // Build adjacency: parent → children (within the same nodegroup)
+  const rootNode = nodesById.get(nodegroupRootId);
+  const nodegroupId = rootNode?.nodegroup_id;
+  const children = new Map<string, string[]>();
+  for (const e of edges) {
+    const domNode = nodesById.get(e.domainnode_id);
+    const ranNode = nodesById.get(e.rangenode_id);
+    if (!domNode || !ranNode) continue;
+    if (domNode.nodegroup_id !== nodegroupId || ranNode.nodegroup_id !== nodegroupId) continue;
+    if (!children.has(e.domainnode_id)) children.set(e.domainnode_id, []);
+    children.get(e.domainnode_id)!.push(e.rangenode_id);
+  }
+
+  // BFS from root to target
+  const queue: { nodeId: string; path: string[] }[] = [{ nodeId: nodegroupRootId, path: [] }];
+  const visited = new Set<string>([nodegroupRootId]);
+  while (queue.length > 0) {
+    const { nodeId, path } = queue.shift()!;
+    for (const childId of (children.get(nodeId) || [])) {
+      if (visited.has(childId)) continue;
+      visited.add(childId);
+      const childNode = nodesById.get(childId);
+      const childAlias = childNode?.alias || '';
+      const newPath = [...path, childAlias];
+      if (childId === targetNodeId) return newPath;
+      queue.push({ nodeId: childId, path: newPath });
+    }
+  }
+
+  // Fallback: direct access (may fail at runtime, but better than silent skip)
+  const targetAlias = nodesById.get(targetNodeId)?.alias || '';
+  return targetAlias ? [targetAlias] : [];
+}
+
+/**
+ * Compute the path of aliases from a parent card's nodegroup root to a child
+ * card's nodegroup root. This handles intermediate semantic nodes that sit
+ * between the two nodegroup roots in the graph edge tree.
+ *
+ * E.g. location_data → area_assignments (same ng) → area_assignment (child ng root)
+ * returns ['area_assignments', 'area_assignment'].
+ *
+ * Returns [childNodegroupAlias] when the child root is a direct child (common case),
+ * or a multi-step path when intermediate nodes exist.
+ */
+function computeCardAccessPath(
+  parentNgRootId: string,
+  childNgRootId: string,
+  edges: any[],
+  nodesById: Map<string, StaticNode>
+): string[] {
+  const parentNode = nodesById.get(parentNgRootId);
+  const childNode = nodesById.get(childNgRootId);
+  if (!parentNode || !childNode) {
+    const alias = childNode?.alias || '';
+    return alias ? [alias] : [];
+  }
+
+  const parentNgId = parentNode.nodegroup_id;
+  const childAlias = childNode.alias || '';
+
+  // Build adjacency from edges, including edges that cross from parent ng to child ng root
+  const children = new Map<string, string[]>();
+  for (const e of edges) {
+    const domNode = nodesById.get(e.domainnode_id);
+    const ranNode = nodesById.get(e.rangenode_id);
+    if (!domNode || !ranNode) continue;
+    // Allow edges within the parent nodegroup OR edges from parent ng to the child ng root
+    const domInParent = domNode.nodegroup_id === parentNgId;
+    const ranIsTarget = e.rangenode_id === childNgRootId;
+    const ranInParent = ranNode.nodegroup_id === parentNgId;
+    if (domInParent && (ranInParent || ranIsTarget)) {
+      if (!children.has(e.domainnode_id)) children.set(e.domainnode_id, []);
+      children.get(e.domainnode_id)!.push(e.rangenode_id);
+    }
+  }
+
+  // BFS from parent root to child root
+  const queue: { nodeId: string; path: string[] }[] = [{ nodeId: parentNgRootId, path: [] }];
+  const visited = new Set<string>([parentNgRootId]);
+  while (queue.length > 0) {
+    const { nodeId, path } = queue.shift()!;
+    for (const nextId of (children.get(nodeId) || [])) {
+      if (visited.has(nextId)) continue;
+      visited.add(nextId);
+      const nextNode = nodesById.get(nextId);
+      const nextAlias = nextNode?.alias || '';
+      const newPath = [...path, nextAlias];
+      if (nextId === childNgRootId) return newPath;
+      queue.push({ nodeId: nextId, path: newPath });
+    }
+  }
+
+  // Fallback: direct access
+  return childAlias ? [childAlias] : [];
+}
+
 export function buildCardTree(
   graph: StaticGraph,
   nodesById: Map<string, StaticNode>,
@@ -78,6 +196,7 @@ export function buildCardTree(
   const widgets: any[] = Array.isArray(graph.cards_x_nodes_x_widgets)
     ? graph.cards_x_nodes_x_widgets
     : [];
+  const edges: any[] = Array.isArray(graph.edges) ? graph.edges : [];
 
   // Index widgets by card_id (from cards_x_nodes_x_widgets)
   const widgetsByCard = new Map<string, WidgetInfo[]>();
@@ -86,13 +205,19 @@ export function buildCardTree(
     const node = nodesById.get(w.node_id);
     if (!node) continue;
 
+    const nodegroupId = node.nodegroup_id || '';
+    const isRootNode = w.node_id === nodegroupId;
+    const accessPath = computeAccessPath(w.node_id, nodegroupId, edges, nodesById);
+
     const info: WidgetInfo = {
       nodeId: w.node_id,
       nodeAlias: node.alias || '',
-      nodegroupId: node.nodegroup_id || '',
+      nodegroupId,
       label: w.label?.toString?.() || node.name || node.alias || '',
       sortorder: w.sortorder ?? 0,
-      visible: w.visible !== false
+      visible: w.visible !== false,
+      accessPath,
+      isRootNode,
     };
 
     if (!widgetsByCard.has(cardId)) {
@@ -135,7 +260,8 @@ export function buildCardTree(
         active: c.active !== false,
         cardinality: nodegroup?.cardinality === 'n' ? 'n' : '1',
         widgets: widgetsByCard.get(c.cardid) || [],
-        children: []
+        children: [],
+        parentAccessPath: [],  // computed after hierarchy is built
       };
 
       // 1:1 card-to-nodegroup — store single card per nodegroup
@@ -154,6 +280,10 @@ export function buildCardTree(
     } else {
       const parentCard = cardNodesByNodegroup.get(parentNodegroupId);
       if (parentCard) {
+        // Compute path from parent nodegroup root to this card's nodegroup root
+        cardNode.parentAccessPath = computeCardAccessPath(
+          parentNodegroupId, cardNode.nodegroupId, edges, nodesById
+        );
         parentCard.children.push(cardNode);
       } else {
         rootCards.push(cardNode);
@@ -207,10 +337,14 @@ export class CardRenderer {
       if (!rootCard.visible) continue;
 
       const sectionId = slugify(rootCard.name) || rootCard.cardId;
-      const sectionContent = await this.renderCard(rootCard, rootVm);
+      try {
+        const sectionContent = await this.renderCard(rootCard, rootVm);
 
-      if (sectionContent.trim()) {
-        sections.push(`<!--section:${sectionId}-->\n${sectionContent}`);
+        if (sectionContent.trim()) {
+          sections.push(`<!--section:${sectionId}-->\n${sectionContent}`);
+        }
+      } catch (err) {
+        console.error(`[card-renderer] Error rendering card "${rootCard.name}":`, err);
       }
     }
 
@@ -224,18 +358,33 @@ export class CardRenderer {
   private async renderCard(card: CardTreeNode, parentVm: NavigableViewModel): Promise<string> {
     if (!card.visible) return '';
 
-    // Let alizarin navigate to the child VM — its Proxy handles
-    // empty tiles, missing nodegroups, etc.
+    // Navigate to the child card's nodegroup VM. Try direct access first,
+    // then use the precomputed parentAccessPath for cases where intermediate
+    // semantic nodes sit between parent and child nodegroup roots.
     let nodegroupVm: any;
-    if (parentVm.__has(card.nodegroupAlias)) {
+    if (await parentVm.__has(card.nodegroupAlias)) {
       nodegroupVm = await parentVm[card.nodegroupAlias];
       if (nodegroupVm == null) {
         console.debug(`[card-renderer] ${card.name}: __has=true but VM is null (alias=${card.nodegroupAlias})`);
       }
+    } else if (card.parentAccessPath.length > 0) {
+      // Navigate through intermediate semantic nodes to reach the nodegroup root.
+      // E.g. location_data → area_assignments → area_assignment
+      let current: any = parentVm;
+      for (const step of card.parentAccessPath) {
+        if (!current || typeof current.__has !== 'function' || !(await current.__has(step))) {
+          console.debug(`[card-renderer] ${card.name}: path step '${step}' not found (path=[${card.parentAccessPath.join(' → ')}])`);
+          current = null;
+          break;
+        }
+        current = await current[step];
+      }
+      nodegroupVm = current;
+      if (nodegroupVm != null) {
+        console.debug(`[card-renderer] ${card.name}: reached via path [${card.parentAccessPath.join(' → ')}]`);
+      }
     } else {
-      // Nodegroup not a direct child of parent — may be nested deeper.
-      // Alizarin's flat card tree doesn't always match the semantic tree depth.
-      console.debug(`[card-renderer] ${card.name}: __has=false (alias=${card.nodegroupAlias}, parent=${parentVm.__node?.alias || '?'})`);
+      console.debug(`[card-renderer] ${card.name}: __has=false, no parentAccessPath (alias=${card.nodegroupAlias}, parent=${parentVm.__node?.alias || '?'})`);
       return '';
     }
     if (nodegroupVm == null) {
@@ -265,7 +414,10 @@ export class CardRenderer {
         if (single instanceof viewModels.ResourceInstanceViewModel) {
           // Resource-instance nodegroup — render as reference, don't traverse into it
           const rendered = await this.valueRenderer.renderValue(single, 0);
-          return rendered?.toString()?.trim() || '';
+          const text = rendered?.toString()?.trim() || '';
+          if (!text) return '';
+          const html = await marked.parseInline(text);
+          return `[@${card.nodegroupAlias}] ${html}`;
         }
         return this.renderCardInstance(card, single, true);
       }
@@ -273,7 +425,12 @@ export class CardRenderer {
       const blocks = await Promise.all(
         instances.map(instance => {
           if (instance instanceof viewModels.ResourceInstanceViewModel) {
-            return this.valueRenderer.renderValue(instance, 0).then((r: any) => r?.toString()?.trim() || '');
+            return this.valueRenderer.renderValue(instance, 0).then(async (r: any) => {
+              const text = r?.toString()?.trim() || '';
+              if (!text) return '';
+              const html = await marked.parseInline(text);
+              return `[@${card.nodegroupAlias}] ${html}`;
+            });
           }
           return this.renderCardInstance(card, instance, false);
         })
@@ -293,7 +450,10 @@ export class CardRenderer {
     // Single value (not array) — check if it's an RIVM before treating as semantic
     if (nodegroupVm instanceof viewModels.ResourceInstanceViewModel) {
       const rendered = await this.valueRenderer.renderValue(nodegroupVm, 0);
-      return rendered?.toString()?.trim() || '';
+      const text = rendered?.toString()?.trim() || '';
+      if (!text) return '';
+      const html = await marked.parseInline(text);
+      return `[@${card.nodegroupAlias}] ${html}`;
     }
 
     return this.renderCardInstance(card, nodegroupVm as SemanticViewModel);
@@ -314,17 +474,46 @@ export class CardRenderer {
     if (!semanticVm || typeof semanticVm.__has !== 'function') return '';
 
     // Render this card's widgets (from cards_x_nodes_x_widgets).
-    // Navigate via alizarin's VM Proxy — it handles null tiles, child lookups, etc.
-    // Skip semantic-type VMs — those are nodegroup roots for child cards,
-    // not leaf values to display.
+    // Navigate via alizarin's VM Proxy using the precomputed accessPath,
+    // which handles nodes nested under intermediate semantic nodes.
     const fields: string[] = [];
 
     for (const widget of card.widgets) {
       if (!widget.visible) continue;
-      // Skip nodes from child nodegroups — their own child cards render them.
-      if (!semanticVm.__has(widget.nodeAlias)) continue;
-      const vm = await semanticVm[widget.nodeAlias];
+
+      let vm: any;
+      try {
+        if (widget.isRootNode) {
+          // Widget references the nodegroup root node itself.
+          // The SemanticViewModel wraps the nodegroup; its _ property
+          // holds the root node's own data value (set by alizarin's
+          // outer/inner mechanism).
+          vm = semanticVm._ != null ? await semanticVm._ : null;
+        } else if (widget.accessPath.length === 0) {
+          // Fallback: no path computed, try direct access
+          if (!(await semanticVm.__has(widget.nodeAlias))) continue;
+          vm = await semanticVm[widget.nodeAlias];
+        } else {
+          // Navigate through intermediate semantic nodes to reach the value
+          let current: any = semanticVm;
+          for (let i = 0; i < widget.accessPath.length; i++) {
+            const step = widget.accessPath[i];
+            if (!current || typeof current.__has !== 'function' || !(await current.__has(step))) {
+              current = null;
+              break;
+            }
+            current = await current[step];
+          }
+          vm = current;
+        }
+      } catch (err) {
+        console.debug(`[card-renderer] Error navigating to widget "${widget.nodeAlias}" via path [${widget.accessPath.join(' → ')}]:`, err);
+        continue;
+      }
+
       if (vm == null) continue;
+      // Skip semantic-type VMs — those are nodegroup roots for child cards,
+      // not leaf values to display.
       if (vm instanceof viewModels.SemanticViewModel) continue;
 
       const rendered = await this.valueRenderer.renderValue(vm, 0);
@@ -339,8 +528,12 @@ export class CardRenderer {
     // to the child card's nodegroup — alizarin handles the parent→child relationship.
     const childBlocks: string[] = [];
     for (const childCard of card.children) {
-      const childResult = await this.renderCard(childCard, semanticVm);
-      if (childResult.trim()) childBlocks.push(childResult);
+      try {
+        const childResult = await this.renderCard(childCard, semanticVm);
+        if (childResult.trim()) childBlocks.push(childResult);
+      } catch (err) {
+        console.error(`[card-renderer] Error rendering child card "${childCard.name}":`, err);
+      }
     }
 
     // Assemble output. When wrapInBlock=false (cardinality-n), return bare

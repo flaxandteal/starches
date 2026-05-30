@@ -98,22 +98,21 @@
   display: none;
 }
 
-/* Indents */
-#treegrid tr[aria-level="2"] > td:first-child {
-  padding-left: 2.5ch;
-}
-
-#treegrid tr[aria-level="3"] > td:first-child {
-  padding-left: 5ch;
-}
-
-#treegrid tr[aria-level="4"] > td:first-child {
-  padding-left: 7.5ch;
-}
-
-#treegrid tr[aria-level="5"] > td:first-child {
-  padding-left: 10ch;
-}
+/* Indents — 2.5ch per level, up to level 15 to handle deep Arches graph nesting */
+#treegrid tr[aria-level="2"] > td:first-child { padding-left: 2.5ch; }
+#treegrid tr[aria-level="3"] > td:first-child { padding-left: 5ch; }
+#treegrid tr[aria-level="4"] > td:first-child { padding-left: 7.5ch; }
+#treegrid tr[aria-level="5"] > td:first-child { padding-left: 10ch; }
+#treegrid tr[aria-level="6"] > td:first-child { padding-left: 12.5ch; }
+#treegrid tr[aria-level="7"] > td:first-child { padding-left: 15ch; }
+#treegrid tr[aria-level="8"] > td:first-child { padding-left: 17.5ch; }
+#treegrid tr[aria-level="9"] > td:first-child { padding-left: 20ch; }
+#treegrid tr[aria-level="10"] > td:first-child { padding-left: 22.5ch; }
+#treegrid tr[aria-level="11"] > td:first-child { padding-left: 25ch; }
+#treegrid tr[aria-level="12"] > td:first-child { padding-left: 27.5ch; }
+#treegrid tr[aria-level="13"] > td:first-child { padding-left: 30ch; }
+#treegrid tr[aria-level="14"] > td:first-child { padding-left: 32.5ch; }
+#treegrid tr[aria-level="15"] > td:first-child { padding-left: 35ch; }
 
 /* Collapse/expand icons */
 #treegrid tr > td:first-child::before {
