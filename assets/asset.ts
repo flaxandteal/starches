@@ -933,7 +933,7 @@ async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
 
     images.push({
       name: await image.name,
-      previewUrl: (await imageList._.preview[0]?.url) ?? (await image.url),
+      previewUrl: ((await imageList._).__has('preview') && (await imageList._.preview[0]?.url)) ?? (await image.url),
       originalUrl: await image.url,
       alt: (await image._file && await image._file.alt_text) || (await image.name),
       type: (await image._file && await image._file.type) || (await image.type),
