@@ -31,8 +31,8 @@
     "toml": "^3.0.0"
   },
   "name": "starches",
-  "version": "0.2.1-alpha.115",
-  "description": "Static Arches export for Coral",
+  "version": "0.2.1-alpha.116",
+  "description": "Static Arches export",
   "main": "reindex.js",
   "directories": {
     "doc": "docs"
