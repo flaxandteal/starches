@@ -52,5 +52,12 @@ jobs:
       - name: Build image
         run: docker build . --file ./Dockerfile.basic --tag ${{ env.GAR_LOCATION }}/coral-starches-public:latest-${{ github.run_id }}
         working-directory: .
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          image-ref: ${{ env.GAR_LOCATION }}/coral-starches-public:latest-${{ github.run_id }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
       - name: Push image
         run: docker push ${{ env.GAR_LOCATION }}/coral-starches-public:latest-${{ github.run_id }}

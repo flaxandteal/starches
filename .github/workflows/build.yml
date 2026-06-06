@@ -68,5 +68,12 @@ jobs:
       - name: Build image
         run: docker build . --file ./Dockerfile --tag ${{ env.GAR_LOCATION }}/${{ matrix.visibility.image }}:latest-${{ github.run_id }} --build-arg STARCHES_INCLUDE_PRIVATE=${{ matrix.visibility.starches_include_private }}
         working-directory: .
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          image-ref: ${{ env.GAR_LOCATION }}/${{ matrix.visibility.image }}:latest-${{ github.run_id }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
       - name: Push image
         run: docker push ${{ env.GAR_LOCATION }}/${{ matrix.visibility.image }}:latest-${{ github.run_id }}
