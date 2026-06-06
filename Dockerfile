@@ -45,7 +45,7 @@ RUN echo STARCHES_INCLUDE_PRIVATE=$STARCHES_INCLUDE_PRIVATE && \
 RUN PAGEFIND_BINARY_PATH=./pagefind-bin ./node_modules/.bin/ts-node utils/reindex.ts
 RUN cd docs && tar -cf ../docs.tar *
 
-FROM nginxinc/nginx-unprivileged:1.21.5-alpine
+FROM nginxinc/nginx-unprivileged:1.31.1-alpine
 COPY --from=node /app/docs.tar /usr/share/nginx/html/
 RUN tar -xf docs.tar && rm -f docs.tar
 USER 33
