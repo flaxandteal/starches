@@ -54,7 +54,7 @@
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/node": "^22.14.0",
-    "@vitest/ui": "^3.2.3",
+    "@vitest/ui": "^4.1.8",
     "dotenv-cli": "^8.0.0",
     "happy-dom": "^18.0.1",
     "jsdom": "^26.1.0",
@@ -64,7 +64,7 @@
     "typescript": "^5.9.3",
     "vite": "^6.3.5",
     "vite-hugo-plugin": "^5.1.0",
-    "vitest": "^3.2.3"
+    "vitest": "^4.1.8"
   },
   "sideEffects": [
     "./assets/fbwrapper.ts",
