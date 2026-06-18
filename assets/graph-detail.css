@@ -1,0 +1,99 @@
+/* Graph selector */
+.graph-selector-wrapper {
+  margin-bottom: 20px;
+}
+
+.graph-selector-wrapper select {
+  font-size: 16px;
+  padding: 6px 8px;
+  max-width: 100%;
+}
+
+/* The node/card tree itself is rendered by the <graph-treegrid> web component,
+   which carries its own (shadow-DOM) styles. */
+
+/* Node tree / Card tree view toggle */
+.graph-view-toggle {
+  display: inline-flex;
+  margin: 0 0 1rem;
+  border: 1px solid #004B7A;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.graph-view-toggle button {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid #004B7A;
+  background-color: #ffffff;
+  color: #004B7A;
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+.graph-view-toggle button:last-child {
+  border-right: 0;
+}
+
+.graph-view-toggle button[aria-pressed="true"] {
+  background-color: #004B7A;
+  color: #ffffff;
+}
+
+.graph-view-toggle button:focus {
+  outline: 3px solid #ffdd00;
+  outline-offset: -3px;
+}
+
+/* --- Theme alignment with the asset page --- */
+/* Full-width title bar, mirroring #asset-title on the asset page. */
+#graph-name {
+  background-color: #004B7A;
+  padding: 1rem 0.4rem;
+  margin: 0;
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+/* Body content sits at the same horizontal inset as the title bar. */
+.graph-detail-content {
+  padding: 1rem 0.4rem;
+}
+
+.graph-intro {
+  margin-bottom: 1rem;
+}
+
+/* Model metadata headings echo the asset page's section headings
+   (#asset h2): blue top rule on a light band. */
+#wkrm-info h3 {
+  font-size: 130%;
+  font-weight: 500;
+  background-color: #F5F4F2;
+  border-top: 0.3rem solid #004B7A;
+  padding: 1.2rem 0.3rem 0.3rem;
+  margin-top: 1.5rem;
+}
+
+/* Resource-by-model search (Rós Madair) */
+.graph-resource-search {
+  margin-top: 2rem;
+  border-top: 0.3rem solid #004B7A;
+  padding-top: 1rem;
+}
+
+.model-resources-status {
+  margin-bottom: 0.5rem;
+  color: #505a5f;
+}
+
+.model-resources-more {
+  margin-top: 1rem;
+}
+
+/* GOV.UK Back Link Override */
+.govuk-back-link {
+  margin-bottom: 20px;
+}

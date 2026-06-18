@@ -69,6 +69,95 @@ async function getStore(config: RelationsConfig): Promise<any> {
   return storePromise;
 }
 
+export interface ModelResource {
+  resourceId: string;
+  name: string;
+  slug: string;
+  model?: string;
+}
+
+export interface ModelResourceSearch {
+  graphId: string;
+  /** Total resources across this model's pages (from page_meta resource_count). */
+  totalResources: number;
+  /** Number of (non-shadow) pages for this model. */
+  pageCount: number;
+  /** Pages whose resources have been loaded so far. */
+  loadedPages: number;
+  /** Whether more pages remain to load. */
+  hasMore: boolean;
+  /** Load the next page's resources — one header probe + one meta range fetch. */
+  loadNext(): Promise<ModelResource[]>;
+}
+
+/**
+ * Paginated listing of resources belonging to a resource model (Arches graph).
+ *
+ * Rós Madair quantizes resources into pages grouped by graph_id (model), and
+ * page_meta (loaded once by loadSummary) carries each page's graph_id and
+ * resource_count. So we touch only this model's pages, and each loadNext()
+ * pulls a single page's resource meta via HTTP range requests — never the whole
+ * page file (predicate/tile blocks are skipped). Pagination is page-at-a-time.
+ */
+export async function createModelResourceSearch(
+  graphId: string,
+  config: RelationsConfig,
+): Promise<ModelResourceSearch> {
+  const store = await getStore(config);
+
+  const pages: Array<{ page_id: number; graph_id: string; resource_count?: number; is_shadow?: boolean }> =
+    JSON.parse(store.pageMetaJson());
+  const modelPages = pages.filter((p) => p.graph_id === graphId && !p.is_shadow);
+  const totalResources = modelPages.reduce((n, p) => n + (p.resource_count || 0), 0);
+
+  let cursor = 0;
+  const seen = new Set<string>();
+
+  const search: ModelResourceSearch = {
+    graphId,
+    totalResources,
+    pageCount: modelPages.length,
+    loadedPages: 0,
+    hasMore: modelPages.length > 0,
+    async loadNext(): Promise<ModelResource[]> {
+      if (cursor >= modelPages.length) {
+        search.hasMore = false;
+        return [];
+      }
+      const page = modelPages[cursor++];
+
+      let metas: Array<{ uri?: string; name?: string; slug?: string; model?: string }> = [];
+      try {
+        // loadResourceMeta takes &mut self in WASM — never call concurrently.
+        metas = JSON.parse(await store.loadResourceMeta(page.page_id));
+      } catch (e) {
+        console.warn('[model-search] loadResourceMeta failed for page', page.page_id, e);
+      }
+
+      const out: ModelResource[] = [];
+      for (const m of metas) {
+        const uri = m.uri || '';
+        const resourceId = uri.includes('/resource/') ? uri.split('/resource/').pop()! : uri;
+        if (!resourceId || seen.has(resourceId)) continue;
+        seen.add(resourceId);
+        out.push({
+          resourceId,
+          name: m.name || resourceId,
+          slug: m.slug || resourceId,
+          model: m.model,
+        });
+      }
+      out.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      search.loadedPages++;
+      search.hasMore = cursor < modelPages.length;
+      return out;
+    },
+  };
+
+  return search;
+}
+
 export async function fetchRelations(
   resourceInstanceId: string,
   config: RelationsConfig,

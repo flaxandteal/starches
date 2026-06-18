@@ -1,0 +1,61 @@
+{{- if not (.Page.Store.Get "graph-detail-loaded-flag") -}}
+{{ $css := resources.Get "graph-detail.css" -}}
+{{ if hugo.IsProduction }}
+  {{ $css = $css | minify | fingerprint }}
+{{ end }}
+{{/* Share the asset page's theme (title bar, fonts, colours). */}}
+<link rel="stylesheet" href="{{ "css/cleangov.css" | absURL }}">
+<link rel="stylesheet" href="{{ "css/custom.css" | absURL }}">
+<link rel="stylesheet" href="{{ $css.RelPermalink }}"{{ if hugo.IsProduction }} integrity="{{ $css.Data.Integrity }}"{{ end }}>
+
+<script>window.STARCHES_IS_PRODUCTION = {{ hugo.IsProduction }};</script>
+
+{{ $js := resources.Get "graph-detail.ts" -}}
+{{ $sourceMap := cond hugo.IsProduction "" "inline" }}
+{{ $params := (dict "ros_madair" site.Params.ros_madair) }}
+{{ $opts := dict "sourceMap" $sourceMap "minify" hugo.IsProduction "target" "es2022" "params" $params }}
+{{ $js = $js | js.Build $opts }}
+{{ if hugo.IsProduction }}
+  {{ $js = $js | fingerprint }}
+{{ end }}
+<script
+  src="{{ $js.RelPermalink }}"
+  {{ if hugo.IsProduction }}integrity="{{ $js.Data.Integrity }}"{{ end }}
+  type="module">
+</script>
+{{- .Page.Store.Set "graph-detail-loaded-flag" true -}}
+{{- end -}}
+
+{{/* Title bar mirrors the asset page's #asset-title; populated with the
+     selected model's name by graph-detail.ts once a graph is chosen. */}}
+<h1 id="graph-name">{{ .Title }}</h1>
+
+<div class="graph-detail-content">
+  {{ with .Content }}<div class="graph-intro govuk-body">{{ . }}</div>{{ end }}
+
+  <div class="graph-selector-wrapper">
+    <label class="govuk-label" for="graph-selector">{{ i18n "starches_select_graph" | default "Resource model" }}</label>
+    <select id="graph-selector" class="govuk-select">
+      <option value="">{{ i18n "starches_select_graph_placeholder" | default "Select a graph…" }}</option>
+    </select>
+  </div>
+
+  <div id="wkrm-info"></div>
+
+  <div class="graph-view-toggle" role="group" aria-label="{{ i18n "starches_graph_view" | default "Structure view" }}" hidden>
+    <button type="button" data-graph-view="nodes" aria-pressed="true">{{ i18n "starches_graph_view_nodes" | default "Node tree" }}</button>
+    <button type="button" data-graph-view="cards" aria-pressed="false">{{ i18n "starches_graph_view_cards" | default "Card tree" }}</button>
+  </div>
+
+  <div id="tree-container">
+    <p class="govuk-body">{{ i18n "starches_loading_graph" | default "Loading graph structure…" }}</p>
+  </div>
+
+  <section class="graph-resource-search" hidden>
+    <h2 class="govuk-heading-m">{{ i18n "starches_model_resources_heading" | default "Resources of this model" }}</h2>
+    <button type="button" id="search-model-resources" class="govuk-button govuk-button--secondary">
+      {{ i18n "starches_search_model_resources" | default "Search for Resources of this Model" }}
+    </button>
+    <div id="model-resources-results"></div>
+  </section>
+</div>

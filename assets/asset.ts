@@ -1408,7 +1408,7 @@ async function setupBackLinks(currentSlug: string): Promise<void> {
   }
 }
 
-function setupAssetTitle(title: string, modelName?: string, resourceId?: string): void {
+function setupAssetTitle(title: string, modelName?: string, resourceId?: string, graphId?: string, publicView: boolean = true): void {
   const titleEl = document.getElementById("asset-title");
   if (titleEl) {
     titleEl.innerText = title;
@@ -1421,6 +1421,14 @@ function setupAssetTitle(title: string, modelName?: string, resourceId?: string)
       idSpan.className = 'asset-model-resource-id';
       idSpan.textContent = resourceId;
       modelEl.appendChild(idSpan);
+    }
+    // In the full (non-public) view, link to the resource model's graph structure.
+    if (!publicView && graphId) {
+      const graphLink = document.createElement('a');
+      graphLink.className = 'asset-model-graph-link';
+      graphLink.href = "../graph/?graphId=" + graphId;
+      graphLink.textContent = "View resource model";
+      modelEl.appendChild(graphLink);
     }
   }
 }
@@ -1547,7 +1555,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     publicViewEl?.setAttribute('hidden', '');
   }
 
-  setupAssetTitle(asset.meta.title, asset.asset.__.wkrm.modelName, asset.meta.resourceinstanceid);
+  setupAssetTitle(asset.meta.title, asset.asset.__.wkrm.modelName, asset.meta.resourceinstanceid, asset.asset.__.wkrm.graphId, publicView);
   setupSwapLink(slug, publicView);
 
   const legacyRecord = await setupLegacyRecord(asset, publicView);
