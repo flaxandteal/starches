@@ -62,7 +62,7 @@
     "three": "^0.175.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vite": "^6.3.5",
+    "vite": "^8.0.16",
     "vite-hugo-plugin": "^5.1.0",
     "vitest": "^3.2.3"
   },
