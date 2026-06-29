@@ -1,4 +1,4 @@
-FROM node:23.10.0 as node
+FROM node:26.4.0 as node
 ARG STARCHES_INCLUDE_PRIVATE=0
 
 WORKDIR /app
