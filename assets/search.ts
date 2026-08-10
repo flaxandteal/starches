@@ -111,6 +111,7 @@ class SearchManager {
   lastFilters;
   cachedResults;
   fb;
+  _searchSeq = 0;
 
   async initialize() {
       return this.getPagefindInstance()
@@ -140,8 +141,10 @@ class SearchManager {
 
       if (instance) {
           instance.on("results", async (results) => {
+              const seq = ++this._searchSeq;
               await getMap();
               return handleResults(fg, results).then(async (fg) => {
+                  if (seq !== this._searchSeq) return;
                   const m = await getMap();
                   m.getSource('assets').setData(fg);
 
