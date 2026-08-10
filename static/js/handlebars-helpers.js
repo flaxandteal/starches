@@ -11,11 +11,15 @@
     return;
   }
 
-  Handlebars.registerHelper("pointToCoords", (point) =>
-    point?.features?.[0]?.geometry?.coordinates
-      ? point.features[0].geometry.coordinates.map((c) => c.toFixed(8)).reverse().join(", ")
-      : ""
-  );
+  Handlebars.registerHelper("pointToCoords", (point) => {
+    if (point?.features?.[0]?.geometry?.coordinates) {
+      let coords = point?.features?.[0]?.geometry?.coordinates;
+      if (typeof coords[0] === "number") {
+        return coords.map((c) => c.toFixed(8)).reverse().join(", ");
+      }
+    }
+    return "";
+  });
   Handlebars.registerHelper("replace", (base, fm, to) => base ? base.replaceAll(fm, to) : base);
   Handlebars.registerHelper("nl", (base, nl) => base ? base.replaceAll("\n", nl) : base);
   Handlebars.registerHelper("plus", (a, b) => a + b);

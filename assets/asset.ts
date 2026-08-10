@@ -922,8 +922,14 @@ async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
       return;
     }
 
-    let caption = (await imageList._.captions.caption);
-    let copyright = (await imageList._.copyright.copyright_note.copyright_note_text);
+    let caption: string | undefined;
+    let copyright: string | undefined;
+    try {
+      caption = (await imageList._.captions.caption);
+      copyright = (await imageList._.copyright.copyright_note.copyright_note_text);
+    } catch {
+      // caption/copyright nodes may not exist in this graph
+    }
     if (copyright) {
       if (!copyright.includes('©')) {
         copyright = '© ' + copyright;
@@ -931,9 +937,28 @@ async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
       caption = [(caption || ""), copyright].join(" ");
     }
 
+    let previewUrl: string | undefined;
+    try {
+      // Try previewUrl baked into the file-list entry by ETL (no graph node needed)
+      previewUrl = await image.previewUrl;
+    } catch {
+      // previewUrl not present in tile data
+    }
+    if (!previewUrl) {
+      try {
+        // Fallback: try legacy preview graph node
+        const parent = await imageList._;
+        if (parent.__has('preview')) {
+          previewUrl = await imageList._.preview[0]?.url;
+        }
+      } catch {
+        // preview node not present in this graph
+      }
+    }
+
     images.push({
       name: await image.name,
-      previewUrl: ((await imageList._).__has('preview') && (await imageList._.preview[0]?.url)) ?? (await image.url),
+      previewUrl: previewUrl || (await image.url),
       originalUrl: await image.url,
       alt: (await image._file && await image._file.alt_text) || (await image.name),
       type: (await image._file && await image._file.type) || (await image.type),
@@ -945,7 +970,12 @@ async function extractImageList(imageList: any[]): Promise<ImageInput[]> {
 }
 
 async function renderAsset(asset: Asset, template: HandlebarsTemplateDelegate): Promise<Record<string, Dialog>> {
-  const alizarinRenderer = new renderers.MarkdownRenderer(RENDERER_OPTIONS);
+  // Template path: disable geojsonToUrl so GeoJSON stays as raw objects
+  // (the pointToCoords helper needs features[0].geometry.coordinates).
+  const alizarinRenderer = new renderers.MarkdownRenderer({
+    ...RENDERER_OPTIONS,
+    geojsonToUrl: undefined,
+  });
   const nonstaticAsset = await alizarinRenderer.render(asset.asset);
   debug('Rendered non-static asset');
   const { images, files, otherEcrs } = categorizeExternalReferences(nonstaticAsset);
@@ -1486,15 +1516,12 @@ async function setupLegacyRecord(asset: Asset, publicView: boolean): Promise<any
   return legacyRecord;
 }
 
-function setupDemoWarning(asset: Asset, publicView: boolean, hasLegacyRecord: boolean): void {
+function setupDemoWarning(asset: Asset): void {
   const warningEl = document.getElementById("demo-warning");
   if (!warningEl) return;
 
   const isPublicScope = Array.isArray(asset.asset.$.scopes) && asset.asset.$.scopes.includes('public');
-  // Show the banner if the asset has non-public data, OR if full view is available
-  const hasFullView = params.default_show_full_asset === "true";
-  const shouldHide = isPublicScope && publicView && !hasLegacyRecord && !hasFullView;
-  if (shouldHide) {
+  if (isPublicScope) {
     warningEl.setAttribute('hidden', '');
   } else {
     warningEl.removeAttribute('hidden');
@@ -1551,7 +1578,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupSwapLink(slug, publicView);
 
   const legacyRecord = await setupLegacyRecord(asset, publicView);
-  setupDemoWarning(asset, publicView, !!legacyRecord);
+  setupDemoWarning(asset);
 
   formatTimeElements();
 
