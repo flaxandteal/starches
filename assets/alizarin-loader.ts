@@ -23,7 +23,7 @@ export const wasmReady: Promise<void> = (async () => {
   await new Promise(r => setTimeout(r, 0));
 
   try {
-    setWasmURL('/wasm/alizarin_bg.wasm');
+    setWasmURL(`/wasm/alizarin_bg.wasm?v=${version}`);
     await initWasm();
     console.log(`[alizarin] v${version}`);
     return;
