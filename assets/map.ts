@@ -147,8 +147,10 @@ async function resultFunction(map: TargetingMap, e: MapMouseEvent & { features?:
   const title = feature.properties.title;
   const description = feature.properties.description;
   const excerpt = await marked.parse(description.trim());
-  const coordinates: number[] = feature.geometry.coordinates.slice();
   const lngLat = e.lngLat;
+  const coordinates: number[] = feature.geometry.type === 'Point'
+    ? feature.geometry.coordinates.slice()
+    : [lngLat.lng, lngLat.lat];
 
   map.stop();
   map.targeting = coordinates;
@@ -839,6 +841,22 @@ class MapManager implements IMapManager {
       },
       'filter': ['==', '$type', 'Polygon']
     });
+    // Without this layer a LineString sits in the source and draws nothing.
+    map.addLayer({
+      'id': 'asset-lines',
+      'type': 'line',
+      'source': 'assets',
+      'layout': {
+        'line-cap': 'round',
+        'line-join': 'round'
+      },
+      'paint': {
+        'line-color': cssVar('--map-asset-line-color', '#888888'),
+        'line-width': cssNum('--map-asset-line-width', 3),
+        'line-opacity': cssNum('--map-asset-line-opacity', 0.8)
+      },
+      'filter': ['==', '$type', 'LineString']
+    });
     if (config.changeMapLayerOnZoom) {
       map.addLayer({
         'id': 'assets-flat',
@@ -892,10 +910,18 @@ class MapManager implements IMapManager {
       'filter': ['==', '$type', 'Point']
     });
 
-    map.on('click', 'assets', (e) => resultFunction(map, e));
-    if (config.changeMapLayerOnZoom) {
-      map.on('click', 'assets-flat', (e) => resultFunction(map, e));
-    }
+    const clickLayers = [
+      'assets',
+      ...(config.changeMapLayerOnZoom ? ['assets-flat'] : []),
+      'asset-lines',
+      'asset-boundaries'
+    ];
+    map.on('click', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: clickLayers });
+      if (features.length > 0) {
+        resultFunction(map, Object.assign(e, { features }));
+      }
+    });
 
     // cooperativeGestures blocks single-finger taps from becoming click events,
     // so on touch devices we detect taps manually and query features directly.
@@ -919,8 +945,7 @@ class MapManager implements IMapManager {
           e.changedTouches[0].clientX - rect.left,
           e.changedTouches[0].clientY - rect.top
         ];
-        const layers = config.changeMapLayerOnZoom ? ['assets', 'assets-flat'] : ['assets'];
-        const features = map.queryRenderedFeatures(point, { layers });
+        const features = map.queryRenderedFeatures(point, { layers: clickLayers });
         if (features.length > 0) {
           const lngLat = map.unproject(point);
           resultFunction(map, { features, lngLat, point: { x: point[0], y: point[1] } } as any);
@@ -928,13 +953,15 @@ class MapManager implements IMapManager {
       });
     }
 
-    map.on('mouseenter', 'assets', () => {
-      map.getCanvas().style.cursor = 'pointer';
-    });
+    for (const layer of clickLayers) {
+      map.on('mouseenter', layer, () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
 
-    map.on('mouseleave', 'assets', () => {
-      map.getCanvas().style.cursor = '';
-    });
+      map.on('mouseleave', layer, () => {
+        map.getCanvas().style.cursor = '';
+      });
+    }
 
     resolve(map);
   }
