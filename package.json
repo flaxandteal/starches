@@ -27,7 +27,7 @@
     "mapbox-gl-arcgis-featureserver": "^0.0.8",
     "marked": "^15.0.7",
     "marked-plaintify": "^1.1.1",
-    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.114/starches-builder-v2.0.0-alpha.114.tar.gz",
+    "starches-builder": "https://github.com/flaxandteal/starches-builder/releases/download/v2.0.0-alpha.121/starches-builder-v2.0.0-alpha.121.tar.gz",
     "toml": "^3.0.0"
   },
   "name": "starches",
