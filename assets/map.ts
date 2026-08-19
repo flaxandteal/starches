@@ -839,6 +839,24 @@ class MapManager implements IMapManager {
       },
       'filter': ['==', '$type', 'Polygon']
     });
+    // A resource's geometry tiles can include lines as well as points and
+    // polygons; without this layer a LineString sits in the source and draws
+    // nothing. Like asset-boundaries, it has no click handler of its own.
+    map.addLayer({
+      'id': 'asset-lines',
+      'type': 'line',
+      'source': 'assets',
+      'layout': {
+        'line-cap': 'round',
+        'line-join': 'round'
+      },
+      'paint': {
+        'line-color': cssVar('--map-asset-line-color', '#888888'),
+        'line-width': cssNum('--map-asset-line-width', 3),
+        'line-opacity': cssNum('--map-asset-line-opacity', 0.8)
+      },
+      'filter': ['==', '$type', 'LineString']
+    });
     if (config.changeMapLayerOnZoom) {
       map.addLayer({
         'id': 'assets-flat',
