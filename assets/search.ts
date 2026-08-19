@@ -7,7 +7,6 @@ import { buildPagefind } from './pagefind';
 import { saveSearchResults, makeSearchQuery } from "./searchContext";
 import { resolveSearchManagerWith, getMap, getMapManager, getFlatbushManager } from './managers';
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import { geometriesFor } from './geometries';
 
 let resolveSearchManager;
 const searchManager: Promise<SearchManager> = new Promise((resolve) => { resolveSearchManager = resolve });
@@ -65,17 +64,21 @@ async function handleResults(fg: FeatureCollection, results): Promise<FeatureCol
                 }
                 text += `<p class='description'>${description}</p>`;
 
-                const properties = {
-                    'slug': slug,
-                    'title': re.meta.title,
-                    'description': re.meta.rawContent,
-                    'url': url,
-                    'category': JSON.parse(re.meta.Category || "[]")[0] || null
+                let marker = {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': [loc[0], loc[1]]
+                    },
+                    'properties': {
+                        'slug': slug,
+                        'title': re.meta.title,
+                        'description': re.meta.rawContent,
+                        'url': url,
+                        'category': JSON.parse(re.meta.Category || "[]")[0] || null
+                    },
                 };
-                // A resource can carry several geometry tiles; draw all of them.
-                for (const feature of geometriesFor(re.meta, properties, debugWarn)) {
-                    fg.features.push(feature);
-                }
+                fg.features.push(marker);
               }
             visibleIds.delete(slug);
             }
