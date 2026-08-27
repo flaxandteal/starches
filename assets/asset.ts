@@ -1472,8 +1472,12 @@ async function setupRegistryInfo(asset: Asset): Promise<void> {
     if (memberships) {
       const items = await Promise.all(
         memberships.map(async (membership: any) => {
-          const registry = await membership.record_or_registry;
-          return `<li>${await registry.getName()}</li>`;
+          if ((await membership).__has('record_or_registry')) {
+            const registry = await membership.record_or_registry;
+            return `<li>${await registry.getName()}</li>`;
+          } else {
+            return '';
+          }
         })
       );
       dfcRegistryElement.innerHTML = `<ul>${items.join("\n")}</ul>`;
