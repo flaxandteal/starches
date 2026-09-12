@@ -716,12 +716,17 @@ async function renderToHtml(markdown: string, nodes: Map<string, any>, showNodeD
           const sectionId = nodeToken.sectionId || 'default';
           const id = `${titleId}-${sectionId}`;
 
+          const parseFieldValue = (f: NodeBlockField) => ({
+            ...f,
+            value: marked.parseInline(f.value) as string
+          });
+
           return nodeTemplate({
             title: nodeToken.title,
             description: nodeToken.description,
             widgets: nodeToken.widgets,
-            fields: nodeToken.fields,
-            fieldGroups: nodeToken.fieldGroups,
+            fields: nodeToken.fields?.map(parseFieldValue),
+            fieldGroups: nodeToken.fieldGroups?.map(g => g.map(parseFieldValue)),
             body: nodeToken.body,
             id: id,
             initiallyExpanded: !nodeToken.initiallyCollapsed,

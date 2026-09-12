@@ -136,6 +136,16 @@
   });
 
   Handlebars.registerHelper("isOdd", (index) => index % 2 !== 0);
+  const stripLinks = (a) => {
+    if (a == null) return a;
+    if (Array.isArray(a)) return a.map(b => stripLinks(b)).join('<br/>');
+    const str = String(a);
+    return str
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/<[^>]+>/g, '')
+      .trim();
+  };
+  Handlebars.registerHelper("stripLinks", (a) => stripLinks(a));
 
   // ---- i18n helper ----------------------------------------------------------
   // Consumer sites can provide translations by setting
