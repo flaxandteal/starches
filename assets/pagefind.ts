@@ -44,10 +44,18 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
         }
         const b64 = (await txtResponse.text()).trim();
         const binary = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        // The .pagefind file is the actual WASM binary; the other extensions
+        // are gzip-compressed index chunks pagefind decompresses manually, so
+        // content-type doesn't matter for those. WebAssembly.instantiateStreaming
+        // requires exactly "application/wasm" on the response, and if this
+        // fallback mislabels it as application/octet-stream, pagefind falls
+        // back to a synchronous arrayBuffer()+WebAssembly.Module() compile,
+        // which Chrome refuses to run on the main thread for buffers over 4KB.
+        const isWasmBinary = url.endsWith('.pagefind');
         return new Response(binary.buffer, {
             status: 200,
             statusText: 'OK',
-            headers: { 'Content-Type': 'application/octet-stream' },
+            headers: { 'Content-Type': isWasmBinary ? 'application/wasm' : 'application/octet-stream' },
         });
     } catch (e) {
         console.error(`[pagefind-proxy] .txt fallback failed for ${url}:`, e);
