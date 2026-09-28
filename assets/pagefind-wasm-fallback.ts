@@ -29,9 +29,11 @@
           const bin = atob(b64.trim());
           const bytes = new Uint8Array(bin.length);
           for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          // Only wasm.*.pagefind files reach here, so always label the
+          // response as WASM. See the matching comment in pagefind.ts.
           return new Response(bytes.buffer, {
             status: 200,
-            headers: { 'Content-Type': 'application/octet-stream' }
+            headers: { 'Content-Type': 'application/wasm' }
           });
         });
       });
